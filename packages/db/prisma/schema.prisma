@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Team {
+  BLUE
+  RED
+}
+
+model Member {
+  id              String   @id @default(uuid())
+  realName        String?
+  riotId          String?
+  discordUserId   String?  @unique
+  discordHandle   String?
+  discordJoinedAt DateTime?
+  kakaoUserId     String?  @unique
+  kakaoNickname   String?
+  elo             Int      @default(1000)
+  lastActiveAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  mentionLogs  MentionLog[]
+  participants GameParticipant[]
+}
+
+model GameResult {
+  id        String   @id @default(uuid())
+  playedAt  DateTime
+  winner    Team
+  createdAt DateTime @default(now())
+
+  participants GameParticipant[]
+}
+
+model GameParticipant {
+  id           String     @id @default(uuid())
+  gameResultId String
+  gameResult   GameResult @relation(fields: [gameResultId], references: [id])
+  memberId     String
+  member       Member     @relation(fields: [memberId], references: [id])
+  team         Team
+  eloBefore    Int
+  eloAfter     Int
+
+  @@unique([gameResultId, memberId])
+}
+
+model MentionLog {
+  id          String   @id @default(uuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id])
+  mentionedAt DateTime
+  rawMessage  String?
+}
