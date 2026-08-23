@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { calculateTeamEloChange, ELO_K, type TeamSide } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
+import { saveGameResultAction } from "@/app/matches/actions";
 
 export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
   const [poolQuery, setPoolQuery] = useState("");
@@ -10,6 +11,7 @@ export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
   const [redIds, setRedIds] = useState<string[]>([]);
   const [winner, setWinner] = useState<TeamSide | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const byId = useMemo(() => new Map(pool.map((p) => [p.id, p])), [pool]);
   const usedIds = new Set([...blueIds, ...redIds]);
@@ -41,6 +43,25 @@ export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
     if (team === "blue") setBlueIds(blueIds.filter((x) => x !== id));
     if (team === "red") setRedIds(redIds.filter((x) => x !== id));
     setSavedMessage(null);
+  }
+
+  async function handleSave() {
+    if (!canSave || !winner) return;
+    setIsSaving(true);
+    try {
+      const result = await saveGameResultAction({
+        playedAt: new Date(),
+        blueMemberIds: blueIds,
+        redMemberIds: redIds,
+        winner,
+      });
+      setSavedMessage(`저장됨 · ${result.updates.length}명의 ELO가 재계산되었습니다.`);
+      setBlueIds([]);
+      setRedIds([]);
+      setWinner(null);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -173,9 +194,10 @@ export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
         </div>
         <div className="mt-auto flex flex-col gap-2 border-t border-white/[.06] p-4">
           <button
-            disabled={!canSave}
+            onClick={handleSave}
+            disabled={!canSave || isSaving}
             className={`w-full rounded-lg py-2.5 text-[13px] font-extrabold ${
-              canSave ? "cursor-pointer bg-[#70AD47] text-[#0E1117]" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
+              canSave && !isSaving ? "cursor-pointer bg-[#70AD47] text-[#0E1117]" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
             }`}
           >
             결과 저장 · ELO 반영
