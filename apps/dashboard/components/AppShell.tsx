@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getInactiveMembers } from "@lolpamin/core";
 import { NavLink } from "./NavLink";
 
 export interface AppShellProps {
@@ -9,10 +10,11 @@ export interface AppShellProps {
 }
 
 export async function AppShell({ activeNav, pageTitle, pageDesc, children }: AppShellProps) {
-  const [totalCount, inactiveNavCount] = await Promise.all([
+  const [totalCount, allMembersForInactivity] = await Promise.all([
     prisma.member.count(),
-    prisma.member.count({ where: { kakaoUserId: { not: null } } }),
+    prisma.member.findMany({ select: { id: true, kakaoUserId: true, lastActiveAt: true, createdAt: true } }),
   ]);
+  const inactiveNavCount = getInactiveMembers(allMembersForInactivity, new Date()).length;
 
   const navItems = [
     { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },
