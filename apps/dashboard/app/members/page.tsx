@@ -1,0 +1,32 @@
+import { AppShell } from "@/components/AppShell";
+import { StatCard } from "@/components/StatCard";
+import { MemberTable } from "@/components/MemberTable";
+import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
+
+export default async function MembersPage({
+  searchParams,
+}: {
+  searchParams: { filter?: string; q?: string };
+}) {
+  const filter = (searchParams.filter ?? "all") as MemberFilter;
+  const query = searchParams.q ?? "";
+  const data = await getMemberListData(filter, query);
+
+  return (
+    <AppShell
+      activeNav="members"
+      pageTitle="회원 관리 · 계정 매핑"
+      pageDesc="Discord · 카카오톡 계정을 하나의 회원으로 연결"
+    >
+      <div className="flex flex-col gap-5.5 px-7 pb-10 pt-6">
+        <div className="grid grid-cols-4 gap-3">
+          <StatCard label="전체 회원" value={data.totalCount} unit="명" colorClassName="text-[#E6EAF2]" />
+          <StatCard label="미연결(반쪽) 회원" value={data.halfCount} unit="명" colorClassName="text-[#F2985C]" />
+          <StatCard label="미배정 계정" value={data.unassignedCount} unit="건" colorClassName="text-[#F2C75C]" />
+          <StatCard label="평균 ELO" value={data.averageElo} unit="점" colorClassName="text-[#8FB4F5]" />
+        </div>
+        <MemberTable rows={data.rows} />
+      </div>
+    </AppShell>
+  );
+}
