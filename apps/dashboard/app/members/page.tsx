@@ -3,6 +3,8 @@ import { StatCard } from "@/components/StatCard";
 import { MemberTable } from "@/components/MemberTable";
 import { MemberFilters } from "@/components/MemberFilters";
 import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
+import { getPendingDiscordAccounts, getPendingKakaoAccounts } from "@/lib/queries/pending-accounts";
+import { AccountMappingPanel } from "@/components/AccountMappingPanel";
 
 export default async function MembersPage({
   searchParams,
@@ -11,7 +13,11 @@ export default async function MembersPage({
 }) {
   const filter = (searchParams.filter ?? "all") as MemberFilter;
   const query = searchParams.q ?? "";
-  const data = await getMemberListData(filter, query);
+  const [data, discordAccounts, kakaoAccounts] = await Promise.all([
+    getMemberListData(filter, query),
+    getPendingDiscordAccounts(),
+    getPendingKakaoAccounts(),
+  ]);
 
   return (
     <AppShell
@@ -30,6 +36,7 @@ export default async function MembersPage({
           <MemberFilters activeFilter={filter} query={query} />
           <MemberTable rows={data.rows} />
         </section>
+        <AccountMappingPanel discordAccounts={discordAccounts} kakaoAccounts={kakaoAccounts} />
       </div>
     </AppShell>
   );
