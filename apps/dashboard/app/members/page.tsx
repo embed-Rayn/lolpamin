@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { MemberTable } from "@/components/MemberTable";
+import { MemberFilters } from "@/components/MemberFilters";
 import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
 
 export default async function MembersPage({
@@ -25,7 +26,10 @@ export default async function MembersPage({
           <StatCard label="미배정 계정" value={data.unassignedCount} unit="건" colorClassName="text-[#F2C75C]" />
           <StatCard label="평균 ELO" value={data.averageElo} unit="점" colorClassName="text-[#8FB4F5]" />
         </div>
-        <MemberTable rows={data.rows} />
+        <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
+          <MemberFilters activeFilter={filter} query={query} />
+          <MemberTable rows={data.rows} />
+        </section>
       </div>
     </AppShell>
   );

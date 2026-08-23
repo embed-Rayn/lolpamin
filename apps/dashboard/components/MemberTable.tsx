@@ -2,7 +2,7 @@ import type { MemberRow } from "@/lib/queries/members";
 
 export function MemberTable({ rows }: { rows: MemberRow[] }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
+    <>
       <div className="grid grid-cols-[180px_1fr_92px_132px_210px] gap-0 border-b border-white/[.06] bg-[#12161F] px-4.5 py-2.5 text-[10.5px] font-bold tracking-wide text-[#6E7889]">
         <div>실명</div>
         <div>라이엇 ID</div>
@@ -60,6 +60,6 @@ export function MemberTable({ rows }: { rows: MemberRow[] }) {
           </div>
         </div>
       ))}
-    </section>
+    </>
   );
 }
