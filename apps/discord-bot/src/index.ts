@@ -1,4 +1,5 @@
 import { Client, Collection, Events, GatewayIntentBits, type ChatInputCommandInteraction } from "discord.js";
+import { prisma } from "@lolpamin/db";
 import * as eloCommand from "./commands/elo";
 import * as leaderboardCommand from "./commands/leaderboard";
 import * as recordCommand from "./commands/record";
@@ -23,7 +24,8 @@ for (const command of [eloCommand, leaderboardCommand, recordCommand]) {
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once(Events.ClientReady, (readyClient) => {
+client.once(Events.ClientReady, async (readyClient) => {
+  await prisma.$connect();
   console.log(`Logged in as ${readyClient.user.tag}`);
 });
 
@@ -37,13 +39,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await command.execute(interaction);
   } catch (error) {
     console.error(`Error executing ${interaction.commandName}:`, error);
-    const errorReply = { content: "명령어 실행 중 오류가 발생했습니다.", ephemeral: true };
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorReply);
-    } else {
-      await interaction.reply(errorReply);
+    try {
+      const errorReply = { content: "명령어 실행 중 오류가 발생했습니다.", ephemeral: true };
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorReply);
+      } else {
+        await interaction.reply(errorReply);
+      }
+    } catch (replyError) {
+      console.error(`Failed to send error reply for ${interaction.commandName}:`, replyError);
     }
   }
+});
+
+client.on(Events.Error, console.error);
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
 });
 
 client.login(process.env.DISCORD_TOKEN);

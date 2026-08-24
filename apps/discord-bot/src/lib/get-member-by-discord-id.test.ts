@@ -3,7 +3,12 @@ import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { getMemberByDiscordId } from "./get-member-by-discord-id";
 
-const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL_TEST });
+const databaseUrlTest = process.env.DATABASE_URL_TEST;
+if (!databaseUrlTest) {
+  throw new Error("DATABASE_URL_TEST must be set — refusing to run destructive tests against an unknown database");
+}
+
+const prisma = new PrismaClient({ datasourceUrl: databaseUrlTest });
 
 beforeEach(async () => {
   await resetDatabase(prisma);
