@@ -85,4 +85,31 @@ describe("processKakaoExport", () => {
     const parkJihyun = await prisma.member.findFirstOrThrow({ where: { kakaoNickname: "박지현/95/사육사#1003" } });
     expect(parkJihyun.lastActiveAt).toEqual(new Date(2026, 7, 29, 9, 10));
   });
+
+  it("skips a mention at exactly the prior watermark timestamp", async () => {
+    // First upload establishes watermark at 오전 9:05
+    const firstResult = await processKakaoExport(prisma, FIRST_UPLOAD);
+    expect(firstResult).toEqual({ newMembers: 2, activityUpdates: 0, skippedAsAlreadyProcessed: 0 });
+
+    // Second upload contains a mention at exactly 오전 9:05 with a new nickname
+    const exactBoundaryUpload = [
+      "게임구인방 님과 카카오톡 대화",
+      "저장한 날짜 : 2026-08-29 23:00:00",
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[김민준/94/늑 대#1003] [오전 9:05] @최유진/98/뀨 잇#KR01",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, exactBoundaryUpload);
+
+    // Should skip the mention at exactly the watermark, no new members created
+    expect(result).toEqual({ newMembers: 0, activityUpdates: 0, skippedAsAlreadyProcessed: 1 });
+
+    // Verify no member was created for the new nickname
+    const newMember = await prisma.member.findFirst({ where: { kakaoNickname: "최유진/98/뀨 잇#KR01" } });
+    expect(newMember).toBeNull();
+
+    // Verify only 2 mention logs (from first upload, none added for skipped mention)
+    const logs = await prisma.mentionLog.findMany();
+    expect(logs).toHaveLength(2);
+  });
 });
