@@ -4,6 +4,7 @@ export interface MemberLike {
   riotId: string | null;
   discordUserId: string | null;
   kakaoUserId: string | null;
+  kakaoNickname: string | null;
   elo: number;
   lastActiveAt: Date | null;
 }
@@ -23,6 +24,7 @@ export function mergeMembers(
     riotId: primary.riotId ?? secondary.riotId,
     discordUserId: primary.discordUserId ?? secondary.discordUserId,
     kakaoUserId: primary.kakaoUserId ?? secondary.kakaoUserId,
+    kakaoNickname: primary.kakaoNickname ?? secondary.kakaoNickname,
     elo: Math.max(primary.elo, secondary.elo),
     lastActiveAt: laterOf(primary.lastActiveAt, secondary.lastActiveAt),
   };

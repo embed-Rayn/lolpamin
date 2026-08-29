@@ -28,6 +28,7 @@ export async function getInactiveReportData(): Promise<InactiveReportData> {
     members.map((m) => ({
       id: m.id,
       kakaoUserId: m.kakaoUserId,
+      kakaoNickname: m.kakaoNickname,
       lastActiveAt: m.lastActiveAt,
       createdAt: m.createdAt,
     })),

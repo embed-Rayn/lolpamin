@@ -12,7 +12,9 @@ export interface AppShellProps {
 export async function AppShell({ activeNav, pageTitle, pageDesc, children }: AppShellProps) {
   const [totalCount, allMembersForInactivity] = await Promise.all([
     prisma.member.count(),
-    prisma.member.findMany({ select: { id: true, kakaoUserId: true, lastActiveAt: true, createdAt: true } }),
+    prisma.member.findMany({
+      select: { id: true, kakaoUserId: true, kakaoNickname: true, lastActiveAt: true, createdAt: true },
+    }),
   ]);
   const inactiveNavCount = getInactiveMembers(allMembersForInactivity, new Date()).length;
 

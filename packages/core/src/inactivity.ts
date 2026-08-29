@@ -4,6 +4,7 @@ export const LONG_INACTIVITY_THRESHOLD_DAYS = 30;
 export interface MemberActivity {
   id: string;
   kakaoUserId: string | null;
+  kakaoNickname: string | null;
   lastActiveAt: Date | null;
   createdAt: Date;
 }
@@ -18,7 +19,7 @@ export function getInactiveMembers(
   now: Date
 ): InactiveMemberResult[] {
   return members
-    .filter((m) => m.kakaoUserId !== null)
+    .filter((m) => m.kakaoUserId !== null || m.kakaoNickname !== null)
     .map((m) => {
       const referenceDate = m.lastActiveAt ?? m.createdAt;
       const daysSinceActive = Math.floor(

@@ -41,9 +41,9 @@ function toRow(m: Member, now: Date): MemberRow {
     daysSinceActive: days,
     discordLabel: m.discordUserId ? `Discord ${m.discordHandle ?? m.discordUserId}` : "Discord 없음",
     discordLinked: m.discordUserId !== null,
-    kakaoLabel: m.kakaoUserId ? `카톡 ${m.kakaoNickname ?? m.kakaoUserId}` : "카톡 없음",
-    kakaoLinked: m.kakaoUserId !== null,
-    isHalf: !m.discordUserId || !m.kakaoUserId,
+    kakaoLabel: m.kakaoUserId || m.kakaoNickname ? `카톡 ${m.kakaoNickname ?? m.kakaoUserId}` : "카톡 없음",
+    kakaoLinked: m.kakaoUserId !== null || m.kakaoNickname !== null,
+    isHalf: !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname),
   };
 }
 
@@ -55,7 +55,7 @@ export async function getMemberListData(
   const allMembers = await prisma.member.findMany({ orderBy: { createdAt: "asc" } });
 
   const totalCount = allMembers.length;
-  const halfCount = allMembers.filter((m) => !m.discordUserId || !m.kakaoUserId).length;
+  const halfCount = allMembers.filter((m) => !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname)).length;
   const unassignedCount = halfCount;
   const averageElo = totalCount === 0
     ? 0
