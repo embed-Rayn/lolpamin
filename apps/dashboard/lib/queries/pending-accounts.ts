@@ -12,7 +12,7 @@ export interface PendingKakaoAccount {
 
 export async function getPendingDiscordAccounts(): Promise<PendingDiscordAccount[]> {
   const members = await prisma.member.findMany({
-    where: { kakaoUserId: null, discordUserId: { not: null } },
+    where: { kakaoUserId: null, kakaoNickname: null, discordUserId: { not: null } },
     orderBy: { createdAt: "asc" },
   });
   return members.map((m) => ({ id: m.id, handle: m.discordHandle ?? m.discordUserId! }));

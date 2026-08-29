@@ -54,4 +54,15 @@ describe("linkMembers", () => {
       "already linked"
     );
   });
+
+  it("throws if the discord-side member already has a kakaoNickname (no kakaoUserId)", async () => {
+    const alreadyLinkedViaNickname = await prisma.member.create({
+      data: { discordUserId: "d-5", kakaoNickname: "기존닉네임#1234" },
+    });
+    const kakaoSide = await prisma.member.create({ data: { kakaoUserId: "k-5" } });
+
+    await expect(linkMembers(prisma, alreadyLinkedViaNickname.id, kakaoSide.id)).rejects.toThrow(
+      "already linked"
+    );
+  });
 });

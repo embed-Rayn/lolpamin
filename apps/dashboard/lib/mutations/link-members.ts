@@ -10,7 +10,7 @@ export async function linkMembers(
     const discordSide = await tx.member.findUniqueOrThrow({ where: { id: discordSideId } });
     const kakaoSide = await tx.member.findUniqueOrThrow({ where: { id: kakaoSideId } });
 
-    if (discordSide.kakaoUserId !== null) {
+    if (discordSide.kakaoUserId !== null || discordSide.kakaoNickname !== null) {
       throw new Error("Discord-side member is already linked to a KakaoTalk account");
     }
     if (kakaoSide.discordUserId !== null) {
