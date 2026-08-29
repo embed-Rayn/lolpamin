@@ -3,7 +3,7 @@ import { getInactiveMembers } from "@lolpamin/core";
 import { NavLink } from "./NavLink";
 
 export interface AppShellProps {
-  activeNav: "members" | "matches" | "inactive";
+  activeNav: "members" | "matches" | "inactive" | "kakao-import";
   pageTitle: string;
   pageDesc: string;
   children: React.ReactNode;
@@ -20,6 +20,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },
     { key: "matches" as const, href: "/matches", label: "게임 결과 입력", icon: "02" },
     { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "03", badge: String(inactiveNavCount) },
+    { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "04" },
   ];
 
   return (
@@ -48,10 +49,6 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
             <div className="flex items-center gap-1.5 text-[11.5px] text-[#B7C0D0]">
               <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#70AD47]" />
               Discord Bot · 정상
-            </div>
-            <div className="flex items-center gap-1.5 text-[11.5px] text-[#B7C0D0]">
-              <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#70AD47]" />
-              KakaoTalk Bot · 정상
             </div>
           </div>
         </div>
