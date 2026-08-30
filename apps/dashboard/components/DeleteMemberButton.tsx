@@ -31,8 +31,11 @@ export function DeleteMemberButton({ memberId, label, mentionCount, gameCount }:
       try {
         await deleteMemberAction(memberId);
         router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "삭제하지 못했습니다.");
+      } catch {
+        // 프로덕션 빌드에서는 서버 액션이 던진 에러 메시지가 Next.js에 의해
+        // 알아볼 수 없는 digest 문자열로 대체된다. e.message를 신뢰하지 않고
+        // 고정된 한글 안내 문구를 보여준다.
+        setError("변경하지 못했습니다. 관리자 로그인 상태를 확인해 주세요.");
       }
     });
   }
