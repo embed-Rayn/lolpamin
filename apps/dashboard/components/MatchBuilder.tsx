@@ -5,7 +5,7 @@ import { calculateTeamEloChange, ELO_K, type TeamSide } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { saveGameResultAction } from "@/app/matches/actions";
 
-export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
+export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isAdmin: boolean }) {
   const [poolQuery, setPoolQuery] = useState("");
   const [blueIds, setBlueIds] = useState<string[]>([]);
   const [redIds, setRedIds] = useState<string[]>([]);
@@ -193,15 +193,21 @@ export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
           )}
         </div>
         <div className="mt-auto flex flex-col gap-2 border-t border-white/[.06] p-4">
-          <button
-            onClick={handleSave}
-            disabled={!canSave || isSaving}
-            className={`w-full rounded-lg py-2.5 text-[13px] font-extrabold ${
-              canSave && !isSaving ? "cursor-pointer bg-[#70AD47] text-[#0E1117]" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
-            }`}
-          >
-            결과 저장 · ELO 반영
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={handleSave}
+              disabled={!canSave || isSaving}
+              className={`w-full rounded-lg py-2.5 text-[13px] font-extrabold ${
+                canSave && !isSaving ? "cursor-pointer bg-[#70AD47] text-[#0E1117]" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
+              }`}
+            >
+              결과 저장 · ELO 반영
+            </button>
+          ) : (
+            <div className="rounded-lg border border-white/[.06] bg-[#0F131B] p-3 text-[11.5px] text-[#8A94A6]">
+              변경하려면 관리자 로그인이 필요합니다.
+            </div>
+          )}
           {savedMessage && (
             <div className="rounded-lg border border-[#70AD47]/30 bg-[#70AD47]/[.12] p-2.5 text-[11px] leading-relaxed text-[#9BD173]">
               {savedMessage}

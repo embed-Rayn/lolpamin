@@ -7,9 +7,11 @@ import { linkMembersAction } from "@/app/link-accounts/actions";
 export function AccountMappingPanel({
   discordAccounts,
   kakaoAccounts,
+  isAdmin,
 }: {
   discordAccounts: PendingDiscordAccount[];
   kakaoAccounts: PendingKakaoAccount[];
+  isAdmin: boolean;
 }) {
   const [selectedDiscordId, setSelectedDiscordId] = useState<string | null>(null);
   const [selectedKakaoId, setSelectedKakaoId] = useState<string | null>(null);
@@ -69,15 +71,21 @@ export function AccountMappingPanel({
           <div className="text-center text-[11px] leading-relaxed text-[#6E7889]">
             {linkReady ? "선택한 두 계정을 같은 사람으로 연결합니다" : "양쪽에서 각각 하나씩 선택하세요"}
           </div>
-          <button
-            onClick={handleLink}
-            disabled={!linkReady || isPending}
-            className={`w-full rounded-lg py-2.5 text-[12.5px] font-bold ${
-              linkReady && !isPending ? "cursor-pointer bg-[#4472C4] text-white" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
-            }`}
-          >
-            ↔ 선택 계정 연결
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={handleLink}
+              disabled={!linkReady || isPending}
+              className={`w-full rounded-lg py-2.5 text-[12.5px] font-bold ${
+                linkReady && !isPending ? "cursor-pointer bg-[#4472C4] text-white" : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
+              }`}
+            >
+              ↔ 선택 계정 연결
+            </button>
+          ) : (
+            <div className="rounded-lg border border-white/[.06] bg-[#0F131B] p-3 text-[11.5px] text-[#8A94A6]">
+              변경하려면 관리자 로그인이 필요합니다.
+            </div>
+          )}
           {status && (
             <div className="w-full rounded-lg border border-[#70AD47]/30 bg-[#70AD47]/[.12] p-2.5 text-[10.5px] leading-relaxed text-[#9BD173]">
               {status}

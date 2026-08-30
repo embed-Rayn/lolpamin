@@ -3,6 +3,7 @@ import { StatCard } from "@/components/StatCard";
 import { MemberTable } from "@/components/MemberTable";
 import { MemberFilters } from "@/components/MemberFilters";
 import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
+import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
 export default async function MembersPage({
   searchParams,
@@ -12,6 +13,7 @@ export default async function MembersPage({
   const filter = (searchParams.filter ?? "all") as MemberFilter;
   const query = searchParams.q ?? "";
   const data = await getMemberListData(filter, query);
+  const isAdmin = (await getCurrentAdmin()) !== null;
 
   return (
     <AppShell activeNav="members" pageTitle="회원 관리" pageDesc="전체 회원 조회 및 검색">
@@ -24,7 +26,7 @@ export default async function MembersPage({
         </div>
         <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <MemberFilters activeFilter={filter} query={query} />
-          <MemberTable rows={data.rows} />
+          <MemberTable rows={data.rows} isAdmin={isAdmin} />
         </section>
       </div>
     </AppShell>

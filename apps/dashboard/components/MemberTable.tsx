@@ -8,7 +8,7 @@ function displayLabel(m: MemberRow): string {
   return "이름 미확인";
 }
 
-export function MemberTable({ rows }: { rows: MemberRow[] }) {
+export function MemberTable({ rows, isAdmin }: { rows: MemberRow[]; isAdmin: boolean }) {
   return (
     <>
       <div className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[11.5px] font-bold tracking-wide text-[#6E7889]">
@@ -45,12 +45,16 @@ export function MemberTable({ rows }: { rows: MemberRow[] }) {
           >
             {m.lastActiveLabel}
           </div>
-          <DeleteMemberButton
-            memberId={m.id}
-            label={displayLabel(m)}
-            mentionCount={m.mentionCount}
-            gameCount={m.gameCount}
-          />
+          {isAdmin ? (
+            <DeleteMemberButton
+              memberId={m.id}
+              label={displayLabel(m)}
+              mentionCount={m.mentionCount}
+              gameCount={m.gameCount}
+            />
+          ) : (
+            <div />
+          )}
         </div>
       ))}
     </>
