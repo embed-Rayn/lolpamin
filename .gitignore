@@ -3,3 +3,6 @@ node_modules/
 .next/
 dist/
 *.tsbuildinfo
+
+# Real KakaoTalk chat exports — contain members' real names and nicknames
+data/
