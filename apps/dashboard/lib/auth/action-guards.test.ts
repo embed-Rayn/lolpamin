@@ -121,6 +121,16 @@ interface Declaration {
 function findDeclarations(source: string): Declaration[] {
   const declarations: Declaration[] = [];
 
+  // export default async function NAME( ... 이름 없는(named export가 없는) default export도 허용한다.
+  for (const match of source.matchAll(/export\s+default\s+async\s+function\s*(\w+)?\s*\(/g)) {
+    const parenIndex = match.index! + match[0].length - 1;
+    declarations.push({
+      name: match[1] ?? "(default export)",
+      index: match.index!,
+      bodyOpenBrace: findBodyOpenBrace(source, parenIndex),
+    });
+  }
+
   for (const match of source.matchAll(/export\s+async\s+function\s+(\w+)\s*\(/g)) {
     const parenIndex = match.index! + match[0].length - 1;
     declarations.push({
@@ -152,6 +162,14 @@ describe("server action guards", () => {
   it.each(actionFiles)("every exported action in %s calls requireAdmin", (file) => {
     const source = blankComments(readFileSync(file, "utf-8"));
     const declarations = findDeclarations(source);
+
+    // "use server" 파일인데 인식된 선언이 하나도 없다면, 그 파일에 정말 액션이 없거나
+    // (드문 경우) 인식기가 아직 모르는 선언 형태를 쓰고 있다는 뜻이다. 어느 쪽이든
+    // 조용히 통과시키지 않고 사람이 확인하도록 실패시킨다.
+    expect(
+      declarations.length,
+      `${file} has a "use server" directive but no recognized exported async declaration was found — either it truly has no actions, or the recognizer needs to learn a new declaration form`,
+    ).toBeGreaterThan(0);
 
     for (let i = 0; i < declarations.length; i++) {
       const decl = declarations[i];
