@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "@lolpamin/db";
+import { getDisplayName } from "@lolpamin/core";
 import { getMemberByDiscordId } from "../lib/get-member-by-discord-id";
 import { getMemberRank } from "../lib/get-member-rank";
 
@@ -19,6 +20,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   const rank = await getMemberRank(prisma, member.elo);
-  const name = member.realName ?? member.discordHandle ?? "회원";
+  const name = getDisplayName(member);
   await interaction.reply(`**${name}** 님의 ELO: **${member.elo}** (전체 ${rank}위)`);
 }

@@ -52,4 +52,24 @@ describe("getLeaderboard", () => {
 
     expect(result[0].name).toBe("handle_only");
   });
+
+  it("gives tied members the same competition rank, matching getMemberRank's definition", async () => {
+    await prisma.member.create({ data: { discordUserId: "d-1", realName: "공동1위-A", elo: 1500 } });
+    await prisma.member.create({ data: { discordUserId: "d-2", realName: "공동1위-B", elo: 1500 } });
+    await prisma.member.create({ data: { discordUserId: "d-3", realName: "3위", elo: 1400 } });
+
+    const result = await getLeaderboard(prisma, 10);
+
+    expect(result.map((e) => e.rank)).toEqual([1, 1, 3]);
+  });
+
+  it("orders tied members deterministically by id", async () => {
+    const a = await prisma.member.create({ data: { discordUserId: "d-1", realName: "A", elo: 1500 } });
+    const b = await prisma.member.create({ data: { discordUserId: "d-2", realName: "B", elo: 1500 } });
+    const [first, second] = [a, b].sort((x, y) => (x.id < y.id ? -1 : 1));
+
+    const result = await getLeaderboard(prisma, 10);
+
+    expect(result.map((e) => e.name)).toEqual([first.realName, second.realName]);
+  });
 });

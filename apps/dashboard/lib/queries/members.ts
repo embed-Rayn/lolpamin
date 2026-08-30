@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Member } from "@lolpamin/db";
+import { getDisplayName } from "@lolpamin/core";
 
 export type MemberFilter = "all" | "half" | "inactive";
 
@@ -34,7 +35,7 @@ function toRow(m: Member, now: Date): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   return {
     id: m.id,
-    name: m.realName ?? m.discordHandle ?? m.kakaoNickname ?? "이름 미확인",
+    name: getDisplayName(m),
     riot: m.riotId ?? "미등록",
     elo: m.elo,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,

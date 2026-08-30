@@ -22,6 +22,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   const gameCount = await prisma.gameParticipant.count({ where: { memberId: member.id } });
+  // Deliberately no kakaoNickname fallback (unlike getDisplayName elsewhere) — this
+  // command exposes another member's identity in a public, non-ephemeral reply, and
+  // raw kakaoNickname values often embed real name/age.
   const name = member.realName ?? member.discordHandle ?? "회원";
   await interaction.reply(`**${name}** — ELO ${member.elo}, 내전 ${gameCount}회`);
 }

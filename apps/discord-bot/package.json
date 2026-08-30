@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@lolpamin/core": "*",
     "@lolpamin/db": "*",
     "discord.js": "^14.16.0"
   },
