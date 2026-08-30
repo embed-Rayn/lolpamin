@@ -1,0 +1,14 @@
+.git
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+**/*.tsbuildinfo
+# 실제 카카오톡 대화 내보내기 — 이미지에 들어가면 안 된다
+data
+# 비밀값과 개인키
+.env
+*.key
+*.pem
