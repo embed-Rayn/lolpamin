@@ -3,7 +3,7 @@ import { getInactiveMembers } from "@lolpamin/core";
 import { NavLink } from "./NavLink";
 
 export interface AppShellProps {
-  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts";
+  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts" | "admins";
   pageTitle: string;
   pageDesc: string;
   children: React.ReactNode;
