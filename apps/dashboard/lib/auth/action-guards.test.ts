@@ -6,17 +6,143 @@ import { describe, expect, it } from "vitest";
 // "이 액션은 누구나 호출해도 안전하다"는 명시적 선언이다.
 const PUBLIC_ACTIONS = new Set(["loginAction", "logoutAction"]);
 
-const APP_DIR = join(__dirname, "..", "..", "app");
+const DASHBOARD_ROOT = join(__dirname, "..", "..");
+const SKIP_DIRS = new Set(["node_modules", ".next", ".superpowers"]);
 
-function findActionFiles(directory: string): string[] {
+function findSourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(directory, entry.name);
-    if (entry.isDirectory()) return findActionFiles(full);
-    return entry.name === "actions.ts" ? [full] : [];
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) return [];
+      return findSourceFiles(join(directory, entry.name));
+    }
+    if (!/\.(ts|tsx)$/.test(entry.name)) return [];
+    if (/\.test\.tsx?$/.test(entry.name)) return [];
+    return [join(directory, entry.name)];
   });
 }
 
-const actionFiles = findActionFiles(APP_DIR);
+// 주석을 "같은 길이의" 공백/개행으로 치환한다. 문자열/템플릿 리터럴 내부는 건드리지 않는다.
+// 길이를 그대로 보존하므로, 이후 계산하는 모든 문자열 인덱스가 원본 소스와 그대로 대응된다.
+function blankComments(source: string): string {
+  let result = "";
+  let state: "code" | "line" | "block" | "single" | "double" | "template" = "code";
+
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    const next = source[i + 1];
+
+    if (state === "line") {
+      result += c === "\n" ? "\n" : " ";
+      if (c === "\n") state = "code";
+      continue;
+    }
+    if (state === "block") {
+      if (c === "*" && next === "/") {
+        result += "  ";
+        i++;
+        state = "code";
+        continue;
+      }
+      result += c === "\n" ? "\n" : " ";
+      continue;
+    }
+    if (state === "single" || state === "double" || state === "template") {
+      const quote = state === "single" ? "'" : state === "double" ? '"' : "`";
+      result += c;
+      if (c === "\\") {
+        result += next ?? "";
+        i++;
+        continue;
+      }
+      if (c === quote) state = "code";
+      continue;
+    }
+
+    // state === "code"
+    if (c === "/" && next === "/") {
+      result += "  ";
+      i++;
+      state = "line";
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      result += "  ";
+      i++;
+      state = "block";
+      continue;
+    }
+    if (c === "'" || c === '"' || c === "`") {
+      state = c === "'" ? "single" : c === '"' ? "double" : "template";
+      result += c;
+      continue;
+    }
+    result += c;
+  }
+
+  return result;
+}
+
+function findMatchingParenEnd(source: string, openIndex: number): number {
+  let depth = 0;
+  for (let i = openIndex; i < source.length; i++) {
+    if (source[i] === "(") depth++;
+    else if (source[i] === ")") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+// 선언의 매개변수 목록 다음에 오는, 실제 함수 본문을 여는 "{"를 찾는다.
+// 매개변수 목록의 괄호(그 안의 구조분해 "{}" 포함)와 반환 타입 표기를 건너뛴다.
+function findBodyOpenBrace(source: string, searchFrom: number): number {
+  let i = searchFrom;
+  while (i < source.length && /\s/.test(source[i])) i++;
+
+  if (source[i] === "(") {
+    const closeParen = findMatchingParenEnd(source, i);
+    if (closeParen === -1) return -1;
+    return source.indexOf("{", closeParen + 1);
+  }
+
+  // 괄호 없는 화살표 함수 매개변수(예: `async input => {`)를 위한 대비.
+  const arrowIndex = source.indexOf("=>", i);
+  if (arrowIndex === -1) return -1;
+  return source.indexOf("{", arrowIndex + 2);
+}
+
+interface Declaration {
+  name: string;
+  index: number;
+  bodyOpenBrace: number;
+}
+
+function findDeclarations(source: string): Declaration[] {
+  const declarations: Declaration[] = [];
+
+  for (const match of source.matchAll(/export\s+async\s+function\s+(\w+)\s*\(/g)) {
+    const parenIndex = match.index! + match[0].length - 1;
+    declarations.push({
+      name: match[1],
+      index: match.index!,
+      bodyOpenBrace: findBodyOpenBrace(source, parenIndex),
+    });
+  }
+
+  for (const match of source.matchAll(/export\s+const\s+(\w+)\s*(?::\s*[^=]+?)?=\s*async\b/g)) {
+    const searchFrom = match.index! + match[0].length;
+    declarations.push({
+      name: match[1],
+      index: match.index!,
+      bodyOpenBrace: findBodyOpenBrace(source, searchFrom),
+    });
+  }
+
+  return declarations.sort((a, b) => a.index - b.index);
+}
+
+const actionFiles = findSourceFiles(DASHBOARD_ROOT).filter((file) => /["']use server["']/.test(readFileSync(file, "utf-8")));
 
 describe("server action guards", () => {
   it("finds the action files", () => {
@@ -24,16 +150,23 @@ describe("server action guards", () => {
   });
 
   it.each(actionFiles)("every exported action in %s calls requireAdmin", (file) => {
-    const source = readFileSync(file, "utf-8");
-    const actionNames = [...source.matchAll(/export async function (\w+)/g)].map((m) => m[1]);
+    const source = blankComments(readFileSync(file, "utf-8"));
+    const declarations = findDeclarations(source);
 
-    for (const name of actionNames) {
-      if (PUBLIC_ACTIONS.has(name)) continue;
+    for (let i = 0; i < declarations.length; i++) {
+      const decl = declarations[i];
+      if (PUBLIC_ACTIONS.has(decl.name)) continue;
 
-      const body = source.slice(source.indexOf(`export async function ${name}`));
-      const bodyUntilNextExport = body.slice(0, body.indexOf("\nexport ", 1) === -1 ? undefined : body.indexOf("\nexport ", 1));
+      expect(decl.bodyOpenBrace, `could not locate the function body of ${decl.name} in ${file}`).toBeGreaterThan(-1);
 
-      expect(bodyUntilNextExport, `${name} in ${file} must call requireAdmin()`).toContain("requireAdmin()");
+      const nextIndex = declarations[i + 1]?.index ?? source.length;
+      const body = source.slice(decl.bodyOpenBrace + 1, nextIndex);
+      const firstStatement = body.replace(/^\s+/, "");
+
+      expect(
+        /^await\s+requireAdmin\s*\(\s*\)\s*;/.test(firstStatement),
+        `${decl.name} in ${file} must call \`await requireAdmin();\` as the first statement`,
+      ).toBe(true);
     }
   });
 });
