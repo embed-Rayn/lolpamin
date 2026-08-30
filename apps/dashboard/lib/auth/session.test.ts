@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
@@ -30,7 +31,7 @@ describe("createSession", () => {
 
     const stored = await prisma.adminSession.findFirstOrThrow();
     expect(token.length).toBeGreaterThan(20);
-    expect(stored.tokenHash).not.toBe(token);
+    expect(stored.tokenHash).toBe(createHash("sha256").update(token).digest("hex"));
   });
 
   it("expires the session 7 days out", async () => {
