@@ -154,12 +154,21 @@ function findDeclarations(source: string): Declaration[] {
 
 const actionFiles = findSourceFiles(DASHBOARD_ROOT).filter((file) => /["']use server["']/.test(readFileSync(file, "utf-8")));
 
+// 가드 호출 자체. 대입에 바인딩되어도(`const acting = await requireAdmin();`) 인정한다 —
+// 중요한 건 "첫 줄인가"가 아니라 "데이터를 건드리기 전에 실행되는가"다.
+const GUARD_PATTERN = /(?:(?:const|let)\s+\w+\s*=\s*)?await\s+requireAdmin\s*\(\s*\)\s*;/;
+
+// 가드보다 먼저 나오면 안 되는 것들: 실제 데이터 접근(prisma.*)과, 그 결과에 기반한
+// 부수효과/탈출(revalidatePath, redirect, return). 이 중 하나라도 가드보다 앞에 있으면
+// "가드 없이도 여기까지는 실행된다"는 뜻이므로 실패시킨다.
+const MARKER_PATTERN = /prisma\.|revalidatePath\(|redirect\(|\breturn\b/;
+
 describe("server action guards", () => {
   it("finds the action files", () => {
     expect(actionFiles.length).toBeGreaterThanOrEqual(5);
   });
 
-  it.each(actionFiles)("every exported action in %s calls requireAdmin", (file) => {
+  it.each(actionFiles)("every exported action in %s calls requireAdmin before touching data", (file) => {
     const source = blankComments(readFileSync(file, "utf-8"));
     const declarations = findDeclarations(source);
 
@@ -179,12 +188,16 @@ describe("server action guards", () => {
 
       const nextIndex = declarations[i + 1]?.index ?? source.length;
       const body = source.slice(decl.bodyOpenBrace + 1, nextIndex);
-      const firstStatement = body.replace(/^\s+/, "");
 
-      expect(
-        /^await\s+requireAdmin\s*\(\s*\)\s*;/.test(firstStatement),
-        `${decl.name} in ${file} must call \`await requireAdmin();\` as the first statement`,
-      ).toBe(true);
+      const guardMatch = GUARD_PATTERN.exec(body);
+      const markerMatch = MARKER_PATTERN.exec(body);
+      const failureMessage = `${decl.name} in ${file} must call \`await requireAdmin()\` (optionally bound, e.g. \`const acting = await requireAdmin();\`) before any data access or return`;
+
+      expect(guardMatch, failureMessage).not.toBeNull();
+
+      if (guardMatch && markerMatch) {
+        expect(markerMatch.index > guardMatch.index, failureMessage).toBe(true);
+      }
     }
   });
 });

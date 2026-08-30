@@ -10,7 +10,6 @@ interface AdminActionResult {
 }
 
 export async function createAdminAction(formData: FormData): Promise<AdminActionResult> {
-  await requireAdmin();
   const acting = await requireAdmin();
 
   try {
@@ -28,7 +27,6 @@ export async function createAdminAction(formData: FormData): Promise<AdminAction
 }
 
 export async function deleteAdminAction(targetId: string): Promise<AdminActionResult> {
-  await requireAdmin();
   const acting = await requireAdmin();
 
   try {
