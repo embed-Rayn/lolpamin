@@ -25,8 +25,8 @@ export function MatchBuilder({ pool }: { pool: LinkedMemberOption[] }) {
     const result = calculateTeamEloChange({ blueRatings, redRatings, winner });
     return {
       ...result,
-      blueRows: blueIds.map((id) => ({ id, ...byId.get(id)!, delta: result.blueDelta, after: byId.get(id)!.elo + result.blueDelta })),
-      redRows: redIds.map((id) => ({ id, ...byId.get(id)!, delta: result.redDelta, after: byId.get(id)!.elo + result.redDelta })),
+      blueRows: blueIds.map((id) => ({ ...byId.get(id)!, delta: result.blueDelta, after: byId.get(id)!.elo + result.blueDelta })),
+      redRows: redIds.map((id) => ({ ...byId.get(id)!, delta: result.redDelta, after: byId.get(id)!.elo + result.redDelta })),
     };
   }, [blueIds, redIds, winner, byId]);
 
