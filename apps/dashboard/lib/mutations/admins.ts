@@ -43,10 +43,15 @@ export async function deleteAdmin(
     throw new Error("자기 자신은 삭제할 수 없습니다");
   }
 
-  const total = await prisma.admin.count();
-  if (total <= 1) {
-    throw new Error("마지막 관리자는 삭제할 수 없습니다");
-  }
+  // count()와 delete()를 하나의 트랜잭션으로 묶는다. 그러지 않으면 두 관리자가 동시에
+  // 서로 다른 대상을 삭제할 때 둘 다 total = 2를 보고 통과해버려, 관리자가 0명이 되고
+  // 데이터베이스를 직접 조작하는 것 외에는 복구할 방법이 없어질 수 있다.
+  await prisma.$transaction(async (tx) => {
+    const total = await tx.admin.count();
+    if (total <= 1) {
+      throw new Error("마지막 관리자는 삭제할 수 없습니다");
+    }
 
-  await prisma.admin.delete({ where: { id: targetId } });
+    await tx.admin.delete({ where: { id: targetId } });
+  });
 }
