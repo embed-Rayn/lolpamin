@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import type { Member } from "@lolpamin/db";
 
+type MemberWithCounts = Member & { _count: { mentionLogs: number; participants: number } };
+
 export type MemberFilter = "all" | "half" | "inactive";
 
 export interface MemberRow {
@@ -12,6 +14,9 @@ export interface MemberRow {
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
+  // Shown in the delete confirmation: both are wiped along with the member.
+  mentionCount: number;
+  gameCount: number;
 }
 
 export interface MemberListData {
@@ -27,7 +32,7 @@ function daysSince(date: Date | null, now: Date): number | null {
   return Math.floor((now.getTime() - date.getTime()) / 86_400_000);
 }
 
-function toRow(m: Member, now: Date): MemberRow {
+function toRow(m: MemberWithCounts, now: Date): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   return {
     id: m.id,
@@ -38,6 +43,8 @@ function toRow(m: Member, now: Date): MemberRow {
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname),
+    mentionCount: m._count.mentionLogs,
+    gameCount: m._count.participants,
   };
 }
 
@@ -46,7 +53,10 @@ export async function getMemberListData(
   query: string
 ): Promise<MemberListData> {
   const now = new Date();
-  const allMembers = await prisma.member.findMany({ orderBy: { createdAt: "asc" } });
+  const allMembers = await prisma.member.findMany({
+    orderBy: { createdAt: "asc" },
+    include: { _count: { select: { mentionLogs: true, participants: true } } },
+  });
 
   const totalCount = allMembers.length;
   const halfCount = allMembers.filter((m) => !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname)).length;
