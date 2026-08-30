@@ -76,4 +76,22 @@ describe("ensureBootstrapAdmin", () => {
     expect(second).toBe(first);
     expect(await prisma.admin.count()).toBe(1);
   });
+
+  it("resolves to skipped instead of rejecting when the admin count query fails", async () => {
+    const brokenPrisma = {
+      admin: {
+        count: async () => {
+          throw new Error("connection lost");
+        },
+      },
+    } as unknown as PrismaClient;
+
+    const result = await ensureBootstrapAdmin(brokenPrisma, {
+      ADMIN_BOOTSTRAP_USERNAME: "sujin",
+      ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
+    } as NodeJS.ProcessEnv);
+
+    expect(result).toBe("skipped");
+    expect(await prisma.admin.count()).toBe(0);
+  });
 });

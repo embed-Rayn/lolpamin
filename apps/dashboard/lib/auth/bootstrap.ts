@@ -12,14 +12,15 @@ export async function ensureBootstrapAdmin(
   const password = env.ADMIN_BOOTSTRAP_PASSWORD;
   if (!username || !password) return "skipped";
 
-  if ((await prisma.admin.count()) > 0) return "skipped";
-
   try {
+    if ((await prisma.admin.count()) > 0) return "skipped";
+
     await createAdmin(prisma, { username, password, createdById: null });
     console.log(`[bootstrap] 최초 관리자 "${username}" 생성됨`);
     return "created";
   } catch (error) {
     // 동시에 두 프로세스가 시도하면 username unique 제약이 두 번째를 막는다.
+    // DB 연결이 아직 준비되지 않았을 때도 같은 방식으로 넘어간다.
     // 그 경우에도 기동은 계속돼야 한다.
     console.error("[bootstrap] 최초 관리자 생성 실패:", error);
     return "skipped";
