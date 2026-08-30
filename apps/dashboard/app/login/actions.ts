@@ -15,7 +15,11 @@ const INVALID_CREDENTIALS = "아이디 또는 비밀번호가 올바르지 않�
 
 // 존재하지 않는 아이디로 로그인을 시도할 때도 같은 비용의 해시 검증을 수행한다.
 // 그러지 않으면 응답 시간 차이로 어떤 아이디가 실재하는지 알아낼 수 있다.
-const dummyHashPromise = hashPassword("dummy-password-for-timing-equalization");
+// 첫 await 이전에 이 프라미스가 reject되면 Node의 기본 정책상 처리되지 않은 거부로
+// 프로세스가 죽을 수 있으므로 .catch를 붙인다. 대체값으로는 빈 문자열을 쓰는데,
+// verifyPassword는 형식이 잘못된 저장값에 대해 항상 false를 반환하므로 타이밍
+// 동등화 목적은 유지하면서도 로그인은 안전하게 실패한다.
+const dummyHashPromise = hashPassword("dummy-password-for-timing-equalization").catch(() => "");
 
 export async function loginAction(
   _prevState: LoginFormState,
