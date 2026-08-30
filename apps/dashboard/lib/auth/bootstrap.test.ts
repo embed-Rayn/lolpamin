@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { verifyPassword } from "./password";
-import { ensureBootstrapAdmin } from "./bootstrap";
+import { ensureBootstrapAdmin, ensureBootstrapAdminOnce } from "./bootstrap";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -61,5 +61,19 @@ describe("ensureBootstrapAdmin", () => {
 
     expect(result).toBe("skipped");
     expect(await prisma.admin.count()).toBe(0);
+  });
+
+  it("only runs the bootstrap once per process when called repeatedly", async () => {
+    const env = {
+      ADMIN_BOOTSTRAP_USERNAME: "sujin",
+      ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
+    } as NodeJS.ProcessEnv;
+
+    const first = await ensureBootstrapAdminOnce(prisma, env);
+    const second = await ensureBootstrapAdminOnce(prisma, env);
+
+    expect(first).toBe("created");
+    expect(second).toBe(first);
+    expect(await prisma.admin.count()).toBe(1);
   });
 });

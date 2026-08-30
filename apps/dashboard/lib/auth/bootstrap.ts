@@ -25,3 +25,15 @@ export async function ensureBootstrapAdmin(
     return "skipped";
   }
 }
+
+// 서버 컴포넌트는 요청마다 실행된다. 부트스트랩은 프로세스당 한 번이면 충분하므로
+// 첫 호출의 Promise를 재사용해 매 요청마다 admin.count() 쿼리가 나가지 않게 한다.
+let bootstrapOnce: Promise<"created" | "skipped"> | null = null;
+
+export function ensureBootstrapAdminOnce(
+  prisma: PrismaClient,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<"created" | "skipped"> {
+  bootstrapOnce ??= ensureBootstrapAdmin(prisma, env);
+  return bootstrapOnce;
+}
