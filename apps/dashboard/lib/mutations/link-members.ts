@@ -1,5 +1,5 @@
 import type { Member, PrismaClient } from "@lolpamin/db";
-import { mergeMembers } from "@lolpamin/core";
+import { mergeMembers, parseKakaoNickname } from "@lolpamin/core";
 
 export async function linkMembers(
   prisma: PrismaClient,
@@ -19,6 +19,11 @@ export async function linkMembers(
 
     const merged = mergeMembers(discordSide, kakaoSide);
 
+    // kakaoNickname keeps its original raw value (mergeMembers doesn't touch it) —
+    // future kakao-import re-uploads match it exactly, so it must never be rewritten.
+    // realName/age here are best-effort extras parsed out of that same raw string.
+    const parsedNickname = kakaoSide.kakaoNickname ? parseKakaoNickname(kakaoSide.kakaoNickname) : null;
+
     await tx.mentionLog.updateMany({
       where: { memberId: kakaoSideId },
       data: { memberId: discordSideId },
@@ -34,7 +39,11 @@ export async function linkMembers(
 
     const updated = await tx.member.update({
       where: { id: discordSideId },
-      data: merged,
+      data: {
+        ...merged,
+        realName: merged.realName ?? parsedNickname?.realName ?? null,
+        age: parsedNickname?.age ?? discordSide.age ?? kakaoSide.age ?? null,
+      },
     });
 
     return updated;

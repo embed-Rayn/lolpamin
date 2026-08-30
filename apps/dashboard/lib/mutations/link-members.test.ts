@@ -65,4 +65,42 @@ describe("linkMembers", () => {
       "already linked"
     );
   });
+
+  it("backfills realName and age by parsing a realName/age/nicknameTag-formatted kakaoNickname", async () => {
+    const discordSide = await prisma.member.create({ data: { discordUserId: "d-6" } });
+    const kakaoSide = await prisma.member.create({
+      data: { kakaoNickname: "이서준/96/뚜비뚜밥#뚜비얌" },
+    });
+
+    const merged = await linkMembers(prisma, discordSide.id, kakaoSide.id);
+
+    expect(merged.realName).toBe("이서준");
+    expect(merged.age).toBe(96);
+    expect(merged.kakaoNickname).toBe("이서준/96/뚜비뚜밥#뚜비얌");
+  });
+
+  it("does not overwrite an already-set realName with the parsed one", async () => {
+    const discordSide = await prisma.member.create({
+      data: { discordUserId: "d-7", realName: "기존이름" },
+    });
+    const kakaoSide = await prisma.member.create({
+      data: { kakaoNickname: "이서준/96/뚜비뚜밥#뚜비얌" },
+    });
+
+    const merged = await linkMembers(prisma, discordSide.id, kakaoSide.id);
+
+    expect(merged.realName).toBe("기존이름");
+    expect(merged.age).toBe(96);
+  });
+
+  it("leaves realName and age untouched when kakaoNickname doesn't match the realName/age/nicknameTag format", async () => {
+    const discordSide = await prisma.member.create({ data: { discordUserId: "d-8" } });
+    const kakaoSide = await prisma.member.create({ data: { kakaoNickname: "올빼미" } });
+
+    const merged = await linkMembers(prisma, discordSide.id, kakaoSide.id);
+
+    expect(merged.realName).toBeNull();
+    expect(merged.age).toBeNull();
+    expect(merged.kakaoNickname).toBe("올빼미");
+  });
 });

@@ -11,5 +11,6 @@ export async function linkMembersAction(formData: FormData): Promise<void> {
     throw new Error("Select one Discord account and one KakaoTalk account before linking");
   }
   await linkMembers(prisma, discordSideId, kakaoSideId);
+  revalidatePath("/link-accounts");
   revalidatePath("/members");
 }

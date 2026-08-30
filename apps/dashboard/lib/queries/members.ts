@@ -1,20 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import type { Member } from "@lolpamin/db";
-import { getDisplayName } from "@lolpamin/core";
 
 export type MemberFilter = "all" | "half" | "inactive";
 
 export interface MemberRow {
   id: string;
-  name: string;
-  riot: string;
+  realName: string;
+  kakaoNickname: string;
+  discordHandle: string;
   elo: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
-  discordLabel: string;
-  discordLinked: boolean;
-  kakaoLabel: string;
-  kakaoLinked: boolean;
   isHalf: boolean;
 }
 
@@ -35,15 +31,12 @@ function toRow(m: Member, now: Date): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   return {
     id: m.id,
-    name: getDisplayName(m),
-    riot: m.riotId ?? "미등록",
+    realName: m.realName ?? "-",
+    kakaoNickname: m.kakaoNickname ?? m.kakaoUserId ?? "-",
+    discordHandle: m.discordHandle ?? m.discordUserId ?? "-",
     elo: m.elo,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
-    discordLabel: m.discordUserId ? `Discord ${m.discordHandle ?? m.discordUserId}` : "Discord 없음",
-    discordLinked: m.discordUserId !== null,
-    kakaoLabel: m.kakaoUserId || m.kakaoNickname ? `카톡 ${m.kakaoNickname ?? m.kakaoUserId}` : "카톡 없음",
-    kakaoLinked: m.kakaoUserId !== null || m.kakaoNickname !== null,
     isHalf: !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname),
   };
 }
@@ -68,7 +61,12 @@ export async function getMemberListData(
     .filter((row) => {
       if (filter === "half" && !row.isHalf) return false;
       if (filter === "inactive" && (row.daysSinceActive === null || row.daysSinceActive < 14)) return false;
-      if (trimmedQuery && !row.name.toLowerCase().includes(trimmedQuery) && !row.riot.toLowerCase().includes(trimmedQuery)) {
+      if (
+        trimmedQuery &&
+        !row.realName.toLowerCase().includes(trimmedQuery) &&
+        !row.kakaoNickname.toLowerCase().includes(trimmedQuery) &&
+        !row.discordHandle.toLowerCase().includes(trimmedQuery)
+      ) {
         return false;
       }
       return true;

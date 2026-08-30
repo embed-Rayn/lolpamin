@@ -3,8 +3,6 @@ import { StatCard } from "@/components/StatCard";
 import { MemberTable } from "@/components/MemberTable";
 import { MemberFilters } from "@/components/MemberFilters";
 import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
-import { getPendingDiscordAccounts, getPendingKakaoAccounts } from "@/lib/queries/pending-accounts";
-import { AccountMappingPanel } from "@/components/AccountMappingPanel";
 
 export default async function MembersPage({
   searchParams,
@@ -13,18 +11,10 @@ export default async function MembersPage({
 }) {
   const filter = (searchParams.filter ?? "all") as MemberFilter;
   const query = searchParams.q ?? "";
-  const [data, discordAccounts, kakaoAccounts] = await Promise.all([
-    getMemberListData(filter, query),
-    getPendingDiscordAccounts(),
-    getPendingKakaoAccounts(),
-  ]);
+  const data = await getMemberListData(filter, query);
 
   return (
-    <AppShell
-      activeNav="members"
-      pageTitle="회원 관리 · 계정 매핑"
-      pageDesc="Discord · 카카오톡 계정을 하나의 회원으로 연결"
-    >
+    <AppShell activeNav="members" pageTitle="회원 관리" pageDesc="전체 회원 조회 및 검색">
       <div className="flex flex-col gap-5.5 px-7 pb-10 pt-6">
         <div className="grid grid-cols-4 gap-3">
           <StatCard label="전체 회원" value={data.totalCount} unit="명" colorClassName="text-[#E6EAF2]" />
@@ -36,7 +26,6 @@ export default async function MembersPage({
           <MemberFilters activeFilter={filter} query={query} />
           <MemberTable rows={data.rows} />
         </section>
-        <AccountMappingPanel discordAccounts={discordAccounts} kakaoAccounts={kakaoAccounts} />
       </div>
     </AppShell>
   );

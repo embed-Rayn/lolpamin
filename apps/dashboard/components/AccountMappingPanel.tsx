@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PendingDiscordAccount, PendingKakaoAccount } from "@/lib/queries/pending-accounts";
-import { linkMembersAction } from "@/app/members/actions";
+import { linkMembersAction } from "@/app/link-accounts/actions";
 
 export function AccountMappingPanel({
   discordAccounts,
@@ -28,7 +28,7 @@ export function AccountMappingPanel({
       await linkMembersAction(formData);
       const d = discordAccounts.find((a) => a.id === selectedDiscordId);
       const k = kakaoAccounts.find((a) => a.id === selectedKakaoId);
-      setStatus(`연결 완료 · ${d?.handle} ↔ ${k?.nickname}`);
+      setStatus(`연결 완료 · ${d?.handle} ↔ ${k?.realName}(${k?.nicknameTag})`);
       setSelectedDiscordId(null);
       setSelectedKakaoId(null);
     } finally {
@@ -95,11 +95,12 @@ export function AccountMappingPanel({
               <button
                 key={k.id}
                 onClick={() => setSelectedKakaoId(selectedKakaoId === k.id ? null : k.id)}
-                className={`rounded-lg border px-2.5 py-2 text-left text-[12.5px] ${
+                className={`flex flex-col rounded-lg border px-2.5 py-2 text-left ${
                   selectedKakaoId === k.id ? "border-[#FFC000] bg-[#FFC000]/[.12]" : "border-white/[.05] bg-[#1A2130]"
                 }`}
               >
-                {k.nickname}
+                <span className="text-[12.5px] font-semibold">{k.realName}</span>
+                <span className="font-mono text-[10.5px] text-[#7A8496]">{k.nicknameTag}</span>
               </button>
             ))}
           </div>

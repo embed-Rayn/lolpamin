@@ -15,6 +15,7 @@ enum Team {
 model Member {
   id              String   @id @default(uuid())
   realName        String?
+  age             Int?
   riotId          String?
   discordUserId   String?  @unique
   discordHandle   String?

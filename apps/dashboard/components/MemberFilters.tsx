@@ -46,7 +46,7 @@ export function MemberFilters({ activeFilter, query }: { activeFilter: MemberFil
       <input
         defaultValue={query}
         onChange={(e) => updateParams({ q: e.target.value })}
-        placeholder="이름 · 라이엇 ID 검색"
+        placeholder="실명 · 카톡 · 디코 검색"
         className="w-56 rounded-lg border border-white/[.09] bg-[#0F131B] px-2.5 py-1.5 text-xs text-[#E6EAF2] outline-none focus:border-[#4472C4]"
       />
     </div>
