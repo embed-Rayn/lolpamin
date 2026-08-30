@@ -158,10 +158,17 @@ const actionFiles = findSourceFiles(DASHBOARD_ROOT).filter((file) => /["']use se
 // 중요한 건 "첫 줄인가"가 아니라 "데이터를 건드리기 전에 실행되는가"다.
 const GUARD_PATTERN = /(?:(?:const|let)\s+\w+\s*=\s*)?await\s+requireAdmin\s*\(\s*\)\s*;/;
 
-// 가드보다 먼저 나오면 안 되는 것들: 실제 데이터 접근(prisma.*)과, 그 결과에 기반한
-// 부수효과/탈출(revalidatePath, redirect, return). 이 중 하나라도 가드보다 앞에 있으면
+// 가드보다 먼저 나오면 안 되는 것들: 실제 데이터 접근(prisma.* 또는 이 코드베이스의 관례대로
+// 클라이언트를 인자로 넘기는 뮤테이션 헬퍼 호출, 예: `deleteMember(prisma, id)`)과, 그 결과에
+// 기반한 부수효과/탈출(revalidatePath, redirect, return). 이 중 하나라도 가드보다 앞에 있으면
 // "가드 없이도 여기까지는 실행된다"는 뜻이므로 실패시킨다.
-const MARKER_PATTERN = /prisma\.|revalidatePath\(|redirect\(|\breturn\b/;
+const MARKER_PATTERN = /prisma\.|revalidatePath\(|redirect\(|\breturn\b|\b\w+\(\s*prisma\b/;
+
+// 이 인식기가 특정 액션에 귀속시킬 수 없는 재수출(re-export) 형태.
+// `export { bad };` 같은 export 목록이나, `export default someIdentifier;`처럼
+// 이름 있는 함수 선언이 아닌 default export가 여기 해당한다. 이런 형태가 있으면
+// 그 안에 가드 없는 액션이 숨어 있어도 조용히 통과할 수 있으므로, 발견하는 즉시 실패시킨다.
+const UNATTRIBUTABLE_REEXPORT_PATTERN = /\bexport\s*\{|\bexport\s+default\s+\w+\s*;/;
 
 describe("server action guards", () => {
   it("finds the action files", () => {
@@ -170,6 +177,15 @@ describe("server action guards", () => {
 
   it.each(actionFiles)("every exported action in %s calls requireAdmin before touching data", (file) => {
     const source = blankComments(readFileSync(file, "utf-8"));
+
+    // 인식된 선언이 하나 이상 있더라도, 그 옆에 이 인식기가 귀속시킬 수 없는 재수출 형태가
+    // 있으면 그 안에 숨은 가드 없는 액션이 조용히 넘어갈 수 있다. 인식된 선언 존재 여부와
+    // 무관하게 항상 검사한다.
+    expect(
+      UNATTRIBUTABLE_REEXPORT_PATTERN.exec(source),
+      `${file} contains a re-export form (an \`export { ... }\` list, or \`export default <identifier>\`) that this recognizer cannot attribute to a specific action — the recognizer needs to learn this form`,
+    ).toBeNull();
+
     const declarations = findDeclarations(source);
 
     // "use server" 파일인데 인식된 선언이 하나도 없다면, 그 파일에 정말 액션이 없거나
@@ -197,6 +213,21 @@ describe("server action guards", () => {
 
       if (guardMatch && markerMatch) {
         expect(markerMatch.index > guardMatch.index, failureMessage).toBe(true);
+      }
+
+      // 가드가 `if` 같은 블록 안에 들어가 있으면, 그 블록이 실행되지 않는 경로에서는
+      // 가드가 전혀 실행되지 않는다. 본문의 여는 중괄호부터 가드가 매치된 지점까지
+      // 중괄호 깊이가 0이어야(=본문 최상위여야) 한다.
+      if (guardMatch) {
+        let depth = 0;
+        for (let i = 0; i < guardMatch.index; i++) {
+          if (body[i] === "{") depth++;
+          else if (body[i] === "}") depth--;
+        }
+        expect(
+          depth,
+          `${decl.name} in ${file} calls \`requireAdmin()\` only inside a nested block (e.g. an \`if\`) — the guard must run unconditionally at the top level of the action body`,
+        ).toBe(0);
       }
     }
   });
