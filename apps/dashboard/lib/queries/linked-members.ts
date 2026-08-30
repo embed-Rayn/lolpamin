@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getDisplayName } from "@lolpamin/core";
 
 export interface LinkedMemberOption {
   id: string;
@@ -8,8 +9,11 @@ export interface LinkedMemberOption {
 
 export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   const members = await prisma.member.findMany({
-    where: { discordUserId: { not: null }, kakaoUserId: { not: null } },
+    where: {
+      discordUserId: { not: null },
+      OR: [{ kakaoUserId: { not: null } }, { kakaoNickname: { not: null } }],
+    },
     orderBy: { elo: "desc" },
   });
-  return members.map((m) => ({ id: m.id, name: m.realName ?? m.discordHandle ?? "이름 미확인", elo: m.elo }));
+  return members.map((m) => ({ id: m.id, name: getDisplayName(m), elo: m.elo }));
 }
