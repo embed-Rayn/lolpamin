@@ -60,3 +60,24 @@ model MentionLog {
   mentionedAt DateTime
   rawMessage  String?
 }
+
+model Admin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  // 이 관리자를 추가한 관리자의 id. FK가 아니다 — 추가한 사람이 삭제돼도
+  // "누가 추가했는지"는 남아야 하고, 화면에서는 조회 실패 시 "삭제된 관리자"로 표시한다.
+  createdById  String?
+
+  sessions AdminSession[]
+}
+
+model AdminSession {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
