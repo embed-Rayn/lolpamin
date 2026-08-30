@@ -15,6 +15,8 @@ RUN npm ci
 
 FROM deps AS runner
 COPY . .
+# 빌드 전용 더미 값 — 런타임에는 Compose가 실제 DATABASE_URL로 덮어쓴다.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
 RUN npx prisma generate --schema packages/db/prisma/schema.prisma
 ENV NODE_ENV=production
 WORKDIR /app/apps/discord-bot

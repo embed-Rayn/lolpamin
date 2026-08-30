@@ -17,10 +17,10 @@ RUN npm ci
 
 FROM deps AS build
 COPY . .
-RUN npx prisma generate --schema packages/db/prisma/schema.prisma
 # next build 중에는 DB에 접속하지 않지만, Prisma 클라이언트 초기화가
 # DATABASE_URL의 존재를 요구한다. 빌드 전용 더미 값이다.
 ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
+RUN npx prisma generate --schema packages/db/prisma/schema.prisma
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --workspace=dashboard
 
