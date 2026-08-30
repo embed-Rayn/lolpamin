@@ -1,7 +1,8 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import type { BinaryLike, ScryptOptions } from "node:crypto";
 import { promisify } from "node:util";
 
-const scryptAsync = promisify(scrypt);
+const scryptAsync = promisify<BinaryLike, BinaryLike, number, ScryptOptions, Buffer>(scrypt);
 
 const COST = 16384;
 const BLOCK_SIZE = 8;
@@ -13,12 +14,12 @@ const MAX_MEMORY = 64 * 1024 * 1024;
 
 export async function hashPassword(plain: string): Promise<string> {
   const salt = randomBytes(16);
-  const key = (await scryptAsync(plain, salt, KEY_LENGTH, {
+  const key = await scryptAsync(plain, salt, KEY_LENGTH, {
     N: COST,
     r: BLOCK_SIZE,
     p: PARALLELIZATION,
     maxmem: MAX_MEMORY,
-  })) as Buffer;
+  });
 
   return [
     "scrypt",
@@ -47,12 +48,12 @@ export async function verifyPassword(plain: string, stored: string): Promise<boo
   if (salt.length === 0 || key.length === 0) return false;
 
   try {
-    const derived = (await scryptAsync(plain, salt, key.length, {
+    const derived = await scryptAsync(plain, salt, key.length, {
       N: cost,
       r: blockSize,
       p: parallelization,
       maxmem: MAX_MEMORY,
-    })) as Buffer;
+    });
     return timingSafeEqual(derived, key);
   } catch {
     return false;

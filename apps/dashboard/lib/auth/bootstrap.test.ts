@@ -24,7 +24,7 @@ describe("ensureBootstrapAdmin", () => {
     const result = await ensureBootstrapAdmin(prisma, {
       ADMIN_BOOTSTRAP_USERNAME: "sujin",
       ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toBe("created");
     const admin = await prisma.admin.findUniqueOrThrow({ where: { username: "sujin" } });
@@ -40,14 +40,14 @@ describe("ensureBootstrapAdmin", () => {
     const result = await ensureBootstrapAdmin(prisma, {
       ADMIN_BOOTSTRAP_USERNAME: "sujin",
       ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toBe("skipped");
     expect(await prisma.admin.count()).toBe(1);
   });
 
   it("does nothing when the environment variables are absent", async () => {
-    const result = await ensureBootstrapAdmin(prisma, {} as NodeJS.ProcessEnv);
+    const result = await ensureBootstrapAdmin(prisma, {} as unknown as NodeJS.ProcessEnv);
 
     expect(result).toBe("skipped");
     expect(await prisma.admin.count()).toBe(0);
@@ -57,7 +57,7 @@ describe("ensureBootstrapAdmin", () => {
     const result = await ensureBootstrapAdmin(prisma, {
       ADMIN_BOOTSTRAP_USERNAME: "sujin",
       ADMIN_BOOTSTRAP_PASSWORD: "short",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toBe("skipped");
     expect(await prisma.admin.count()).toBe(0);
@@ -67,7 +67,7 @@ describe("ensureBootstrapAdmin", () => {
     const env = {
       ADMIN_BOOTSTRAP_USERNAME: "sujin",
       ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
-    } as NodeJS.ProcessEnv;
+    } as unknown as NodeJS.ProcessEnv;
 
     const first = await ensureBootstrapAdminOnce(prisma, env);
     const second = await ensureBootstrapAdminOnce(prisma, env);
@@ -89,7 +89,7 @@ describe("ensureBootstrapAdmin", () => {
     const result = await ensureBootstrapAdmin(brokenPrisma, {
       ADMIN_BOOTSTRAP_USERNAME: "sujin",
       ADMIN_BOOTSTRAP_PASSWORD: "hunter2hunter2",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(result).toBe("skipped");
     expect(await prisma.admin.count()).toBe(0);
