@@ -104,10 +104,67 @@ describe("normalizeKakaoNicknames", () => {
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)" } });
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98" } });
     await normalizeKakaoNicknames(prisma);
+    const afterFirst = await prisma.member.findFirstOrThrow();
 
+    // Give the clock room to move so a stray no-op UPDATE (which Prisma's
+    // @updatedAt bumps regardless of whether any field actually changed)
+    // would show up as a different timestamp below, not one that merely
+    // rounds to the same millisecond.
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const second = await normalizeKakaoNicknames(prisma);
 
     expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0 });
     expect(await prisma.member.count()).toBe(1);
+    const afterSecond = await prisma.member.findFirstOrThrow();
+    expect(afterSecond.updatedAt).toEqual(afterFirst.updatedAt);
+  });
+
+  it("moves GameParticipant rows to the survivor along with mention logs", async () => {
+    const older = await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98", createdAt: new Date("2026-08-01T00:00:00Z") },
+    });
+    const newer = await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-05T00:00:00Z") },
+    });
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date("2026-08-10T00:00:00Z"), winner: "BLUE" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: newer.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(1);
+    const participants = await prisma.gameParticipant.findMany();
+    expect(participants).toHaveLength(1);
+    expect(participants[0].memberId).toBe(older.id);
+    expect(participants[0].gameResultId).toBe(game.id);
+  });
+
+  it("rolls back entirely when a merge would collide on the same GameResult", async () => {
+    // Both duplicate members played in the same game under their own row —
+    // moving the loser's participation onto the survivor would violate the
+    // (gameResultId, memberId) unique constraint. The whole normalization
+    // runs in one transaction, so this must fail atomically: no merge, no
+    // partial write, nothing observable changes.
+    const older = await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98", createdAt: new Date("2026-08-01T00:00:00Z") },
+    });
+    const newer = await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-05T00:00:00Z") },
+    });
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date("2026-08-10T00:00:00Z"), winner: "BLUE" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: older.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+    });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: newer.id, team: "RED", eloBefore: 1000, eloAfter: 984 },
+    });
+
+    await expect(normalizeKakaoNicknames(prisma)).rejects.toThrow();
+
+    expect(await prisma.member.count()).toBe(2);
+    expect(await prisma.gameParticipant.count()).toBe(2);
+    const participants = await prisma.gameParticipant.findMany();
+    expect(participants.map((p) => p.memberId).sort()).toEqual([newer.id, older.id].sort());
   });
 });

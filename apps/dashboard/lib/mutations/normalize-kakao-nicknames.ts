@@ -25,6 +25,11 @@ function latest(dates: Array<Date | null>): Date | null {
   return present.reduce((a, b) => (a.getTime() >= b.getTime() ? a : b));
 }
 
+function datesDiffer(a: Date | null, b: Date | null): boolean {
+  if (a === null || b === null) return a !== b;
+  return a.getTime() !== b.getTime();
+}
+
 export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<NormalizeResult> {
   return prisma.$transaction(async (tx) => {
     const members = await tx.member.findMany({ where: { kakaoNickname: { not: null } } });
@@ -54,16 +59,33 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
       }
 
       // elo는 생존자 값을 유지한다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
-      await tx.member.update({
-        where: { id: survivor.id },
-        data: {
-          kakaoNickname: nickname,
-          lastActiveAt: latest([survivor.lastActiveAt, ...losers.map((l) => l.lastActiveAt)]),
-          realName: survivor.realName ?? losers.find((l) => l.realName !== null)?.realName ?? null,
-          age: survivor.age ?? losers.find((l) => l.age !== null)?.age ?? null,
-          riotId: survivor.riotId ?? losers.find((l) => l.riotId !== null)?.riotId ?? null,
-        },
-      });
+      const nextLastActiveAt = latest([survivor.lastActiveAt, ...losers.map((l) => l.lastActiveAt)]);
+      const nextRealName = survivor.realName ?? losers.find((l) => l.realName !== null)?.realName ?? null;
+      const nextAge = survivor.age ?? losers.find((l) => l.age !== null)?.age ?? null;
+      const nextRiotId = survivor.riotId ?? losers.find((l) => l.riotId !== null)?.riotId ?? null;
+
+      // 아무 값도 바뀌지 않는 no-op UPDATE라도 Prisma는 @updatedAt을 갱신한다.
+      // 재실행이 진짜 아무것도 안 건드리도록, 실제로 달라지는 그룹에서만 UPDATE를 낸다.
+      const survivorChanged =
+        losers.length > 0 ||
+        nickname !== survivor.kakaoNickname ||
+        datesDiffer(nextLastActiveAt, survivor.lastActiveAt) ||
+        nextRealName !== survivor.realName ||
+        nextAge !== survivor.age ||
+        nextRiotId !== survivor.riotId;
+
+      if (survivorChanged) {
+        await tx.member.update({
+          where: { id: survivor.id },
+          data: {
+            kakaoNickname: nickname,
+            lastActiveAt: nextLastActiveAt,
+            realName: nextRealName,
+            age: nextAge,
+            riotId: nextRiotId,
+          },
+        });
+      }
     }
 
     const blankRealNames = await tx.member.findMany({
