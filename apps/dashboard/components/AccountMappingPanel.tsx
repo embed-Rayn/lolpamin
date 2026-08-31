@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { PendingDiscordAccount, PendingKakaoAccount } from "@/lib/queries/pending-accounts";
-import { linkMembersAction } from "@/app/link-accounts/actions";
+import { linkMembersAction, importDiscordMembersAction } from "@/app/link-accounts/actions";
 
 export function AccountMappingPanel({
   discordAccounts,
@@ -17,8 +17,23 @@ export function AccountMappingPanel({
   const [selectedKakaoId, setSelectedKakaoId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const linkReady = selectedDiscordId !== null && selectedKakaoId !== null;
+
+  async function handleImportDiscord() {
+    setIsImporting(true);
+    setImportStatus(null);
+    try {
+      const { result, error } = await importDiscordMembersAction();
+      setImportStatus(
+        error ?? `가져오기 완료 · 신규 ${result!.created}명 · 갱신 ${result!.updated}명 · 봇 제외 ${result!.skippedBots}개`
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  }
 
   async function handleLink() {
     if (!linkReady) return;
@@ -46,6 +61,21 @@ export function AccountMappingPanel({
           양쪽에서 한 개씩 골라 연결하세요. 연결하면 하나의 회원 데이터로 합쳐집니다.
         </span>
       </div>
+      {isAdmin && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleImportDiscord}
+            disabled={isImporting}
+            className={`rounded-lg px-3.5 py-2 text-[12px] font-extrabold ${
+              isImporting ? "cursor-not-allowed bg-[#1E2534] text-[#5C6577]" : "cursor-pointer bg-[#5865F2] text-white"
+            }`}
+          >
+            {isImporting ? "가져오는 중..." : "디스코드 회원 가져오기"}
+          </button>
+          {importStatus && <span className="text-[11.5px] text-[#8A94A6]">{importStatus}</span>}
+        </div>
+      )}
       <div className="grid grid-cols-[1fr_210px_1fr] items-stretch gap-3.5">
         <div className="flex flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <div className="flex items-center justify-between border-b border-white/[.06] bg-[#5865F2]/[.07] px-4 py-3">
