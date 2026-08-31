@@ -2,18 +2,28 @@ import { AppShell } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { MemberTable } from "@/components/MemberTable";
 import { MemberFilters } from "@/components/MemberFilters";
-import { getMemberListData, type MemberFilter } from "@/lib/queries/members";
+import {
+  getMemberListData,
+  parseMemberSort,
+  parseSortDirection,
+  type MemberFilter,
+} from "@/lib/queries/members";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams: { filter?: string; q?: string };
+  searchParams: { filter?: string; q?: string; sort?: string; dir?: string };
 }) {
   const filter = (searchParams.filter ?? "all") as MemberFilter;
   const query = searchParams.q ?? "";
-  const data = await getMemberListData(filter, query);
-  const isAdmin = (await getCurrentAdmin()) !== null;
+  const sort = parseMemberSort(searchParams.sort);
+  const dir = parseSortDirection(searchParams.dir);
+  const [data, currentAdmin] = await Promise.all([
+    getMemberListData(filter, query, sort, dir),
+    getCurrentAdmin(),
+  ]);
+  const isAdmin = currentAdmin !== null;
 
   return (
     <AppShell activeNav="members" pageTitle="회원 관리" pageDesc="전체 회원 조회 및 검색">
@@ -26,7 +36,7 @@ export default async function MembersPage({
         </div>
         <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <MemberFilters activeFilter={filter} query={query} />
-          <MemberTable rows={data.rows} isAdmin={isAdmin} />
+          <MemberTable rows={data.rows} isAdmin={isAdmin} sort={sort} dir={dir} filter={filter} query={query} />
         </section>
       </div>
     </AppShell>
