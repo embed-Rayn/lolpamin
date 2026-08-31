@@ -3,6 +3,7 @@ import type { PrismaClient } from "@lolpamin/db";
 export interface DiscordGuildMember {
   discordUserId: string;
   username: string;
+  displayName: string | null;
   isBot: boolean;
   joinedAt: Date | null;
 }
@@ -37,6 +38,7 @@ export async function importDiscordMembers(
             where: { id: existing.id },
             data: {
               discordHandle: member.username,
+              discordDisplayName: member.displayName,
               discordJoinedAt: existing.discordJoinedAt ?? member.joinedAt,
             },
           });
@@ -46,6 +48,7 @@ export async function importDiscordMembers(
             data: {
               discordUserId: member.discordUserId,
               discordHandle: member.username,
+              discordDisplayName: member.displayName,
               discordJoinedAt: member.joinedAt,
             },
           });
