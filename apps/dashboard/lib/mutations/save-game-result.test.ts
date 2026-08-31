@@ -20,7 +20,7 @@ afterAll(async () => {
 
 async function createLinkedMember(elo: number) {
   return prisma.member.create({
-    data: { discordUserId: `d-${elo}-${Math.random()}`, kakaoUserId: `k-${elo}-${Math.random()}`, elo },
+    data: { discordUserId: `d-${elo}-${Math.random()}`, kakaoNickname: `k-${elo}-${Math.random()}`, elo },
   });
 }
 
@@ -76,5 +76,47 @@ describe("saveGameResult", () => {
         winner: "BLUE",
       })
     ).rejects.toThrow("cannot be on both teams");
+  });
+
+  it("accepts a member linked by discord id and kakao nickname", async () => {
+    // kakaoUserId를 채우는 경로가 시스템에 없다. 카톡 봇이 폐기되면서 사라졌고,
+    // 연결은 kakaoNickname으로 이뤄진다. 그것을 요구하면 아무도 경기에 못 들어간다.
+    const members = await Promise.all(
+      Array.from({ length: 2 }, (_, i) =>
+        prisma.member.create({
+          data: { discordUserId: `d-${i}`, discordHandle: `h-${i}`, kakaoNickname: `닉-${i}` },
+        })
+      )
+    );
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [members[0].id],
+        redMemberIds: [members[1].id],
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("refuses an absorbed member as a participant", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-a", kakaoNickname: "닉-a" },
+    });
+    const other = await prisma.member.create({
+      data: { discordUserId: "d-b", kakaoNickname: "닉-b" },
+    });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [tombstone.id],
+        redMemberIds: [other.id],
+      })
+    ).rejects.toThrow();
   });
 });

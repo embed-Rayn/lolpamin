@@ -32,7 +32,12 @@ export async function saveGameResult(
       throw new Error("One or more participants do not exist");
     }
     for (const member of members) {
-      if (!member.discordUserId || !member.kakaoUserId) {
+      if (member.mergedIntoId !== null) {
+        throw new Error(`Participant ${member.id} was absorbed into another member and cannot play`);
+      }
+      // kakaoUserId는 이 시스템에서 채워지는 경로가 없다(카톡 봇 폐기). 연결은
+      // kakaoNickname으로 이뤄지므로 그것을 연결의 근거로 본다.
+      if (!member.discordUserId || !member.kakaoNickname) {
         throw new Error(`Participant ${member.id} must be fully linked to play in a match`);
       }
     }
