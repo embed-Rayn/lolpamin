@@ -59,6 +59,17 @@ describe("normalizeKakaoNicknames", () => {
     const logs = await prisma.mentionLog.findMany();
     expect(logs).toHaveLength(1);
     expect(logs[0].memberId).toBe(older.id);
+
+    expect(result.mergedPairs).toEqual([
+      {
+        survivorId: older.id,
+        survivorNickname: "유승수/98/ModCow#KR98",
+        loserId: newer.id,
+        loserNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        movedMentionLogs: 1,
+        movedGameParticipants: 0,
+      },
+    ]);
   });
 
   it("keeps the linked member as the survivor even when it was created later", async () => {
@@ -100,6 +111,54 @@ describe("normalizeKakaoNicknames", () => {
     expect(member.realName).toBe("유승수(부계정)");
   });
 
+  it("leaves realName null when the entire kakaoNickname is a note", async () => {
+    // "(8시 도착)" normalizes to "" — grouping skips it (there's nothing to merge on),
+    // but realName-filling must normalize too, or the raw string (with its slash-free
+    // note) would be taken whole as the realName.
+    await prisma.member.create({ data: { kakaoNickname: "(8시 도착)" } });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(0);
+    expect(result.realNamesFilled).toBe(0);
+    const member = await prisma.member.findFirstOrThrow();
+    expect(member.kakaoNickname).toBe("(8시 도착)");
+    expect(member.realName).toBeNull();
+  });
+
+  it("rolls back entirely when two members that would merge are both discord-linked", async () => {
+    // Both duplicates are already linked to a discord account by hand. Auto-picking
+    // a survivor would silently drop the loser's discordUserId/discordHandle with no
+    // trace in the output, so this must fail atomically instead: no merge, no partial
+    // write, nothing observable changes.
+    const first = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98",
+        discordUserId: "d-1",
+        discordHandle: "seungsu",
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    const second = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(도착)",
+        discordUserId: "d-2",
+        discordHandle: "seungsu2",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+      },
+    });
+
+    await expect(normalizeKakaoNicknames(prisma)).rejects.toThrow();
+
+    expect(await prisma.member.count()).toBe(2);
+    const refetchedFirst = await prisma.member.findUniqueOrThrow({ where: { id: first.id } });
+    expect(refetchedFirst.kakaoNickname).toBe("유승수/98/ModCow#KR98");
+    expect(refetchedFirst.discordUserId).toBe("d-1");
+    const refetchedSecond = await prisma.member.findUniqueOrThrow({ where: { id: second.id } });
+    expect(refetchedSecond.kakaoNickname).toBe("유승수/98/ModCow#KR98(도착)");
+    expect(refetchedSecond.discordUserId).toBe("d-2");
+  });
+
   it("changes nothing on a second run", async () => {
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)" } });
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98" } });
@@ -113,7 +172,7 @@ describe("normalizeKakaoNicknames", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const second = await normalizeKakaoNicknames(prisma);
 
-    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0 });
+    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [] });
     expect(await prisma.member.count()).toBe(1);
     const afterSecond = await prisma.member.findFirstOrThrow();
     expect(afterSecond.updatedAt).toEqual(afterFirst.updatedAt);

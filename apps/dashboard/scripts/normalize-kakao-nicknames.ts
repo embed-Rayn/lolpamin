@@ -12,6 +12,11 @@ async function main(): Promise<void> {
 
   const result = await normalizeKakaoNicknames(prisma);
   console.log("result:", result);
+  console.log("mergedPairs:");
+  for (const pair of result.mergedPairs) {
+    console.log(`  ${pair.loserId} (${JSON.stringify(pair.loserNickname)}) -> ${pair.survivorId} (${JSON.stringify(pair.survivorNickname)})` +
+      ` [mentionLogs=${pair.movedMentionLogs}, gameParticipants=${pair.movedGameParticipants}]`);
+  }
 
   console.log("after:", {
     members: await prisma.member.count(),
