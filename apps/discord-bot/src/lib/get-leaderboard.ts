@@ -12,6 +12,7 @@ export async function getLeaderboard(
   limit: number
 ): Promise<LeaderboardEntry[]> {
   const members = await prisma.member.findMany({
+    where: { mergedIntoId: null },
     orderBy: [{ elo: "desc" }, { id: "asc" }],
     take: limit,
   });

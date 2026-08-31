@@ -21,6 +21,7 @@ export interface InactiveReportData {
 export async function getInactiveReportData(): Promise<InactiveReportData> {
   const now = new Date();
   const members = await prisma.member.findMany({
+    where: { mergedIntoId: null },
     include: { _count: { select: { participants: true } } },
   });
 

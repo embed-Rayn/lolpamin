@@ -70,4 +70,18 @@ describe("getMemberListData sorting", () => {
 
     expect(data.rows.map((r) => r.kakaoNickname)).toEqual(["가회원/95/ga#1", "나회원/95/na#1", "-"]);
   });
+
+  it("hides a member that was absorbed into another", async () => {
+    await resetDatabase(prisma);
+    const survivor = await prisma.member.create({ data: { realName: "유대혁", kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    await prisma.member.create({
+      data: { realName: "유대혁", kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+
+    const data = await getMemberListData("all", "", "elo", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].id).toBe(survivor.id);
+    expect(data.totalCount).toBe(1);
+  });
 });

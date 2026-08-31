@@ -77,6 +77,7 @@ export async function getMemberListData(
 ): Promise<MemberListData> {
   const now = new Date();
   const allMembers = await prisma.member.findMany({
+    where: { mergedIntoId: null },
     orderBy: orderByFor(sort, dir),
     include: { _count: { select: { mentionLogs: true, participants: true } } },
   });
