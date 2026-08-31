@@ -1,9 +1,30 @@
 import { prisma } from "@/lib/prisma";
-import type { Member } from "@lolpamin/db";
+import type { Member, Prisma } from "@lolpamin/db";
 
 type MemberWithCounts = Member & { _count: { mentionLogs: number; participants: number } };
 
 export type MemberFilter = "all" | "half" | "inactive";
+
+export type MemberSort = "elo" | "realName" | "kakaoNickname";
+export type SortDirection = "asc" | "desc";
+
+const MEMBER_SORTS: MemberSort[] = ["elo", "realName", "kakaoNickname"];
+
+export function parseMemberSort(value: string | undefined): MemberSort {
+  return MEMBER_SORTS.includes(value as MemberSort) ? (value as MemberSort) : "elo";
+}
+
+export function parseSortDirection(value: string | undefined): SortDirection {
+  return value === "asc" ? "asc" : "desc";
+}
+
+// 값이 비어 있는 행은 방향과 무관하게 마지막에 둔다 — 실명 없는 회원이 목록 맨 위를
+// 차지하면 정렬이 쓸모없어진다. id 2차 정렬은 동점일 때 순서를 고정하기 위한 것이다.
+function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByWithRelationInput[] {
+  if (sort === "elo") return [{ elo: dir }, { id: "asc" }];
+  if (sort === "realName") return [{ realName: { sort: dir, nulls: "last" } }, { id: "asc" }];
+  return [{ kakaoNickname: { sort: dir, nulls: "last" } }, { id: "asc" }];
+}
 
 export interface MemberRow {
   id: string;
@@ -50,11 +71,13 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
 
 export async function getMemberListData(
   filter: MemberFilter,
-  query: string
+  query: string,
+  sort: MemberSort = "elo",
+  dir: SortDirection = "desc"
 ): Promise<MemberListData> {
   const now = new Date();
   const allMembers = await prisma.member.findMany({
-    orderBy: { createdAt: "asc" },
+    orderBy: orderByFor(sort, dir),
     include: { _count: { select: { mentionLogs: true, participants: true } } },
   });
 

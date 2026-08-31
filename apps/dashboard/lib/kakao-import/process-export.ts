@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@lolpamin/db";
+import { normalizeKakaoNickname, realNameFromKakaoNickname } from "@lolpamin/core";
 import { parseKakaoExport } from "./parse-export";
 
 export interface ProcessKakaoExportResult {
@@ -24,16 +25,26 @@ export async function processKakaoExport(
     let activityUpdates = 0;
 
     for (const mention of toProcess) {
-      const existing = await tx.member.findFirst({ where: { kakaoNickname: mention.mentionedNickname } });
+      // 닉네임 뒤에 붙은 "(7시30분 도착)" 같은 메모를 떼고 매칭한다. 메모까지 포함해
+      // 매칭하면 같은 사람이 여러 회원으로 갈라진다.
+      const nickname = normalizeKakaoNickname(mention.mentionedNickname);
+      if (nickname.length === 0) continue;
+
+      const existing = await tx.member.findFirst({ where: { kakaoNickname: nickname } });
 
       let memberId: string;
       if (existing) {
+        // realName은 건드리지 않는다 — 사람이 고쳐둔 값을 재업로드가 되돌리면 안 된다.
         await tx.member.update({ where: { id: existing.id }, data: { lastActiveAt: mention.mentionedAt } });
         memberId = existing.id;
         activityUpdates++;
       } else {
         const created = await tx.member.create({
-          data: { kakaoNickname: mention.mentionedNickname, lastActiveAt: mention.mentionedAt },
+          data: {
+            kakaoNickname: nickname,
+            realName: realNameFromKakaoNickname(nickname),
+            lastActiveAt: mention.mentionedAt,
+          },
         });
         memberId = created.id;
         newMembers++;

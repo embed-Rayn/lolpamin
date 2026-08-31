@@ -1,5 +1,7 @@
-import type { MemberRow } from "@/lib/queries/members";
+import Link from "next/link";
+import type { MemberFilter, MemberRow, MemberSort, SortDirection } from "@/lib/queries/members";
 import { DeleteMemberButton } from "@/components/DeleteMemberButton";
+import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 
 function displayLabel(m: MemberRow): string {
   for (const candidate of [m.realName, m.kakaoNickname, m.discordHandle]) {
@@ -8,14 +10,47 @@ function displayLabel(m: MemberRow): string {
   return "이름 미확인";
 }
 
-export function MemberTable({ rows, isAdmin }: { rows: MemberRow[]; isAdmin: boolean }) {
+export function MemberTable({
+  rows,
+  isAdmin,
+  sort,
+  dir,
+  filter,
+  query,
+}: {
+  rows: MemberRow[];
+  isAdmin: boolean;
+  sort: MemberSort;
+  dir: SortDirection;
+  filter: MemberFilter;
+  query: string;
+}) {
+  function sortHref(key: MemberSort): string {
+    // 같은 기준을 다시 누르면 방향을 뒤집고, 다른 기준으로 바꾸면 내림차순부터 시작한다.
+    const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
+    const params = new URLSearchParams({ filter, sort: key, dir: nextDir });
+    if (query) params.set("q", query);
+    return `/members?${params.toString()}`;
+  }
+
+  function sortMark(key: MemberSort): string {
+    if (sort !== key) return "";
+    return dir === "desc" ? " ↓" : " ↑";
+  }
+
   return (
     <>
       <div className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[11.5px] font-bold tracking-wide text-[#6E7889]">
-        <div>실명</div>
-        <div>카톡 닉네임</div>
+        <Link href={sortHref("realName")} className="hover:text-[#B7C0D0]">
+          실명{sortMark("realName")}
+        </Link>
+        <Link href={sortHref("kakaoNickname")} className="hover:text-[#B7C0D0]">
+          카톡 닉네임{sortMark("kakaoNickname")}
+        </Link>
         <div>디코 닉네임</div>
-        <div className="text-right">ELO</div>
+        <Link href={sortHref("elo")} className="text-right hover:text-[#B7C0D0]">
+          ELO{sortMark("elo")}
+        </Link>
         <div className="text-right">마지막 활동</div>
         <div className="text-right">관리</div>
       </div>
@@ -24,7 +59,7 @@ export function MemberTable({ rows, isAdmin }: { rows: MemberRow[]; isAdmin: boo
           key={m.id}
           className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[14px] hover:bg-[#181E29]"
         >
-          <div className={`truncate font-semibold ${m.realName === "-" ? "text-[#5C6577]" : ""}`}>{m.realName}</div>
+          <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
           <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
             {m.kakaoNickname}
           </div>

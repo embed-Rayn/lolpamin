@@ -81,7 +81,7 @@
 
 ### 기존 데이터 정리 (일회성)
 
-`packages/db/prisma/normalize-kakao-nicknames.ts` 스크립트를 만들어 한 번 실행한다. 한 트랜잭션 안에서:
+`apps/dashboard/lib/mutations/normalize-kakao-nicknames.ts`(로직)와 `apps/dashboard/scripts/normalize-kakao-nicknames.ts`(CLI 진입점)를 만들어 한 번 실행한다. 한 트랜잭션 안에서:
 
 1. `kakaoNickname`이 있는 모든 회원의 값을 정규화한다.
 2. 정규화 결과가 같아진 회원들을 하나로 합친다.
