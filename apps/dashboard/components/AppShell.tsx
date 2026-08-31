@@ -13,8 +13,9 @@ export interface AppShellProps {
 
 export async function AppShell({ activeNav, pageTitle, pageDesc, children }: AppShellProps) {
   const [totalCount, allMembersForInactivity, currentAdmin] = await Promise.all([
-    prisma.member.count(),
+    prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
+      where: { mergedIntoId: null },
       select: { id: true, kakaoUserId: true, kakaoNickname: true, lastActiveAt: true, createdAt: true },
     }),
     getCurrentAdmin(),

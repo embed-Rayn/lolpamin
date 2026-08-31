@@ -10,6 +10,7 @@ export interface LinkedMemberOption {
 export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   const members = await prisma.member.findMany({
     where: {
+      mergedIntoId: null,
       discordUserId: { not: null },
       OR: [{ kakaoUserId: { not: null } }, { kakaoNickname: { not: null } }],
     },

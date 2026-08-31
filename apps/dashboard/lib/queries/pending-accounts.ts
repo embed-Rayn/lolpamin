@@ -14,7 +14,7 @@ export interface PendingKakaoAccount {
 
 export async function getPendingDiscordAccounts(): Promise<PendingDiscordAccount[]> {
   const members = await prisma.member.findMany({
-    where: { kakaoUserId: null, kakaoNickname: null, discordUserId: { not: null } },
+    where: { mergedIntoId: null, kakaoUserId: null, kakaoNickname: null, discordUserId: { not: null } },
     orderBy: { createdAt: "asc" },
   });
   return members.map((m) => ({ id: m.id, handle: m.discordHandle ?? m.discordUserId! }));
@@ -25,7 +25,7 @@ export async function getPendingDiscordAccounts(): Promise<PendingDiscordAccount
 // left out of this linking flow rather than shown with a raw, unparsed fallback.
 export async function getPendingKakaoAccounts(): Promise<PendingKakaoAccount[]> {
   const members = await prisma.member.findMany({
-    where: { discordUserId: null, kakaoNickname: { not: null } },
+    where: { mergedIntoId: null, discordUserId: null, kakaoNickname: { not: null } },
     orderBy: { createdAt: "asc" },
   });
   return members.flatMap((m) => {
