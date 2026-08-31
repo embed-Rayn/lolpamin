@@ -112,4 +112,61 @@ describe("processKakaoExport", () => {
     const logs = await prisma.mentionLog.findMany();
     expect(logs).toHaveLength(2);
   });
+
+  it("treats a nickname with a parenthesised note as the same member", async () => {
+    const upload = [
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[갑] [오전 9:00] @유승수/98/ModCow#KR98(7시30분 도착)",
+      "[갑] [오전 9:05] @유승수/98/ModCow#KR98",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result.newMembers).toBe(1);
+    expect(result.activityUpdates).toBe(1);
+    const members = await prisma.member.findMany();
+    expect(members).toHaveLength(1);
+    expect(members[0].kakaoNickname).toBe("유승수/98/ModCow#KR98");
+  });
+
+  it("fills realName from the nickname when creating a member", async () => {
+    const upload = [
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[갑] [오전 9:00] @유승수/98/ModCow#KR98(7시30분 도착)",
+    ].join("\n");
+
+    await processKakaoExport(prisma, upload);
+
+    const member = await prisma.member.findFirstOrThrow();
+    expect(member.realName).toBe("유승수");
+  });
+
+  it("never overwrites a realName that someone already set", async () => {
+    await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98", realName: "유승수(부계정)" },
+    });
+
+    await processKakaoExport(
+      prisma,
+      [
+        "--------------- 2026년 8월 29일 토요일 ---------------",
+        "[갑] [오전 9:00] @유승수/98/ModCow#KR98",
+      ].join("\n")
+    );
+
+    const member = await prisma.member.findFirstOrThrow();
+    expect(member.realName).toBe("유승수(부계정)");
+  });
+
+  it("skips a mention whose entire nickname is a note", async () => {
+    const upload = [
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[갑] [오전 9:00] @(8시 도착)",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result).toEqual({ newMembers: 0, activityUpdates: 0, skippedAsAlreadyProcessed: 0 });
+    expect(await prisma.member.count()).toBe(0);
+  });
 });
