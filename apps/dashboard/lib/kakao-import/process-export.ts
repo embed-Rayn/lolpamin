@@ -34,8 +34,12 @@ export async function processKakaoExport(
 
       let memberId: string;
       if (existing) {
+        // 묘비(과거 닉네임)에 히트했으면 활동은 생존자에게 올린다. 닉네임을 바꾼
+        // 회원의 활동이 끊기지 않게 하는 지점이다. 멘션 로그는 히트한 행에 그대로
+        // 달아, 나중에 연결을 끊으면 로그도 함께 돌아가게 한다.
         // realName은 건드리지 않는다 — 사람이 고쳐둔 값을 재업로드가 되돌리면 안 된다.
-        await tx.member.update({ where: { id: existing.id }, data: { lastActiveAt: mention.mentionedAt } });
+        const activeId = existing.mergedIntoId ?? existing.id;
+        await tx.member.update({ where: { id: activeId }, data: { lastActiveAt: mention.mentionedAt } });
         memberId = existing.id;
         activityUpdates++;
       } else {

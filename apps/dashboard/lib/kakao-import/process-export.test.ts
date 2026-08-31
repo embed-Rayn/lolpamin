@@ -169,4 +169,34 @@ describe("processKakaoExport", () => {
     expect(result).toEqual({ newMembers: 0, activityUpdates: 0, skippedAsAlreadyProcessed: 0 });
     expect(await prisma.member.count()).toBe(0);
   });
+
+  it("credits activity to the survivor when the mention hits a past nickname", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", kakaoNickname: "유대혁/95/새닉#KR1", realName: "유대혁" },
+    });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/옛닉#KR1", mergedIntoId: survivor.id },
+    });
+
+    const upload = [
+      "게임구인방 님과 카카오톡 대화",
+      "저장한 날짜 : 2026-09-01 10:00:00",
+      "--------------- 2026년 9월 1일 화요일 ---------------",
+      "[김민준/94/늑 대#1003] [오전 9:00] @유대혁/95/옛닉#KR1",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result.newMembers).toBe(0);
+    expect(result.activityUpdates).toBe(1);
+
+    // 활동은 생존자에게 올라가고, 멘션 로그는 히트한 묘비에 그대로 달린다 —
+    // 연결을 끊으면 로그도 함께 돌아가야 하기 때문이다.
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(after.lastActiveAt).not.toBeNull();
+    expect(await prisma.mentionLog.count({ where: { memberId: tombstone.id } })).toBe(1);
+    expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
+    // 새 회원이 생기면 안 된다 — 묘비를 못 찾으면 여기서 3이 된다.
+    expect(await prisma.member.count()).toBe(2);
+  });
 });
