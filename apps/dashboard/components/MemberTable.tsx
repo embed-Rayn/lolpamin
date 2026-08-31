@@ -1,5 +1,6 @@
 import type { MemberRow } from "@/lib/queries/members";
 import { DeleteMemberButton } from "@/components/DeleteMemberButton";
+import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 
 function displayLabel(m: MemberRow): string {
   for (const candidate of [m.realName, m.kakaoNickname, m.discordHandle]) {
@@ -24,7 +25,7 @@ export function MemberTable({ rows, isAdmin }: { rows: MemberRow[]; isAdmin: boo
           key={m.id}
           className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[14px] hover:bg-[#181E29]"
         >
-          <div className={`truncate font-semibold ${m.realName === "-" ? "text-[#5C6577]" : ""}`}>{m.realName}</div>
+          <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
           <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
             {m.kakaoNickname}
           </div>
