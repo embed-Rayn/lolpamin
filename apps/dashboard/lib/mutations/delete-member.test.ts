@@ -76,4 +76,20 @@ describe("deleteMember", () => {
     expect(await prisma.member.count()).toBe(1);
     expect(await prisma.mentionLog.count()).toBe(1);
   });
+
+  it("deletes the tombstones the member absorbed, and their records", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+    await prisma.mentionLog.create({
+      data: { memberId: tombstone.id, mentionedAt: new Date(2026, 7, 1), rawMessage: "@옛닉" },
+    });
+
+    const result = await deleteMember(prisma, survivor.id);
+
+    expect(result.mentionLogs).toBe(1);
+    expect(await prisma.member.findUnique({ where: { id: tombstone.id } })).toBeNull();
+    expect(await prisma.member.findUnique({ where: { id: survivor.id } })).toBeNull();
+  });
 });
