@@ -6,6 +6,7 @@ import { normalizeKakaoNicknames } from "../lib/mutations/normalize-kakao-nickna
 async function main(): Promise<void> {
   const before = {
     members: await prisma.member.count(),
+    activeMembers: await prisma.member.count({ where: { mergedIntoId: null } }),
     mentionLogs: await prisma.mentionLog.count(),
   };
   console.log("before:", before);
@@ -15,11 +16,12 @@ async function main(): Promise<void> {
   console.log("mergedPairs:");
   for (const pair of result.mergedPairs) {
     console.log(`  ${pair.loserId} (${JSON.stringify(pair.loserNickname)}) -> ${pair.survivorId} (${JSON.stringify(pair.survivorNickname)})` +
-      ` [mentionLogs=${pair.movedMentionLogs}, gameParticipants=${pair.movedGameParticipants}]`);
+      ` [묘비에 남은 mentionLogs=${pair.loserMentionLogs}, gameParticipants=${pair.loserGameParticipants}]`);
   }
 
   console.log("after:", {
     members: await prisma.member.count(),
+    activeMembers: await prisma.member.count({ where: { mergedIntoId: null } }),
     mentionLogs: await prisma.mentionLog.count(),
   });
 }

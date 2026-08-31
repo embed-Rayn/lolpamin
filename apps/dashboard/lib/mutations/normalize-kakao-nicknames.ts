@@ -6,8 +6,8 @@ export interface MergedPair {
   survivorNickname: string;
   loserId: string;
   loserNickname: string;
-  movedMentionLogs: number;
-  movedGameParticipants: number;
+  loserMentionLogs: number;
+  loserGameParticipants: number;
 }
 
 export interface NormalizeResult {
@@ -47,7 +47,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
       // Postgres는 findMany의 행 순서를 보장하지 않으므로 명시하지 않으면 3자 이상
       // 충돌에서 어느 값이 승계될지가 실행마다 달라질 수 있다.
       const members = await tx.member.findMany({
-        where: { kakaoNickname: { not: null } },
+        where: { mergedIntoId: null, kakaoNickname: { not: null } },
         orderBy: { createdAt: "asc" },
       });
 
@@ -83,23 +83,19 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         const losers = group.filter((m) => m.id !== survivor.id);
 
         for (const loser of losers) {
-          const movedMentionLogs = await tx.mentionLog.updateMany({
-            where: { memberId: loser.id },
-            data: { memberId: survivor.id },
-          });
-          const movedGameParticipants = await tx.gameParticipant.updateMany({
-            where: { memberId: loser.id },
-            data: { memberId: survivor.id },
-          });
-          await tx.member.delete({ where: { id: loser.id } });
+          // 활동기록을 옮기지 않고 묘비에 남긴다 — 연결을 끊으면 기록도 함께
+          // 돌아가야 하고, 그래야 되돌리기가 mergedIntoId 한 줄로 끝난다.
+          const loserMentionLogs = await tx.mentionLog.count({ where: { memberId: loser.id } });
+          const loserGameParticipants = await tx.gameParticipant.count({ where: { memberId: loser.id } });
+          await tx.member.update({ where: { id: loser.id }, data: { mergedIntoId: survivor.id } });
           merged++;
           mergedPairs.push({
             survivorId: survivor.id,
             survivorNickname: nickname,
             loserId: loser.id,
             loserNickname: loser.kakaoNickname!,
-            movedMentionLogs: movedMentionLogs.count,
-            movedGameParticipants: movedGameParticipants.count,
+            loserMentionLogs,
+            loserGameParticipants,
           });
         }
 
@@ -134,7 +130,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
       }
 
       const blankRealNames = await tx.member.findMany({
-        where: { realName: null, kakaoNickname: { not: null } },
+        where: { mergedIntoId: null, realName: null, kakaoNickname: { not: null } },
       });
       let realNamesFilled = 0;
       for (const member of blankRealNames) {
