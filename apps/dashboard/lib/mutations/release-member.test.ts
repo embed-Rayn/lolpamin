@@ -77,4 +77,28 @@ describe("releaseMember", () => {
 
     await expect(releaseMember(prisma, member.id)).rejects.toThrow();
   });
+
+  it("keeps a repointed cluster on the ultimate survivor after releasing the middle tombstone", async () => {
+    const top = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const mid = await prisma.member.create({ data: { kakaoNickname: "mid" } });
+    const t1 = await prisma.member.create({ data: { kakaoNickname: "t1" } });
+    await prisma.mentionLog.create({
+      data: { memberId: t1.id, mentionedAt: new Date(2026, 7, 5), rawMessage: "@t1" },
+    });
+    await absorbMember(prisma, t1.id, mid.id);
+    await absorbMember(prisma, mid.id, top.id);
+
+    await releaseMember(prisma, mid.id);
+
+    // t1 was never mid's to take back — the earlier absorb repointed it straight at top.
+    const afterT1 = await prisma.member.findUniqueOrThrow({ where: { id: t1.id } });
+    expect(afterT1.mergedIntoId).toBe(top.id);
+
+    const afterMid = await prisma.member.findUniqueOrThrow({ where: { id: mid.id } });
+    expect(afterMid.mergedIntoId).toBeNull();
+    expect(afterMid.lastActiveAt).toBeNull();
+
+    const afterTop = await prisma.member.findUniqueOrThrow({ where: { id: top.id } });
+    expect(afterTop.lastActiveAt).toEqual(new Date(2026, 7, 5));
+  });
 });

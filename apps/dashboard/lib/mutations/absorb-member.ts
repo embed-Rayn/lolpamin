@@ -66,6 +66,14 @@ export async function absorbMember(
         },
       });
 
+      // loser가 이미 다른 묘비들을 흡수해 뒀다면, 그 묘비들도 함께 새 survivor를
+      // 가리키도록 옮긴다. 그러지 않으면 그 묘비들의 mergedIntoId가 이제 묘비가 될
+      // loser를 가리킨 채로 남아 불변식 2(항상 활성 회원을 가리킨다)가 깨진다.
+      await tx.member.updateMany({
+        where: { mergedIntoId: loser.id },
+        data: { mergedIntoId: survivor.id },
+      });
+
       await tx.member.update({ where: { id: loser.id }, data: { mergedIntoId: survivor.id } });
     },
     { timeout: 20000 },

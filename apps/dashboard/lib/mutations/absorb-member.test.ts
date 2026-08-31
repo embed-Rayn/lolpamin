@@ -117,4 +117,21 @@ describe("absorbMember", () => {
 
     await expect(absorbMember(prisma, member.id, member.id)).rejects.toThrow();
   });
+
+  it("repoints tombstones already held by the loser to the new survivor", async () => {
+    const top = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const mid = await prisma.member.create({ data: { kakaoNickname: "mid" } });
+    const t1 = await prisma.member.create({ data: { kakaoNickname: "t1" } });
+    await absorbMember(prisma, t1.id, mid.id);
+
+    await absorbMember(prisma, mid.id, top.id);
+
+    const afterT1 = await prisma.member.findUniqueOrThrow({ where: { id: t1.id } });
+    const afterMid = await prisma.member.findUniqueOrThrow({ where: { id: mid.id } });
+    expect(afterT1.mergedIntoId).toBe(top.id);
+    expect(afterMid.mergedIntoId).toBe(top.id);
+
+    const active = await prisma.member.findMany({ where: { mergedIntoId: null } });
+    expect(active.map((m) => m.id)).toEqual([top.id]);
+  });
 });
