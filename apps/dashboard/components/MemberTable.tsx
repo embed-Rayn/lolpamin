@@ -4,7 +4,7 @@ import { DeleteMemberButton } from "@/components/DeleteMemberButton";
 import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 
 function displayLabel(m: MemberRow): string {
-  for (const candidate of [m.realName, m.kakaoNickname, m.discordHandle]) {
+  for (const candidate of [m.realName, m.kakaoNickname, m.discordName]) {
     if (candidate !== "-") return candidate;
   }
   return "이름 미확인";
@@ -63,8 +63,8 @@ export function MemberTable({
           <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
             {m.kakaoNickname}
           </div>
-          <div className={`truncate font-mono text-[12.5px] ${m.discordHandle === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
-            {m.discordHandle}
+          <div className={`truncate font-mono text-[12.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
+            {m.discordName}
           </div>
           <div className={`text-right font-mono text-[14.5px] font-bold ${m.elo >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
             {m.elo}

@@ -112,3 +112,65 @@ describe("getMemberListData sorting", () => {
     expect(data.totalCount).toBe(1);
   });
 });
+
+describe("getMemberListData 디코 닉네임 표시", () => {
+  it("연결된 회원은 핸들이 아니라 서버 별명을 보여준다", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({
+      data: {
+        realName: "손민준",
+        kakaoNickname: "손민준/99/fukcin216",
+        discordUserId: "d-linked",
+        discordHandle: "minjun8983",
+        discordDisplayName: "손민준/fukcin216#7980/정글제외 무관",
+      },
+    });
+
+    const data = await getMemberListData("all", "", "elo", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].discordName).toBe("손민준/fukcin216#7980/정글제외 무관");
+  });
+
+  it("카톡과 연결되지 않은 디스코드 계정은 디코 칸을 비운다", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({
+      data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
+    });
+
+    const data = await getMemberListData("all", "", "elo", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].discordName).toBe("-");
+  });
+
+  it("흡수로 연결한 회원도 디코 칸이 채워진다 — 카톡 닉네임은 묘비에 있다", async () => {
+    await resetDatabase(prisma);
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-surv", discordHandle: "daehyeok_", discordDisplayName: "유대혁/95/유대혁#KR1/sup" },
+    });
+    await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", mergedIntoId: survivor.id },
+    });
+
+    const data = await getMemberListData("all", "", "elo", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].discordName).toBe("유대혁/95/유대혁#KR1/sup");
+    expect(data.rows[0].kakaoNickname).toBe("유대혁/95/유대혁#KR1");
+  });
+
+  it("화면에 안 뜨는 디스코드 계정도 검색으로는 찾을 수 있다", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({
+      data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
+    });
+
+    const byDisplayName = await getMemberListData("all", "백승호", "elo", "desc");
+    const byHandle = await getMemberListData("all", "baegseungho", "elo", "desc");
+
+    expect(byDisplayName.rows).toHaveLength(1);
+    expect(byHandle.rows).toHaveLength(1);
+    expect(byDisplayName.rows[0].discordName).toBe("-");
+  });
+});

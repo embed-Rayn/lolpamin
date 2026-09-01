@@ -65,7 +65,8 @@ export interface MemberRow {
   id: string;
   realName: string;
   kakaoNickname: string;
-  discordHandle: string;
+  // 서버 별명. 카톡과 연결되지 않은 계정은 "-"다 — displayDiscordName 참고.
+  discordName: string;
   elo: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
@@ -93,6 +94,14 @@ function daysSince(date: Date | null, now: Date): number | null {
   return Math.floor((now.getTime() - date.getTime()) / 86_400_000);
 }
 
+// 「디코 닉네임」 칸에 띄울 값. 핸들("k._.dj")은 사람을 알아볼 수 없으므로 서버 별명을
+// 먼저 본다. 그리고 카톡과 연결되지 않은 계정은 아직 회원으로 확정된 게 아니라서 비운다
+// — 연결 작업은 /link-accounts에서 하고, 여기는 확정된 회원 명부다.
+function displayDiscordName(m: MemberWithCounts): string {
+  if (m.discordUserId === null || !hasKakao(m)) return "-";
+  return m.discordDisplayName ?? m.discordHandle ?? m.discordUserId;
+}
+
 function toRow(m: MemberWithCounts, now: Date): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   // 카톡 멘션은 닉네임을 가진 행에 붙으므로(processKakaoExport), 흡수한 뒤에는 묘비 쪽에
@@ -103,7 +112,7 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     id: m.id,
     realName: m.realName ?? "-",
     kakaoNickname: displayKakaoNickname(m),
-    discordHandle: m.discordHandle ?? m.discordUserId ?? "-",
+    discordName: displayDiscordName(m),
     elo: m.elo,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
@@ -144,23 +153,25 @@ export async function getMemberListData(
     : Math.round(allMembers.reduce((sum, m) => sum + m.elo, 0) / totalCount);
 
   const trimmedQuery = query.trim().toLowerCase();
+  // 검색은 화면에 안 띄우는 값까지 훑는다. 미연결 디스코드 계정은 실명도 카톡 닉네임도
+  // 비어 있어서, 표시하는 값만 보면 이 목록에서 아예 찾을 수 없는 회원이 된다.
+  function matchesQuery(m: MemberWithCounts, row: MemberRow): boolean {
+    if (!trimmedQuery) return true;
+    return [row.realName, row.kakaoNickname, m.discordDisplayName, m.discordHandle].some(
+      (v) => v !== null && v.toLowerCase().includes(trimmedQuery)
+    );
+  }
+
   const rows = allMembers
-    .map((m) => toRow(m, now))
-    .filter((row) => {
+    .map((m) => ({ m, row: toRow(m, now) }))
+    .filter(({ m, row }) => {
       if (filter === "linked" && !(row.hasDiscord && row.hasKakao)) return false;
       if (filter === "kakaoOnly" && (row.hasDiscord || !row.hasKakao)) return false;
       if (filter === "discordOnly" && (!row.hasDiscord || row.hasKakao)) return false;
       if (filter === "inactive" && (row.daysSinceActive === null || row.daysSinceActive < 14)) return false;
-      if (
-        trimmedQuery &&
-        !row.realName.toLowerCase().includes(trimmedQuery) &&
-        !row.kakaoNickname.toLowerCase().includes(trimmedQuery) &&
-        !row.discordHandle.toLowerCase().includes(trimmedQuery)
-      ) {
-        return false;
-      }
-      return true;
-    });
+      return matchesQuery(m, row);
+    })
+    .map(({ row }) => row);
 
   return { totalCount, halfCount, unassignedCount, averageElo, rows };
 }
