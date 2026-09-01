@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { MemberRow } from "@/lib/queries/members";
 
-type SortKey = "kakaoNickname" | "discordHandle" | "elo" | "lastActive";
+type SortKey = "kakaoNickname" | "discordHandle" | "mmr" | "lastActive";
 type SortDir = "asc" | "desc";
 
 const GRID = "grid grid-cols-[52px_1fr_1fr_1fr_100px_140px] gap-4";
@@ -12,12 +12,12 @@ const EMPTY = "-";
 
 function isMissing(row: MemberRow, key: SortKey): boolean {
   if (key === "lastActive") return row.daysSinceActive === null;
-  if (key === "elo") return false;
+  if (key === "mmr") return false;
   return row[key] === EMPTY;
 }
 
 function compare(a: MemberRow, b: MemberRow, key: SortKey): number {
-  if (key === "elo") return a.elo - b.elo;
+  if (key === "mmr") return a.mmr - b.mmr;
   if (key === "lastActive") return (a.daysSinceActive ?? 0) - (b.daysSinceActive ?? 0);
   return a[key].localeCompare(b[key], "ko");
 }
@@ -82,7 +82,7 @@ export function MemberTable({ rows }: { rows: MemberRow[] }) {
         <div>실명</div>
         <SortHeader label="카톡 닉네임" sortKey="kakaoNickname" active={sort?.key === "kakaoNickname"} dir={sort?.dir ?? "asc"} onSort={onSort} />
         <SortHeader label="디코 닉네임" sortKey="discordHandle" active={sort?.key === "discordHandle"} dir={sort?.dir ?? "asc"} onSort={onSort} />
-        <SortHeader label="ELO" sortKey="elo" active={sort?.key === "elo"} dir={sort?.dir ?? "asc"} onSort={onSort} align="right" />
+        <SortHeader label="MMR" sortKey="mmr" active={sort?.key === "mmr"} dir={sort?.dir ?? "asc"} onSort={onSort} align="right" />
         <SortHeader label="마지막 활동" sortKey="lastActive" active={sort?.key === "lastActive"} dir={sort?.dir ?? "asc"} onSort={onSort} align="right" />
       </div>
       {sorted.map((m, i) => (
@@ -98,8 +98,8 @@ export function MemberTable({ rows }: { rows: MemberRow[] }) {
           <div className={`truncate font-mono text-[12.5px] ${m.discordHandle === EMPTY ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
             {m.discordHandle}
           </div>
-          <div className={`text-right font-mono text-[14.5px] font-bold ${m.elo >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
-            {m.elo}
+          <div className={`text-right font-mono text-[14.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
+            {m.mmr}
           </div>
           <div
             className={`text-right font-mono text-[12.5px] ${

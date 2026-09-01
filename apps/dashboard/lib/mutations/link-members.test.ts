@@ -16,7 +16,7 @@ afterAll(async () => {
 describe("linkMembers", () => {
   it("merges a discord-only half member with a kakao-only half member into one row", async () => {
     const discordSide = await prisma.member.create({
-      data: { discordUserId: "d-1", discordHandle: "minjae0", elo: 1390 },
+      data: { discordUserId: "d-1", discordHandle: "minjae0", mmr: 1390 },
     });
     const kakaoSide = await prisma.member.create({
       data: { kakaoUserId: "k-1", kakaoNickname: "재현정글", lastActiveAt: new Date("2026-08-20T00:00:00Z") },
@@ -26,7 +26,7 @@ describe("linkMembers", () => {
 
     expect(merged.discordUserId).toBe("d-1");
     expect(merged.kakaoUserId).toBe("k-1");
-    expect(merged.elo).toBe(1390);
+    expect(merged.mmr).toBe(1390);
 
     const remaining = await prisma.member.findMany();
     expect(remaining).toHaveLength(1);

@@ -13,14 +13,14 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function createLinkedMember(elo: number) {
+async function createLinkedMember(mmr: number) {
   return prisma.member.create({
-    data: { discordUserId: `d-${elo}-${Math.random()}`, kakaoUserId: `k-${elo}-${Math.random()}`, elo },
+    data: { discordUserId: `d-${mmr}-${Math.random()}`, kakaoUserId: `k-${mmr}-${Math.random()}`, mmr },
   });
 }
 
 describe("saveGameResult", () => {
-  it("updates each participant's elo and records a GameResult with participants", async () => {
+  it("updates each participant's mmr and records a GameResult with participants", async () => {
     const blue1 = await createLinkedMember(1500);
     const blue2 = await createLinkedMember(1500);
     const red1 = await createLinkedMember(1500);
@@ -35,11 +35,15 @@ describe("saveGameResult", () => {
 
     expect(result.updates).toHaveLength(4);
     const blueUpdate = result.updates.find((u) => u.memberId === blue1.id)!;
-    expect(blueUpdate.eloBefore).toBe(1500);
-    expect(blueUpdate.eloAfter).toBe(1516);
+    expect(blueUpdate.mmrBefore).toBe(1500);
+    expect(blueUpdate.mmrAfter).toBe(1517);
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue1.id } });
-    expect(refreshed.elo).toBe(1516);
+    expect(refreshed.mmr).toBe(1517);
+
+    // The losing team still gains the participation point, so -16 lands at -15.
+    const redUpdate = result.updates.find((u) => u.memberId === red1.id)!;
+    expect(redUpdate.mmrAfter).toBe(1485);
 
     const participants = await prisma.gameParticipant.findMany({ where: { gameResultId: result.gameResultId } });
     expect(participants).toHaveLength(4);

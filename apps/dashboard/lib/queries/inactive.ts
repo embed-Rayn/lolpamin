@@ -7,7 +7,7 @@ export interface InactiveRow {
   kakaoNickname: string;
   daysSinceActive: number;
   lastActiveDate: string;
-  elo: number;
+  mmr: number;
   gameCount: number;
 }
 
@@ -46,7 +46,7 @@ export async function getInactiveReportData(): Promise<InactiveReportData> {
       kakaoNickname: m.kakaoNickname ?? "카톡 미연결",
       daysSinceActive,
       lastActiveDate: lastActiveDate.toISOString().slice(0, 10),
-      elo: m.elo,
+      mmr: m.mmr,
       gameCount: m._count.participants,
     };
   });

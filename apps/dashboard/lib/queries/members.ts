@@ -8,7 +8,7 @@ export interface MemberRow {
   realName: string;
   kakaoNickname: string;
   discordHandle: string;
-  elo: number;
+  mmr: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
@@ -18,7 +18,7 @@ export interface MemberListData {
   totalCount: number;
   halfCount: number;
   unassignedCount: number;
-  averageElo: number;
+  averageMmr: number;
   rows: MemberRow[];
 }
 
@@ -34,7 +34,7 @@ function toRow(m: Member, now: Date): MemberRow {
     realName: m.realName ?? "-",
     kakaoNickname: m.kakaoNickname ?? m.kakaoUserId ?? "-",
     discordHandle: m.discordHandle ?? m.discordUserId ?? "-",
-    elo: m.elo,
+    mmr: m.mmr,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname),
@@ -51,9 +51,9 @@ export async function getMemberListData(
   const totalCount = allMembers.length;
   const halfCount = allMembers.filter((m) => !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname)).length;
   const unassignedCount = halfCount;
-  const averageElo = totalCount === 0
+  const averageMmr = totalCount === 0
     ? 0
-    : Math.round(allMembers.reduce((sum, m) => sum + m.elo, 0) / totalCount);
+    : Math.round(allMembers.reduce((sum, m) => sum + m.mmr, 0) / totalCount);
 
   const trimmedQuery = query.trim().toLowerCase();
   const rows = allMembers
@@ -72,5 +72,5 @@ export async function getMemberListData(
       return true;
     });
 
-  return { totalCount, halfCount, unassignedCount, averageElo, rows };
+  return { totalCount, halfCount, unassignedCount, averageMmr, rows };
 }

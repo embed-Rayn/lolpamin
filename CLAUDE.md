@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Management system for a Korean LoL (League of Legends) friend group. Tracks an internal ELO rating per member and detects members who have gone inactive in the group's KakaoTalk open chatroom. Design spec: `docs/superpowers/specs/2026-08-23-discord-kakao-integration-design.md` (Korean).
+Management system for a Korean LoL (League of Legends) friend group. Tracks an internal MMR rating per member and detects members who have gone inactive in the group's KakaoTalk open chatroom. Design spec: `docs/superpowers/specs/2026-08-23-discord-kakao-integration-design.md` (Korean).
 
 npm-workspaces monorepo, one shared Postgres:
 
 - `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload.
-- `apps/discord-bot` — discord.js read-only slash commands (`/elo`, `/랭킹`, `/전적`).
+- `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
-- `packages/core` — pure domain functions (ELO, merge, inactivity, display name, nickname parsing). No I/O, fully unit-tested.
+- `packages/core` — pure domain functions (MMR, merge, inactivity, display name, nickname parsing). No I/O, fully unit-tested.
 
 Workspace packages are consumed as TypeScript source (`main`/`types` point at `src/index.ts`); Next transpiles them via `transpilePackages`. There is no build step for `packages/*`.
 
@@ -58,7 +58,9 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 `Member` is one human, with a Discord side and a KakaoTalk side that arrive independently. A row holding only one side is a "반쪽(half) 회원". `linkMembers()` merges the Kakao-side row **into** the Discord-side row: it repoints `MentionLog` and `GameParticipant`, deletes the Kakao row *before* copying `kakaoUserId` onto the survivor (unique constraint would otherwise reject the update), and never rewrites `kakaoNickname` — the raw nickname string is the match key for future re-imports. `realName`/`age` are parsed out of the `이름/나이/닉네임태그` nickname format by `parseKakaoNickname`, best-effort only.
 
-ELO is team-average Elo, K=32, applied identically to every player on a team (`packages/core/src/elo.ts`). Default 1000.
+MMR is team-average Elo, K=32, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant — winners and losers alike — gains `PARTICIPATION_POINT` (1), so a game is worth +17/-15 between even teams and the rating pool inflates by one point per player per game. That is deliberate: showing up is always worth something.
+
+The rating was called ELO until the rename; the DB columns are `Member.mmr` and `GameParticipant.mmrBefore/mmrAfter`.
 
 Inactivity: >= 14 days since `lastActiveAt` (falling back to `createdAt`); 30+ days is flagged more severely. Only members with a KakaoTalk side are eligible — someone with no chatroom presence cannot be "inactive".
 
@@ -67,7 +69,7 @@ KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` exp
 ## Known inconsistencies
 
 - `getLinkedMembers()` (match builder pool) treats `kakaoUserId OR kakaoNickname` as linked, but `saveGameResult()` still requires `kakaoUserId`. Members created by the `.txt` import only ever get `kakaoNickname`, so they can be added to a team and then fail on save.
-- Display name fallback differs per surface: `getDisplayName()` in core is `realName ?? discordHandle ?? kakaoNickname ?? "이름 미확인"`, but `/elo` and `/전적` build their own shorter chain.
+- Display name fallback differs per surface: `getDisplayName()` in core is `realName ?? discordHandle ?? kakaoNickname ?? "이름 미확인"`, but `/mmr` and `/전적` build their own shorter chain.
 - Slash command names are Korean (`랭킹`, `전적`). If the Discord API rejects them, the documented fallback is renaming to `ranking`/`record` and re-deploying.
 
 ## Conventions

@@ -1,5 +1,5 @@
 import type { PrismaClient, Team } from "@lolpamin/db";
-import { calculateTeamEloChange } from "@lolpamin/core";
+import { calculateTeamMmrChange } from "@lolpamin/core";
 
 export interface SaveGameResultInput {
   playedAt: Date;
@@ -10,7 +10,7 @@ export interface SaveGameResultInput {
 
 export interface SaveGameResultOutput {
   gameResultId: string;
-  updates: Array<{ memberId: string; eloBefore: number; eloAfter: number }>;
+  updates: Array<{ memberId: string; mmrBefore: number; mmrAfter: number }>;
 }
 
 export async function saveGameResult(
@@ -38,9 +38,9 @@ export async function saveGameResult(
     }
 
     const byId = new Map(members.map((m) => [m.id, m]));
-    const { blueDelta, redDelta } = calculateTeamEloChange({
-      blueRatings: blueMemberIds.map((id) => byId.get(id)!.elo),
-      redRatings: redMemberIds.map((id) => byId.get(id)!.elo),
+    const { blueDelta, redDelta } = calculateTeamMmrChange({
+      blueRatings: blueMemberIds.map((id) => byId.get(id)!.mmr),
+      redRatings: redMemberIds.map((id) => byId.get(id)!.mmr),
       winner,
     });
 
@@ -55,13 +55,13 @@ export async function saveGameResult(
       ["RED", redMemberIds, redDelta],
     ] as const) {
       for (const memberId of ids) {
-        const eloBefore = byId.get(memberId)!.elo;
-        const eloAfter = eloBefore + delta;
+        const mmrBefore = byId.get(memberId)!.mmr;
+        const mmrAfter = mmrBefore + delta;
         await tx.gameParticipant.create({
-          data: { gameResultId: gameResult.id, memberId, team: team as Team, eloBefore, eloAfter },
+          data: { gameResultId: gameResult.id, memberId, team: team as Team, mmrBefore, mmrAfter },
         });
-        await tx.member.update({ where: { id: memberId }, data: { elo: eloAfter } });
-        updates.push({ memberId, eloBefore, eloAfter });
+        await tx.member.update({ where: { id: memberId }, data: { mmr: mmrAfter } });
+        updates.push({ memberId, mmrBefore, mmrAfter });
       }
     }
 

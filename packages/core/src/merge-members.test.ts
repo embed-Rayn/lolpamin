@@ -10,7 +10,7 @@ describe("mergeMembers", () => {
       discordUserId: "d-1",
       kakaoUserId: null,
       kakaoNickname: null,
-      elo: 1390,
+      mmr: 1390,
       lastActiveAt: null,
     };
     const secondary = {
@@ -20,7 +20,7 @@ describe("mergeMembers", () => {
       discordUserId: null,
       kakaoUserId: "k-1",
       kakaoNickname: "재현정글#KR2",
-      elo: 1000,
+      mmr: 1000,
       lastActiveAt: new Date("2026-08-20T00:00:00Z"),
     };
 
@@ -30,7 +30,7 @@ describe("mergeMembers", () => {
     expect(merged.kakaoUserId).toBe("k-1");
     expect(merged.realName).toBe("최민재");
     expect(merged.riotId).toBe("재현정글#KR2");
-    expect(merged.elo).toBe(1390);
+    expect(merged.mmr).toBe(1390);
     expect(merged.lastActiveAt).toEqual(new Date("2026-08-20T00:00:00Z"));
   });
 
@@ -42,7 +42,7 @@ describe("mergeMembers", () => {
       discordUserId: "d-1",
       kakaoUserId: null,
       kakaoNickname: null,
-      elo: 1390,
+      mmr: 1390,
       lastActiveAt: null,
     };
     const secondary = {
@@ -52,7 +52,7 @@ describe("mergeMembers", () => {
       discordUserId: null,
       kakaoUserId: null,
       kakaoNickname: "박병준/94/늑 구#1003",
-      elo: 1000,
+      mmr: 1000,
       lastActiveAt: null,
     };
 
@@ -65,8 +65,8 @@ describe("mergeMembers", () => {
     const older = new Date("2026-08-01T00:00:00Z");
     const newer = new Date("2026-08-20T00:00:00Z");
     const merged = mergeMembers(
-      { id: "a", realName: "a", riotId: null, discordUserId: "d", kakaoUserId: null, kakaoNickname: null, elo: 1000, lastActiveAt: newer },
-      { id: "b", realName: null, riotId: null, discordUserId: null, kakaoUserId: "k", kakaoNickname: null, elo: 1000, lastActiveAt: older }
+      { id: "a", realName: "a", riotId: null, discordUserId: "d", kakaoUserId: null, kakaoNickname: null, mmr: 1000, lastActiveAt: newer },
+      { id: "b", realName: null, riotId: null, discordUserId: null, kakaoUserId: "k", kakaoNickname: null, mmr: 1000, lastActiveAt: older }
     );
     expect(merged.lastActiveAt).toEqual(newer);
   });
