@@ -4,8 +4,22 @@ import type { Member, Prisma } from "@lolpamin/db";
 type ActivityCounts = { mentionLogs: number; participants: number };
 type MemberWithCounts = Member & {
   _count: ActivityCounts;
-  absorbed: Array<{ _count: ActivityCounts }>;
+  absorbed: Array<{ kakaoNickname: string | null; _count: ActivityCounts }>;
 };
+
+// 흡수해도 카톡 닉네임은 생존자에게 복사되지 않고 묘비에 남는다(활동 기록을 옮기지
+// 않으려고). 자기 행만 보면 연결을 끝낸 회원이 계속 "반쪽"으로 집계되므로 묘비까지 본다.
+function hasKakao(m: MemberWithCounts): boolean {
+  return (
+    m.kakaoUserId !== null ||
+    m.kakaoNickname !== null ||
+    m.absorbed.some((a) => a.kakaoNickname !== null)
+  );
+}
+
+function isHalfMember(m: MemberWithCounts): boolean {
+  return !m.discordUserId || !hasKakao(m);
+}
 
 export type MemberFilter = "all" | "half" | "inactive";
 
@@ -73,7 +87,7 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     elo: m.elo,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
-    isHalf: !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname),
+    isHalf: isHalfMember(m),
     mentionCount,
     gameCount,
     aliasCount: m.absorbed.length,
@@ -93,12 +107,15 @@ export async function getMemberListData(
     include: {
       _count: { select: { mentionLogs: true, participants: true } },
       // 삭제 확인창 숫자용. 묘비의 활동 기록도 함께 지워지므로 같이 세어 온다.
-      absorbed: { select: { _count: { select: { mentionLogs: true, participants: true } } } },
+      // kakaoNickname은 반쪽 회원 판정용 — 흡수한 회원의 닉네임은 묘비에 남는다.
+      absorbed: {
+        select: { kakaoNickname: true, _count: { select: { mentionLogs: true, participants: true } } },
+      },
     },
   });
 
   const totalCount = allMembers.length;
-  const halfCount = allMembers.filter((m) => !m.discordUserId || !(m.kakaoUserId || m.kakaoNickname)).length;
+  const halfCount = allMembers.filter(isHalfMember).length;
   const unassignedCount = halfCount;
   const averageElo = totalCount === 0
     ? 0

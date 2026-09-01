@@ -82,19 +82,24 @@ describe("absorbMember", () => {
     expect(after.lastActiveAt).toEqual(new Date(2026, 7, 20));
   });
 
-  it("hands the survivor the loser's kakao nickname so the link counts as complete", async () => {
+  it("leaves the kakao nickname on the tombstone alone", async () => {
+    // 과거 닉네임은 단 한 행만 들고 있어야 한다. 생존자에게 복사하면 processKakaoExport의
+    // 닉네임 조회가 두 행 사이에서 갈려 생존자를 집고, 멘션 로그가 묘비가 아니라 생존자에
+    // 쌓여 해제가 활동을 되돌려주지 못하게 된다. "연결 완료" 판정은 묘비까지 보는 쪽에서 한다.
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
     const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
 
     await absorbMember(prisma, loser.id, survivor.id);
 
     const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
-    expect(after.kakaoNickname).toBe("유대혁/95/유대혁#KR1");
+    expect(after.kakaoNickname).toBeNull();
+    const loserAfter = await prisma.member.findUniqueOrThrow({ where: { id: loser.id } });
+    expect(loserAfter.kakaoNickname).toBe("유대혁/95/유대혁#KR1");
   });
 
   it("keeps the survivor's own kakao nickname when it already has one", async () => {
-    // 개명 경로: 이미 연결된 회원이 새 닉네임 행을 흡수해도 화면에는 예전 닉네임이
-    // 남는다. 의도된 결과다 — absorb-member.ts의 주석 참고.
+    // 개명 경로: 이미 연결된 회원이 새 닉네임 행을 흡수해도 생존자의 kakaoNickname은
+    // 그대로다. absorb는 이 컬럼을 아예 건드리지 않는다.
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1", kakaoNickname: "예전닉" } });
     const loser = await prisma.member.create({ data: { kakaoNickname: "새닉" } });
 

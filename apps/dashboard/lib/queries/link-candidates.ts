@@ -42,6 +42,9 @@ export async function getKakaoAccountsWithCandidates(): Promise<KakaoAccountWith
     }),
     prisma.member.findMany({
       where: { mergedIntoId: null, discordUserId: { not: null } },
+      // 흡수로 연결을 끝낸 회원은 카톡 닉네임을 묘비에 두고 있다. kind 라벨이 자기
+      // 행만 보면 이미 연결된 회원이 "discord-only"로 잘못 표시된다.
+      include: { absorbed: { select: { kakaoNickname: true } } },
       orderBy: { createdAt: "asc" },
     }),
   ]);
@@ -57,7 +60,9 @@ export async function getKakaoAccountsWithCandidates(): Promise<KakaoAccountWith
           memberId: d.id,
           handle: d.discordHandle ?? d.discordUserId!,
           displayName,
-          kind: (d.kakaoNickname === null ? "discord-only" : "linked") as LinkCandidate["kind"],
+          kind: (d.kakaoNickname === null && d.absorbed.every((a) => a.kakaoNickname === null)
+            ? "discord-only"
+            : "linked") as LinkCandidate["kind"],
           score,
           reasons,
           isSole: false,

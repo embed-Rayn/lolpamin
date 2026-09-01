@@ -70,16 +70,10 @@ export async function absorbMember(
           realName: survivor.realName ?? loser.realName,
           age: survivor.age ?? loser.age,
           riotId: survivor.riotId ?? loser.riotId,
-          // "연결 완료"의 판정은 전부 생존자 행의 kakaoNickname을 본다(매칭 후보 풀,
-          // saveGameResult, 미활동 리포트, 반쪽 회원 집계). 묘비에만 남겨두면 연결을
-          // 끝낸 회원이 계속 미연결로 취급되므로 생존자에게도 복사한다. kakaoNickname에는
-          // 유니크 제약이 없어 묘비와 같은 값을 함께 들고 있어도 된다.
-          //
-          // 의도된 결과: 이미 연결된 회원이 새 닉네임 행을 흡수하는 개명 경로에서는
-          // ??가 생존자의 기존 값을 지키므로, 화면에는 예전 닉네임이 계속 보이고 새
-          // 닉네임은 묘비에 남는다. releaseMember가 이 대입을 정확히 되돌릴 수 있게
-          // 하려고 감수한 것이며, 닉네임 표시 갱신은 여기서 다루지 않는다.
-          kakaoNickname: survivor.kakaoNickname ?? loser.kakaoNickname,
+          // kakaoNickname은 생존자에게 복사하지 않는다. 과거 닉네임을 한 행만 들고 있어야
+          // processKakaoExport의 닉네임 조회가 묘비를 정확히 집어 멘션 로그를 거기 남기고,
+          // 그래야 해제가 mergedIntoId 한 컬럼으로 끝난다. "연결 완료" 판정은 묘비까지
+          // 함께 보는 쪽(queries/*, saveGameResult)에서 처리한다.
           lastActiveAt: laterOf(survivorLastActiveAt, loserLastActiveAt),
         },
       });

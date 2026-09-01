@@ -2,6 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { processKakaoExport } from "./process-export";
+import { absorbMember } from "@/lib/mutations/absorb-member";
+import { releaseMember } from "@/lib/mutations/release-member";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -198,5 +200,38 @@ describe("processKakaoExport", () => {
     expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
     // 새 회원이 생기면 안 된다 — 묘비를 못 찾으면 여기서 3이 된다.
     expect(await prisma.member.count()).toBe(2);
+  });
+  // 흡수는 되돌릴 수 있어야 한다: 임포트가 과거 닉네임에 히트하면 멘션 로그는 묘비에
+  // 달려야 하고, 연결을 끊으면 그 활동이 풀려난 회원과 함께 돌아와야 한다. 생존자 행에
+  // 같은 닉네임이 함께 들어 있으면 위 findFirst가 생존자를 집어 로그가 그쪽에 쌓이고,
+  // 해제된 회원은 lastActiveAt이 null이 된다 — 되돌리기가 한 컬럼이 아니게 된다.
+  it("gives the activity back to the released member when the import hit its absorbed nickname", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", discordHandle: "daehyeok_" },
+    });
+    const absorbed = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/뚜비뚜밥#뚜비얌" },
+    });
+    await absorbMember(prisma, absorbed.id, survivor.id);
+
+    const upload = [
+      "게임구인방 님과 카카오톡 대화",
+      "저장한 날짜 : 2026-09-01 10:00:00",
+      "--------------- 2026년 9월 1일 화요일 ---------------",
+      "[김민준/94/늑 대#1003] [오전 9:00] @유대혁/95/뚜비뚜밥#뚜비얌",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+    expect(result).toEqual({ newMembers: 0, activityUpdates: 1, skippedAsAlreadyProcessed: 0 });
+    expect(await prisma.mentionLog.count({ where: { memberId: absorbed.id } })).toBe(1);
+    expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
+
+    await releaseMember(prisma, absorbed.id);
+
+    const released = await prisma.member.findUniqueOrThrow({ where: { id: absorbed.id } });
+    expect(released.mergedIntoId).toBeNull();
+    expect(released.lastActiveAt).not.toBeNull();
+    const survivorAfter = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(survivorAfter.lastActiveAt).toBeNull();
   });
 });

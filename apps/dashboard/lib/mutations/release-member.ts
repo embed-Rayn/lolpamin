@@ -18,29 +18,6 @@ async function recomputeLastActiveAt(tx: Prisma.TransactionClient, memberId: str
   await tx.member.update({ where: { id: memberId }, data: { lastActiveAt: latest._max.mentionedAt } });
 }
 
-// absorbMember는 생존자의 kakaoNickname이 비어 있을 때만 묘비의 값을 물려받는다.
-// 그러니 생존자가 지금 들고 있는 값이 이 묘비의 값과 같을 때만 되돌린다. 값이 다르면
-// (개명 경로처럼 생존자가 원래 자기 닉네임을 지킨 경우) 흡수가 만든 값이 아니므로
-// 건드리지 않는다. 되돌릴 때는 아직 붙어 있는 다른 묘비의 닉네임을 잇고, 없으면 비운다.
-async function recomputeKakaoNickname(
-  tx: Prisma.TransactionClient,
-  survivorId: string,
-  tombstoneNickname: string | null,
-): Promise<void> {
-  if (tombstoneNickname === null) return;
-  const survivor = await tx.member.findUniqueOrThrow({ where: { id: survivorId } });
-  if (survivor.kakaoNickname !== tombstoneNickname) return;
-
-  const remaining = await tx.member.findFirst({
-    where: { mergedIntoId: survivorId, kakaoNickname: { not: null } },
-    orderBy: { createdAt: "asc" },
-  });
-  await tx.member.update({
-    where: { id: survivorId },
-    data: { kakaoNickname: remaining?.kakaoNickname ?? null },
-  });
-}
-
 // releaseMember가 의도적으로 던지는 안내 문구. 서버 액션은 이 목록에 있는 메시지만
 // 관리자 화면에 그대로 보여준다.
 export const RELEASE_MEMBER_ERRORS = {
@@ -61,7 +38,6 @@ export async function releaseMember(prisma: PrismaClient, tombstoneId: string): 
 
       await recomputeLastActiveAt(tx, tombstoneId);
       await recomputeLastActiveAt(tx, survivorId);
-      await recomputeKakaoNickname(tx, survivorId, tombstone.kakaoNickname);
     },
     { timeout: 20000 },
   );

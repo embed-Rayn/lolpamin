@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers } from "@lolpamin/core";
+import { effectiveKakaoNickname } from "@/lib/queries/inactive";
 import { NavLink } from "./NavLink";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { HeaderAuth } from "./HeaderAuth";
@@ -16,11 +17,23 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
       where: { mergedIntoId: null },
-      select: { id: true, kakaoUserId: true, kakaoNickname: true, lastActiveAt: true, createdAt: true },
+      // absorbed는 미활동 후보 판정용 — 흡수한 회원의 카톡 닉네임은 묘비에 남으므로
+      // 자기 행만 보면 연결을 끝낸 회원이 사이드바 배지에서 통째로 빠진다.
+      select: {
+        id: true,
+        kakaoUserId: true,
+        kakaoNickname: true,
+        lastActiveAt: true,
+        createdAt: true,
+        absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "asc" } },
+      },
     }),
     getCurrentAdmin(),
   ]);
-  const inactiveNavCount = getInactiveMembers(allMembersForInactivity, new Date()).length;
+  const inactiveNavCount = getInactiveMembers(
+    allMembersForInactivity.map((m) => ({ ...m, kakaoNickname: effectiveKakaoNickname(m) })),
+    new Date(),
+  ).length;
 
   const navItems: Array<{ key: AppShellProps["activeNav"]; href: string; label: string; icon: string; badge?: string }> = [
     { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },

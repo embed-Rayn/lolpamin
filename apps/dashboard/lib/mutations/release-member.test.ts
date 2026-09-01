@@ -72,7 +72,9 @@ describe("releaseMember", () => {
     );
   });
 
-  it("takes back the kakao nickname the tombstone had lent the survivor", async () => {
+  it("leaves each side's kakao nickname where it was", async () => {
+    // 흡수가 생존자에게 닉네임을 복사하지 않으므로 되돌릴 것도 없다. 해제는
+    // mergedIntoId(와 그로부터 다시 계산되는 lastActiveAt)만 건드린다.
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
     const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
     await absorbMember(prisma, loser.id, survivor.id);
@@ -85,21 +87,23 @@ describe("releaseMember", () => {
     );
   });
 
-  it("falls back to a tombstone it still holds instead of blanking the nickname", async () => {
+  it("keeps the still-attached tombstone's nickname on its own row", async () => {
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
     const kept = await prisma.member.create({ data: { kakaoNickname: "남는닉" } });
     const released = await prisma.member.create({ data: { kakaoNickname: "떼는닉" } });
     await absorbMember(prisma, kept.id, survivor.id);
     await absorbMember(prisma, released.id, survivor.id);
-    // 첫 흡수에서 생존자가 "남는닉"을 받았으므로, 두 번째 묘비를 떼도 값은 그대로다.
-    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBe("남는닉");
 
-    await releaseMember(prisma, kept.id);
+    await releaseMember(prisma, released.id);
 
-    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBe("떼는닉");
+    // 생존자는 여전히 "남는닉" 묘비를 쥐고 있으므로 연결이 유지되지만, 그 닉네임은
+    // 묘비 행에만 있다 — 생존자 행에 복사본이 생기면 임포트 조회가 갈린다.
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: kept.id } })).mergedIntoId).toBe(survivor.id);
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: kept.id } })).kakaoNickname).toBe("남는닉");
   });
 
-  it("leaves a kakao nickname the survivor did not get from this tombstone alone", async () => {
+  it("leaves the survivor's own kakao nickname untouched", async () => {
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1", kakaoNickname: "예전닉" } });
     const loser = await prisma.member.create({ data: { kakaoNickname: "새닉" } });
     await absorbMember(prisma, loser.id, survivor.id);

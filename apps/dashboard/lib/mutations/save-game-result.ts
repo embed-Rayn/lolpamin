@@ -26,7 +26,12 @@ export async function saveGameResult(
 
   return prisma.$transaction(async (tx) => {
     const allIds = [...blueMemberIds, ...redMemberIds];
-    const members = await tx.member.findMany({ where: { id: { in: allIds } } });
+    // 카톡 닉네임은 흡수해도 묘비에 남으므로(활동 기록을 옮기지 않으려고), 연결 여부를
+    // 보려면 묘비의 닉네임도 함께 읽어와야 한다.
+    const members = await tx.member.findMany({
+      where: { id: { in: allIds } },
+      include: { absorbed: { select: { kakaoNickname: true } } },
+    });
 
     if (members.length !== allIds.length) {
       throw new Error("One or more participants do not exist");
@@ -36,8 +41,11 @@ export async function saveGameResult(
         throw new Error(`Participant ${member.id} was absorbed into another member and cannot play`);
       }
       // kakaoUserId는 이 시스템에서 채워지는 경로가 없다(카톡 봇 폐기). 연결은
-      // kakaoNickname으로 이뤄지므로 그것을 연결의 근거로 본다.
-      if (!member.discordUserId || !member.kakaoNickname) {
+      // kakaoNickname으로 이뤄지므로 그것을 연결의 근거로 본다 — 자기 행이든,
+      // 흡수해 둔 묘비든.
+      const hasKakaoNickname =
+        member.kakaoNickname !== null || member.absorbed.some((a) => a.kakaoNickname !== null);
+      if (!member.discordUserId || !hasKakaoNickname) {
         throw new Error(`Participant ${member.id} must be fully linked to play in a match`);
       }
     }
