@@ -234,4 +234,38 @@ describe("processKakaoExport", () => {
     const survivorAfter = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
     expect(survivorAfter.lastActiveAt).toBeNull();
   });
+
+  // normalize-kakao-nicknames.ts가 만들 수 있는 모양: 생존자와 그 묘비가 정규화된 카톡
+  // 닉네임을 완전히 똑같이 들고 있다(원래부터 정규화된 형태였던 로저의 경우). orderBy 없이
+  // findFirst로 매칭하면 어느 행이 걸릴지가 Postgres 쿼리 플래너에 달려 결과가 실행마다
+  // 달라질 수 있다 — 반드시 묘비 쪽이 걸려야 release로 활동이 되돌아온다.
+  it("hits the tombstone, not the survivor, when both share the exact same kakaoNickname", async () => {
+    const sharedNickname = "김민준/94/늑대#1003";
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-shared", kakaoNickname: sharedNickname, realName: "김민준" },
+    });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: sharedNickname, mergedIntoId: survivor.id },
+    });
+
+    const upload = [
+      "게임구인방 님과 카카오톡 대화",
+      "저장한 날짜 : 2026-09-01 10:00:00",
+      "--------------- 2026년 9월 1일 화요일 ---------------",
+      `[갑] [오전 9:00] @${sharedNickname}`,
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result).toEqual({ newMembers: 0, activityUpdates: 1, skippedAsAlreadyProcessed: 0 });
+
+    // 활동(lastActiveAt)은 생존자에게 올라가야 한다.
+    const survivorAfter = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(survivorAfter.lastActiveAt).not.toBeNull();
+
+    // 멘션 로그는 반드시 묘비에 달려야 한다 — 생존자에 달리면 release로 되돌릴 수 없다.
+    expect(await prisma.mentionLog.count({ where: { memberId: tombstone.id } })).toBe(1);
+    expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
+    expect(await prisma.member.count()).toBe(2);
+  });
 });

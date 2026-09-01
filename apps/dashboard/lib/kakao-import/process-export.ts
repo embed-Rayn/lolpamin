@@ -30,7 +30,16 @@ export async function processKakaoExport(
       const nickname = normalizeKakaoNickname(mention.mentionedNickname);
       if (nickname.length === 0) continue;
 
-      const existing = await tx.member.findFirst({ where: { kakaoNickname: nickname } });
+      // 같은 kakaoNickname을 가진 행이 둘 이상일 수 있다 — 정규화 배치(normalize-kakao-nicknames.ts)가
+      // 생존자에게 정규화된 닉네임을 남기면서, 원래부터 그 형태였던 묘비도 같은 값을 그대로
+      // 가지고 있을 수 있기 때문이다. 이때 묘비가 먼저 걸려야 아래 주석의 "히트한 행에 로그를
+      // 단다"가 실제로 되돌리기 가능한 쪽(묘비)에 붙는다. mergedIntoId가 있는 행(묘비)을
+      // 없는 행(생존자)보다 앞세우고, 묘비가 여럿이어도 결과가 항상 같도록 createdAt·id로
+      // 동률을 끊는다 — orderBy 없이는 Postgres 쿼리 플래너가 임의로 하나를 고른다.
+      const existing = await tx.member.findFirst({
+        where: { kakaoNickname: nickname },
+        orderBy: [{ mergedIntoId: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }, { id: "asc" }],
+      });
 
       let memberId: string;
       if (existing) {
