@@ -18,7 +18,9 @@ export function AccountMappingPanel({
 }) {
   const [selectedKakaoId, setSelectedKakaoId] = useState<string | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  // 성공과 실패를 색으로 구분한다 — 같은 회색 상자면 "연결 완료"와 거절 안내가
+  // 똑같아 보인다.
+  const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -52,7 +54,7 @@ export function AccountMappingPanel({
     setStatus(null);
     try {
       const { error } = await absorbMemberAction(selectedKakaoId, selectedCandidateId);
-      setStatus(error ?? "연결 완료");
+      setStatus({ text: error ?? "연결 완료", ok: !error });
       if (!error) {
         setSelectedKakaoId(null);
         setSelectedCandidateId(null);
@@ -67,7 +69,7 @@ export function AccountMappingPanel({
     setStatus(null);
     try {
       const { error } = await releaseMemberAction(aliasId);
-      setStatus(error ?? "연결을 끊었습니다");
+      setStatus({ text: error ?? "연결을 끊었습니다", ok: !error });
     } finally {
       setIsPending(false);
     }
@@ -166,8 +168,14 @@ export function AccountMappingPanel({
             </div>
           )}
           {status && (
-            <div className="w-full rounded-lg border border-white/[.06] bg-[#0F131B] p-2.5 text-[10.5px] leading-relaxed text-[#8A94A6]">
-              {status}
+            <div
+              className={`w-full rounded-lg border p-2.5 text-[10.5px] leading-relaxed ${
+                status.ok
+                  ? "border-[#9BD173]/30 bg-[#9BD173]/[.10] text-[#9BD173]"
+                  : "border-[#C6553F]/40 bg-[#C6553F]/[.12] text-[#C6553F]"
+              }`}
+            >
+              {status.text}
             </div>
           )}
         </div>
