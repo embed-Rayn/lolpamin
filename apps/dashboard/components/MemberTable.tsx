@@ -86,6 +86,7 @@ export function MemberTable({
               label={displayLabel(m)}
               mentionCount={m.mentionCount}
               gameCount={m.gameCount}
+              aliasCount={m.aliasCount}
             />
           ) : (
             <div />

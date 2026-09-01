@@ -71,6 +71,33 @@ describe("getMemberListData sorting", () => {
     expect(data.rows.map((r) => r.kakaoNickname)).toEqual(["가회원/95/ga#1", "나회원/95/na#1", "-"]);
   });
 
+  // 삭제 확인창은 이 숫자를 그대로 보여준다. 묘비 몫을 빼먹으면 "0건"이라 안내하고
+  // 실제로는 묘비의 기록까지 지운다 — 관리자가 잘못된 정보로 승인하게 된다.
+  it("counts the activity of the tombstones it absorbed in the delete confirmation numbers", async () => {
+    await resetDatabase(prisma);
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", kakaoNickname: "닉" } });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+    await prisma.mentionLog.createMany({
+      data: [
+        { memberId: tombstone.id, mentionedAt: new Date(2026, 7, 1), rawMessage: "@옛닉" },
+        { memberId: tombstone.id, mentionedAt: new Date(2026, 7, 2), rawMessage: "@옛닉" },
+      ],
+    });
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date(2026, 7, 3), winner: "BLUE" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: tombstone.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+    });
+
+    const data = await getMemberListData("all", "", "elo", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].mentionCount).toBe(2);
+    expect(data.rows[0].gameCount).toBe(1);
+    expect(data.rows[0].aliasCount).toBe(1);
+  });
+
   it("hides a member that was absorbed into another", async () => {
     await resetDatabase(prisma);
     const survivor = await prisma.member.create({ data: { realName: "유대혁", kakaoNickname: "유대혁/95/유대혁#KR1" } });
