@@ -109,11 +109,12 @@ export function AccountMappingPanel({
               <button
                 key={d.id}
                 onClick={() => setSelectedCandidateId(selectedCandidateId === d.id ? null : d.id)}
-                className={`rounded-lg border px-2.5 py-2 text-left font-mono text-[12.5px] ${
+                className={`flex flex-col rounded-lg border px-2.5 py-2 text-left ${
                   selectedCandidateId === d.id ? "border-[#5865F2] bg-[#5865F2]/[.14]" : "border-white/[.05] bg-[#1A2130]"
                 }`}
               >
-                {d.handle}
+                <span className="text-[12px] font-semibold">{d.displayName || d.handle}</span>
+                {d.displayName && <span className="font-mono text-[10px] text-[#7A8496]">{d.handle}</span>}
               </button>
             ))}
           </div>
