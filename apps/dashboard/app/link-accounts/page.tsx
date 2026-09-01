@@ -2,6 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { AccountMappingPanel } from "@/components/AccountMappingPanel";
 import { getPendingDiscordAccounts, getPendingKakaoAccounts } from "@/lib/queries/pending-accounts";
 
+// AppShell and the page queries read live DB rows; without this Next prerenders
+// them at build time and `next start` would serve a frozen snapshot.
+export const dynamic = "force-dynamic";
+
 export default async function LinkAccountsPage() {
   const [discordAccounts, kakaoAccounts] = await Promise.all([
     getPendingDiscordAccounts(),

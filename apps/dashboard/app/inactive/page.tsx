@@ -2,6 +2,10 @@ import { AppShell } from "@/components/AppShell";
 import { InactiveTable } from "@/components/InactiveTable";
 import { getInactiveReportData } from "@/lib/queries/inactive";
 
+// AppShell and the page queries read live DB rows; without this Next prerenders
+// them at build time and `next start` would serve a frozen snapshot.
+export const dynamic = "force-dynamic";
+
 export default async function InactivePage() {
   const data = await getInactiveReportData();
 
