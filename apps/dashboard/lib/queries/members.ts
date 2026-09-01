@@ -21,7 +21,24 @@ function isHalfMember(m: MemberWithCounts): boolean {
   return !m.discordUserId || !hasKakao(m);
 }
 
-export type MemberFilter = "all" | "half" | "inactive";
+// 화면에 띄울 카톡 닉네임. 흡수한 회원은 자기 행이 비어 있고 묘비가 값을 들고 있으므로,
+// 그대로 두면 연결을 끝낸 회원이 목록에서 "-"로 보인다.
+function displayKakaoNickname(m: MemberWithCounts): string {
+  return (
+    m.kakaoNickname ??
+    m.absorbed.find((a) => a.kakaoNickname !== null)?.kakaoNickname ??
+    m.kakaoUserId ??
+    "-"
+  );
+}
+
+export type MemberFilter = "all" | "linked" | "kakaoOnly" | "discordOnly" | "inactive";
+
+const MEMBER_FILTERS: MemberFilter[] = ["all", "linked", "kakaoOnly", "discordOnly", "inactive"];
+
+export function parseMemberFilter(value: string | undefined): MemberFilter {
+  return MEMBER_FILTERS.includes(value as MemberFilter) ? (value as MemberFilter) : "all";
+}
 
 export type MemberSort = "elo" | "realName" | "kakaoNickname";
 export type SortDirection = "asc" | "desc";
@@ -53,6 +70,9 @@ export interface MemberRow {
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
+  // 연결 상태 필터용. isHalf 하나로는 "카톡만"과 "디코만"을 가를 수 없다.
+  hasDiscord: boolean;
+  hasKakao: boolean;
   // 삭제 확인창에 보여줄 숫자. deleteMember는 이 회원이 흡수한 묘비와 그 묘비의 기록까지
   // 함께 지우므로, 세 값 모두 묘비 몫을 합산한 것이다.
   mentionCount: number;
@@ -82,12 +102,14 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
   return {
     id: m.id,
     realName: m.realName ?? "-",
-    kakaoNickname: m.kakaoNickname ?? m.kakaoUserId ?? "-",
+    kakaoNickname: displayKakaoNickname(m),
     discordHandle: m.discordHandle ?? m.discordUserId ?? "-",
     elo: m.elo,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: isHalfMember(m),
+    hasDiscord: m.discordUserId !== null,
+    hasKakao: hasKakao(m),
     mentionCount,
     gameCount,
     aliasCount: m.absorbed.length,
@@ -125,7 +147,9 @@ export async function getMemberListData(
   const rows = allMembers
     .map((m) => toRow(m, now))
     .filter((row) => {
-      if (filter === "half" && !row.isHalf) return false;
+      if (filter === "linked" && !(row.hasDiscord && row.hasKakao)) return false;
+      if (filter === "kakaoOnly" && (row.hasDiscord || !row.hasKakao)) return false;
+      if (filter === "discordOnly" && (!row.hasDiscord || row.hasKakao)) return false;
       if (filter === "inactive" && (row.daysSinceActive === null || row.daysSinceActive < 14)) return false;
       if (
         trimmedQuery &&

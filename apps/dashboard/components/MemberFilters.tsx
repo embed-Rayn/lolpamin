@@ -3,9 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MemberFilter } from "@/lib/queries/members";
 
+// "미연결만"은 카톡만 + 디코만이라 한 덩어리로 묶여 있었다. 어느 쪽이 비었는지가
+// 연결 작업에서는 정작 중요한 정보라 둘로 나눴다.
 const FILTERS: Array<{ key: MemberFilter; label: string }> = [
   { key: "all", label: "전체" },
-  { key: "half", label: "미연결만" },
+  { key: "linked", label: "연결됨" },
+  { key: "kakaoOnly", label: "카톡만" },
+  { key: "discordOnly", label: "디코만" },
   { key: "inactive", label: "미활동만" },
 ];
 
