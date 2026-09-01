@@ -19,6 +19,11 @@ async function main(): Promise<void> {
       ` [묘비에 남은 mentionLogs=${pair.loserMentionLogs}, gameParticipants=${pair.loserGameParticipants}]`);
   }
 
+  console.log("skippedGroups:");
+  for (const group of result.skippedGroups) {
+    console.log(`  ${JSON.stringify(group.nickname)} [${group.memberIds.join(", ")}] — ${group.reason}`);
+  }
+
   console.log("after:", {
     members: await prisma.member.count(),
     activeMembers: await prisma.member.count({ where: { mergedIntoId: null } }),

@@ -176,7 +176,7 @@ describe("normalizeKakaoNicknames", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const second = await normalizeKakaoNicknames(prisma);
 
-    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [] });
+    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [], skippedGroups: [] });
     expect(await prisma.member.count({ where: { mergedIntoId: null } })).toBe(1);
     const afterSecond = await prisma.member.findFirstOrThrow({ where: { mergedIntoId: null } });
     expect(afterSecond.updatedAt).toEqual(afterFirst.updatedAt);
@@ -272,6 +272,43 @@ describe("normalizeKakaoNicknames", () => {
     await normalizeKakaoNicknames(prisma);
     const second = await normalizeKakaoNicknames(prisma);
 
-    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [] });
+    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [], skippedGroups: [] });
+  });
+
+  it("keeps the kakao account holder as the survivor", async () => {
+    // 카톡 계정 ID도 @unique다. 그 값을 쥔 채 묘비가 되면 같은 계정을 다시 가져올 때
+    // 제약에 막힌다(불변식 1) — 그래서 먼저 만들어진 쪽보다 우선해서 남긴다.
+    const older = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    const holder = await prisma.member.create({
+      data: { kakaoUserId: "k-1", kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(1);
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: holder.id } })).mergedIntoId).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: older.id } })).mergedIntoId).toBe(holder.id);
+  });
+
+  it("skips a group that could only be merged by tombstoning a platform account id", async () => {
+    const discordSide = await prisma.member.create({
+      data: { discordUserId: "d-1", kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    const kakaoSide = await prisma.member.create({
+      data: { kakaoUserId: "k-1", kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(0);
+    expect(result.mergedPairs).toEqual([]);
+    expect(result.skippedGroups).toHaveLength(1);
+    expect(result.skippedGroups[0].nickname).toBe("유대혁/95/유대혁#KR1");
+    expect(result.skippedGroups[0].memberIds).toEqual([discordSide.id, kakaoSide.id]);
+    // 두 회원 모두 활성인 채로 남아야 한다 — 불변식 1을 깨느니 사람이 정리하게 둔다.
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: discordSide.id } })).mergedIntoId).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: kakaoSide.id } })).mergedIntoId).toBeNull();
   });
 });
