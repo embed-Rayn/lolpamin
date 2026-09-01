@@ -4,9 +4,9 @@ import { MemberTable } from "@/components/MemberTable";
 import { MemberFilters } from "@/components/MemberFilters";
 import {
   getMemberListData,
+  parseMemberFilter,
   parseMemberSort,
   parseSortDirection,
-  type MemberFilter,
 } from "@/lib/queries/members";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
@@ -15,7 +15,7 @@ export default async function MembersPage({
 }: {
   searchParams: { filter?: string; q?: string; sort?: string; dir?: string };
 }) {
-  const filter = (searchParams.filter ?? "all") as MemberFilter;
+  const filter = parseMemberFilter(searchParams.filter);
   const query = searchParams.q ?? "";
   const sort = parseMemberSort(searchParams.sort);
   const dir = parseSortDirection(searchParams.dir);

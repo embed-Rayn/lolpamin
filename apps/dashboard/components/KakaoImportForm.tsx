@@ -68,6 +68,9 @@ export function KakaoImportForm({ isAdmin }: { isAdmin: boolean }) {
           <div className="rounded-lg border border-white/[.06] bg-[#0F131B] px-3 py-2.5">
             <div className="text-[10.5px] text-[#7A8496]">신규 회원</div>
             <div className="font-mono text-[18px] font-bold text-[#8FB4F5]">{result.newMembers}</div>
+            {result.newMembers > 0 && (
+              <div className="mt-1 text-[10px] text-[#C9A227]">계정 연결에서 확인 필요</div>
+            )}
           </div>
           <div className="rounded-lg border border-white/[.06] bg-[#0F131B] px-3 py-2.5">
             <div className="text-[10.5px] text-[#7A8496]">활동 갱신</div>

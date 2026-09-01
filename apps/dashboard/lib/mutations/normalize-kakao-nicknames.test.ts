@@ -30,7 +30,7 @@ describe("normalizeKakaoNicknames", () => {
     expect(member.kakaoNickname).toBe("유승수/98/ModCow#KR98");
   });
 
-  it("merges two members that normalize to the same nickname, moving their activity", async () => {
+  it("merges two members that normalize to the same nickname, tombstoning the loser and leaving its activity in place", async () => {
     const older = await prisma.member.create({
       data: {
         kakaoNickname: "유승수/98/ModCow#KR98",
@@ -51,14 +51,16 @@ describe("normalizeKakaoNicknames", () => {
     const result = await normalizeKakaoNicknames(prisma);
 
     expect(result.merged).toBe(1);
-    const members = await prisma.member.findMany();
-    expect(members).toHaveLength(1);
-    expect(members[0].id).toBe(older.id);
-    expect(members[0].elo).toBe(1200);
-    expect(members[0].lastActiveAt).toEqual(new Date("2026-08-20T00:00:00Z"));
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.mergedIntoId).toBeNull();
+    expect(survivor.elo).toBe(1200);
+    expect(survivor.lastActiveAt).toEqual(new Date("2026-08-20T00:00:00Z"));
+    const loser = await prisma.member.findUniqueOrThrow({ where: { id: newer.id } });
+    expect(loser.mergedIntoId).toBe(older.id);
+    // 활동기록은 옮기지 않고 묘비(패자) 행에 그대로 남는다.
     const logs = await prisma.mentionLog.findMany();
     expect(logs).toHaveLength(1);
-    expect(logs[0].memberId).toBe(older.id);
+    expect(logs[0].memberId).toBe(newer.id);
 
     expect(result.mergedPairs).toEqual([
       {
@@ -66,14 +68,14 @@ describe("normalizeKakaoNicknames", () => {
         survivorNickname: "유승수/98/ModCow#KR98",
         loserId: newer.id,
         loserNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
-        movedMentionLogs: 1,
-        movedGameParticipants: 0,
+        loserMentionLogs: 1,
+        loserGameParticipants: 0,
       },
     ]);
   });
 
   it("keeps the linked member as the survivor even when it was created later", async () => {
-    await prisma.member.create({
+    const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-01T00:00:00Z") },
     });
     const linked = await prisma.member.create({
@@ -86,9 +88,11 @@ describe("normalizeKakaoNicknames", () => {
 
     await normalizeKakaoNicknames(prisma);
 
-    const members = await prisma.member.findMany();
-    expect(members).toHaveLength(1);
-    expect(members[0].id).toBe(linked.id);
+    const activeMembers = await prisma.member.findMany({ where: { mergedIntoId: null } });
+    expect(activeMembers).toHaveLength(1);
+    expect(activeMembers[0].id).toBe(linked.id);
+    const tombstone = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(tombstone.mergedIntoId).toBe(linked.id);
   });
 
   it("fills a blank realName from the normalized nickname", async () => {
@@ -163,7 +167,7 @@ describe("normalizeKakaoNicknames", () => {
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)" } });
     await prisma.member.create({ data: { kakaoNickname: "유승수/98/ModCow#KR98" } });
     await normalizeKakaoNicknames(prisma);
-    const afterFirst = await prisma.member.findFirstOrThrow();
+    const afterFirst = await prisma.member.findFirstOrThrow({ where: { mergedIntoId: null } });
 
     // Give the clock room to move so a stray no-op UPDATE (which Prisma's
     // @updatedAt bumps regardless of whether any field actually changed)
@@ -172,13 +176,13 @@ describe("normalizeKakaoNicknames", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     const second = await normalizeKakaoNicknames(prisma);
 
-    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [] });
-    expect(await prisma.member.count()).toBe(1);
-    const afterSecond = await prisma.member.findFirstOrThrow();
+    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [], skippedGroups: [] });
+    expect(await prisma.member.count({ where: { mergedIntoId: null } })).toBe(1);
+    const afterSecond = await prisma.member.findFirstOrThrow({ where: { mergedIntoId: null } });
     expect(afterSecond.updatedAt).toEqual(afterFirst.updatedAt);
   });
 
-  it("moves GameParticipant rows to the survivor along with mention logs", async () => {
+  it("leaves GameParticipant rows on the tombstoned loser instead of moving them", async () => {
     const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98", createdAt: new Date("2026-08-01T00:00:00Z") },
     });
@@ -193,18 +197,21 @@ describe("normalizeKakaoNicknames", () => {
     const result = await normalizeKakaoNicknames(prisma);
 
     expect(result.merged).toBe(1);
+    expect(result.mergedPairs[0].loserGameParticipants).toBe(1);
     const participants = await prisma.gameParticipant.findMany();
     expect(participants).toHaveLength(1);
-    expect(participants[0].memberId).toBe(older.id);
+    expect(participants[0].memberId).toBe(newer.id);
     expect(participants[0].gameResultId).toBe(game.id);
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.mergedIntoId).toBeNull();
   });
 
-  it("rolls back entirely when a merge would collide on the same GameResult", async () => {
-    // Both duplicate members played in the same game under their own row —
-    // moving the loser's participation onto the survivor would violate the
-    // (gameResultId, memberId) unique constraint. The whole normalization
-    // runs in one transaction, so this must fail atomically: no merge, no
-    // partial write, nothing observable changes.
+  it("merges even when both duplicates played in the same GameResult, since participant rows stay put", async () => {
+    // Before tombstoning, this scenario forced a rollback: moving the loser's
+    // participation onto the survivor would have violated the
+    // (gameResultId, memberId) unique constraint. Now that GameParticipant
+    // rows are never moved, the merge can proceed normally — each row stays
+    // under its own (tombstoned or surviving) member.
     const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98", createdAt: new Date("2026-08-01T00:00:00Z") },
     });
@@ -219,11 +226,89 @@ describe("normalizeKakaoNicknames", () => {
       data: { gameResultId: game.id, memberId: newer.id, team: "RED", eloBefore: 1000, eloAfter: 984 },
     });
 
-    await expect(normalizeKakaoNicknames(prisma)).rejects.toThrow();
+    const result = await normalizeKakaoNicknames(prisma);
 
+    expect(result.merged).toBe(1);
+    expect(result.mergedPairs[0].loserGameParticipants).toBe(1);
     expect(await prisma.member.count()).toBe(2);
     expect(await prisma.gameParticipant.count()).toBe(2);
     const participants = await prisma.gameParticipant.findMany();
     expect(participants.map((p) => p.memberId).sort()).toEqual([newer.id, older.id].sort());
+    const loser = await prisma.member.findUniqueOrThrow({ where: { id: newer.id } });
+    expect(loser.mergedIntoId).toBe(older.id);
+  });
+
+  it("turns the loser into a tombstone instead of deleting it", async () => {
+    const first = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    const second = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+    await prisma.mentionLog.create({
+      data: { memberId: second.id, mentionedAt: new Date(2026, 7, 2), rawMessage: "@유대혁" },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(1);
+    const loser = await prisma.member.findUnique({ where: { id: second.id } });
+    expect(loser).not.toBeNull();
+    expect(loser?.mergedIntoId).toBe(first.id);
+    // 활동기록은 옮기지 않고 묘비에 남는다.
+    expect(await prisma.mentionLog.count({ where: { memberId: second.id } })).toBe(1);
+    expect(await prisma.mentionLog.count({ where: { memberId: first.id } })).toBe(0);
+    expect(result.mergedPairs[0].loserMentionLogs).toBe(1);
+  });
+
+  it("does not re-merge a tombstone on a second run", async () => {
+    await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+    const second = await normalizeKakaoNicknames(prisma);
+
+    expect(second).toEqual({ normalized: 0, merged: 0, realNamesFilled: 0, mergedPairs: [], skippedGroups: [] });
+  });
+
+  it("keeps the kakao account holder as the survivor", async () => {
+    // 카톡 계정 ID도 @unique다. 그 값을 쥔 채 묘비가 되면 같은 계정을 다시 가져올 때
+    // 제약에 막힌다(불변식 1) — 그래서 먼저 만들어진 쪽보다 우선해서 남긴다.
+    const older = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    const holder = await prisma.member.create({
+      data: { kakaoUserId: "k-1", kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(1);
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: holder.id } })).mergedIntoId).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: older.id } })).mergedIntoId).toBe(holder.id);
+  });
+
+  it("skips a group that could only be merged by tombstoning a platform account id", async () => {
+    const discordSide = await prisma.member.create({
+      data: { discordUserId: "d-1", kakaoNickname: "유대혁/95/유대혁#KR1", createdAt: new Date(2026, 7, 1) },
+    });
+    const kakaoSide = await prisma.member.create({
+      data: { kakaoUserId: "k-1", kakaoNickname: "유대혁/95/유대혁#KR1 (8시 도착)", createdAt: new Date(2026, 7, 2) },
+    });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(0);
+    expect(result.mergedPairs).toEqual([]);
+    expect(result.skippedGroups).toHaveLength(1);
+    expect(result.skippedGroups[0].nickname).toBe("유대혁/95/유대혁#KR1");
+    expect(result.skippedGroups[0].memberIds).toEqual([discordSide.id, kakaoSide.id]);
+    // 두 회원 모두 활성인 채로 남아야 한다 — 불변식 1을 깨느니 사람이 정리하게 둔다.
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: discordSide.id } })).mergedIntoId).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: kakaoSide.id } })).mergedIntoId).toBeNull();
   });
 });

@@ -6,8 +6,14 @@ export interface MergedPair {
   survivorNickname: string;
   loserId: string;
   loserNickname: string;
-  movedMentionLogs: number;
-  movedGameParticipants: number;
+  loserMentionLogs: number;
+  loserGameParticipants: number;
+}
+
+export interface SkippedGroup {
+  nickname: string;
+  memberIds: string[];
+  reason: string;
 }
 
 export interface NormalizeResult {
@@ -15,15 +21,24 @@ export interface NormalizeResult {
   merged: number;
   realNamesFilled: number;
   mergedPairs: MergedPair[];
+  skippedGroups: SkippedGroup[];
 }
 
-// 병합에서 살아남을 회원: 디스코드까지 연결된 쪽을 우선하고, 그다음 먼저 만들어진 쪽.
-// 연결된 레코드를 지우면 계정 연결 작업을 다시 해야 하므로 그쪽을 남긴다.
+// 유니크 컬럼을 가진 쪽이 앞선다(0), 없는 쪽이 뒤(1).
+function holdsFirst(value: string | null): number {
+  return value !== null ? 0 : 1;
+}
+
+// 병합에서 살아남을 회원: 디스코드까지 연결된 쪽, 그다음 카톡 계정 ID를 쥔 쪽, 그다음
+// 먼저 만들어진 쪽. 연결된 레코드를 지우면 계정 연결 작업을 다시 해야 하므로 그쪽을
+// 남긴다. discordUserId·kakaoUserId는 둘 다 @unique라서, 그 값을 쥔 채 묘비가 되면
+// 같은 계정을 다시 가져올 때 제약에 막힌다(불변식 1) — 그래서 정렬 기준에 함께 넣는다.
 function pickSurvivor(members: Member[]): Member {
   const sorted = [...members].sort((a, b) => {
-    const aLinked = a.discordUserId !== null ? 0 : 1;
-    const bLinked = b.discordUserId !== null ? 0 : 1;
-    if (aLinked !== bLinked) return aLinked - bLinked;
+    const byDiscord = holdsFirst(a.discordUserId) - holdsFirst(b.discordUserId);
+    if (byDiscord !== 0) return byDiscord;
+    const byKakao = holdsFirst(a.kakaoUserId) - holdsFirst(b.kakaoUserId);
+    if (byKakao !== 0) return byKakao;
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
   return sorted[0];
@@ -47,7 +62,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
       // Postgres는 findMany의 행 순서를 보장하지 않으므로 명시하지 않으면 3자 이상
       // 충돌에서 어느 값이 승계될지가 실행마다 달라질 수 있다.
       const members = await tx.member.findMany({
-        where: { kakaoNickname: { not: null } },
+        where: { mergedIntoId: null, kakaoNickname: { not: null } },
         orderBy: { createdAt: "asc" },
       });
 
@@ -64,6 +79,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
 
       let merged = 0;
       const mergedPairs: MergedPair[] = [];
+      const skippedGroups: SkippedGroup[] = [];
 
       for (const [nickname, group] of groups) {
         // 정규화 후 닉네임이 같아지는 회원 중 디스코드가 연결된 게 둘 이상이면, 그중
@@ -82,24 +98,39 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         const survivor = pickSurvivor(group);
         const losers = group.filter((m) => m.id !== survivor.id);
 
+        // 묘비는 discordUserId·kakaoUserId를 모두 비워야 한다(불변식 1). 정렬로도 피할 수
+        // 없는 조합(예: 디스코드는 A가, 카톡 계정 ID는 B가 쥔 경우)은 어느 쪽을 남겨도
+        // 유니크 컬럼을 쥔 묘비가 생기므로, 자동으로 망가뜨리지 않고 그룹을 건너뛰고
+        // 보고한다. absorbMember도 같은 상황을 거부한다.
+        const blocked = losers.filter((l) => l.discordUserId !== null || l.kakaoUserId !== null);
+        if (blocked.length > 0) {
+          skippedGroups.push({
+            nickname,
+            memberIds: group.map((m) => m.id),
+            reason:
+              `플랫폼 계정 ID를 가진 회원이 묘비가 되어야 하는 조합입니다: ` +
+              blocked
+                .map((m) => `id=${m.id}(discordUserId=${m.discordUserId}, kakaoUserId=${m.kakaoUserId})`)
+                .join(", ") +
+              " — 자동 병합을 건너뛰었습니다. 수동으로 정리한 뒤 다시 실행하세요.",
+          });
+          continue;
+        }
+
         for (const loser of losers) {
-          const movedMentionLogs = await tx.mentionLog.updateMany({
-            where: { memberId: loser.id },
-            data: { memberId: survivor.id },
-          });
-          const movedGameParticipants = await tx.gameParticipant.updateMany({
-            where: { memberId: loser.id },
-            data: { memberId: survivor.id },
-          });
-          await tx.member.delete({ where: { id: loser.id } });
+          // 활동기록을 옮기지 않고 묘비에 남긴다 — 연결을 끊으면 기록도 함께
+          // 돌아가야 하고, 그래야 되돌리기가 mergedIntoId 한 줄로 끝난다.
+          const loserMentionLogs = await tx.mentionLog.count({ where: { memberId: loser.id } });
+          const loserGameParticipants = await tx.gameParticipant.count({ where: { memberId: loser.id } });
+          await tx.member.update({ where: { id: loser.id }, data: { mergedIntoId: survivor.id } });
           merged++;
           mergedPairs.push({
             survivorId: survivor.id,
             survivorNickname: nickname,
             loserId: loser.id,
             loserNickname: loser.kakaoNickname!,
-            movedMentionLogs: movedMentionLogs.count,
-            movedGameParticipants: movedGameParticipants.count,
+            loserMentionLogs,
+            loserGameParticipants,
           });
         }
 
@@ -134,7 +165,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
       }
 
       const blankRealNames = await tx.member.findMany({
-        where: { realName: null, kakaoNickname: { not: null } },
+        where: { mergedIntoId: null, realName: null, kakaoNickname: { not: null } },
       });
       let realNamesFilled = 0;
       for (const member of blankRealNames) {
@@ -148,7 +179,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         realNamesFilled++;
       }
 
-      return { normalized, merged, realNamesFilled, mergedPairs };
+      return { normalized, merged, realNamesFilled, mergedPairs, skippedGroups };
     },
     { timeout: 20000 },
   );

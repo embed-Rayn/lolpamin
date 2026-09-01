@@ -18,17 +18,33 @@ export interface InactiveReportData {
   ratioLabel: string;
 }
 
+/**
+ * 카톡 연결 여부와 화면에 띄울 닉네임의 기준값. 흡수해도 카톡 닉네임은 생존자에게
+ * 복사되지 않고 묘비에 남으므로(활동 기록을 옮기지 않으려고), 자기 값이 없으면 아직
+ * 붙어 있는 묘비의 값을 대신 쓴다. packages/core는 DB를 모르므로 이 대체는 여기서 끝낸다.
+ */
+export function effectiveKakaoNickname(m: {
+  kakaoNickname: string | null;
+  absorbed: Array<{ kakaoNickname: string | null }>;
+}): string | null {
+  return m.kakaoNickname ?? m.absorbed.find((a) => a.kakaoNickname !== null)?.kakaoNickname ?? null;
+}
+
 export async function getInactiveReportData(): Promise<InactiveReportData> {
   const now = new Date();
   const members = await prisma.member.findMany({
-    include: { _count: { select: { participants: true } } },
+    where: { mergedIntoId: null },
+    include: {
+      _count: { select: { participants: true } },
+      absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "asc" } },
+    },
   });
 
   const inactive = getInactiveMembers(
     members.map((m) => ({
       id: m.id,
       kakaoUserId: m.kakaoUserId,
-      kakaoNickname: m.kakaoNickname,
+      kakaoNickname: effectiveKakaoNickname(m),
       lastActiveAt: m.lastActiveAt,
       createdAt: m.createdAt,
     })),
@@ -43,7 +59,7 @@ export async function getInactiveReportData(): Promise<InactiveReportData> {
     return {
       id,
       name: m.realName ?? m.discordHandle ?? "이름 미확인",
-      kakaoNickname: m.kakaoNickname ?? "카톡 미연결",
+      kakaoNickname: effectiveKakaoNickname(m) ?? "카톡 미연결",
       daysSinceActive,
       lastActiveDate: lastActiveDate.toISOString().slice(0, 10),
       elo: m.elo,

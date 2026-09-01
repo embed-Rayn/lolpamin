@@ -22,6 +22,7 @@ function guildMember(overrides: Partial<DiscordGuildMember> = {}): DiscordGuildM
   return {
     discordUserId: "d-1",
     username: "minjun",
+    displayName: null,
     isBot: false,
     joinedAt: new Date("2026-08-01T00:00:00Z"),
     ...overrides,
@@ -91,5 +92,28 @@ describe("importDiscordMembers", () => {
 
   it("returns zeroes for an empty list", async () => {
     expect(await importDiscordMembers(prisma, [])).toEqual({ created: 0, updated: 0, skippedBots: 0 });
+  });
+
+  it("stores the discord display name on a newly created member", async () => {
+    await importDiscordMembers(prisma, [
+      { discordUserId: "d-1", username: "daehyeok_", displayName: "유대혁/95/유대혁#KR1/sup", isBot: false, joinedAt: null },
+    ]);
+
+    const member = await prisma.member.findUnique({ where: { discordUserId: "d-1" } });
+    expect(member?.discordHandle).toBe("daehyeok_");
+    expect(member?.discordDisplayName).toBe("유대혁/95/유대혁#KR1/sup");
+  });
+
+  it("refreshes the display name of an existing member", async () => {
+    await prisma.member.create({
+      data: { discordUserId: "d-1", discordHandle: "daehyeok_", discordDisplayName: "옛이름" },
+    });
+
+    await importDiscordMembers(prisma, [
+      { discordUserId: "d-1", username: "daehyeok_", displayName: "새이름", isBot: false, joinedAt: null },
+    ]);
+
+    const member = await prisma.member.findUnique({ where: { discordUserId: "d-1" } });
+    expect(member?.discordDisplayName).toBe("새이름");
   });
 });
