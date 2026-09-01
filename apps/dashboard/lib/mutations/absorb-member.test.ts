@@ -82,6 +82,28 @@ describe("absorbMember", () => {
     expect(after.lastActiveAt).toEqual(new Date(2026, 7, 20));
   });
 
+  it("hands the survivor the loser's kakao nickname so the link counts as complete", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(after.kakaoNickname).toBe("유대혁/95/유대혁#KR1");
+  });
+
+  it("keeps the survivor's own kakao nickname when it already has one", async () => {
+    // 개명 경로: 이미 연결된 회원이 새 닉네임 행을 흡수해도 화면에는 예전 닉네임이
+    // 남는다. 의도된 결과다 — absorb-member.ts의 주석 참고.
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", kakaoNickname: "예전닉" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "새닉" } });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(after.kakaoNickname).toBe("예전닉");
+  });
+
   it("points at the ultimate survivor when the target is itself a tombstone", async () => {
     const top = await prisma.member.create({ data: { discordUserId: "d-1" } });
     const middle = await prisma.member.create({ data: { kakaoNickname: "옛닉" } });

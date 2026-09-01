@@ -72,6 +72,43 @@ describe("releaseMember", () => {
     );
   });
 
+  it("takes back the kakao nickname the tombstone had lent the survivor", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    await releaseMember(prisma, loser.id);
+
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: loser.id } })).kakaoNickname).toBe(
+      "유대혁/95/유대혁#KR1"
+    );
+  });
+
+  it("falls back to a tombstone it still holds instead of blanking the nickname", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const kept = await prisma.member.create({ data: { kakaoNickname: "남는닉" } });
+    const released = await prisma.member.create({ data: { kakaoNickname: "떼는닉" } });
+    await absorbMember(prisma, kept.id, survivor.id);
+    await absorbMember(prisma, released.id, survivor.id);
+    // 첫 흡수에서 생존자가 "남는닉"을 받았으므로, 두 번째 묘비를 떼도 값은 그대로다.
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBe("남는닉");
+
+    await releaseMember(prisma, kept.id);
+
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBe("떼는닉");
+  });
+
+  it("leaves a kakao nickname the survivor did not get from this tombstone alone", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", kakaoNickname: "예전닉" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "새닉" } });
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    await releaseMember(prisma, loser.id);
+
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } })).kakaoNickname).toBe("예전닉");
+  });
+
   it("refuses a member that is not a tombstone", async () => {
     const member = await prisma.member.create({ data: { kakaoNickname: "닉" } });
 

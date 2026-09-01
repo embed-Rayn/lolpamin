@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
+import { absorbMember } from "./absorb-member";
 import { saveGameResult } from "./save-game-result";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
@@ -95,6 +96,24 @@ describe("saveGameResult", () => {
         winner: "BLUE",
         blueMemberIds: [members[0].id],
         redMemberIds: [members[1].id],
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("accepts the survivor of an absorb as a participant", async () => {
+    // 흡수는 "연결 완료"여야 한다. 생존자가 카톡 닉네임을 넘겨받지 못하면 계정 연결을
+    // 끝낸 회원이 그대로 내전에서 거부되고, 이 브랜치가 고치려던 "경기 0건"이 남는다.
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-a", discordHandle: "h-a" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    await absorbMember(prisma, loser.id, survivor.id);
+    const other = await createLinkedMember(1500);
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [survivor.id],
+        redMemberIds: [other.id],
       })
     ).resolves.toBeDefined();
   });

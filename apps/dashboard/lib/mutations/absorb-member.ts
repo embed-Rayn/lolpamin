@@ -19,6 +19,14 @@ async function effectiveLastActiveAt(
   return laterOf(fieldValue, latest._max.mentionedAt);
 }
 
+// absorbMember가 의도적으로 던지는 안내 문구. 서버 액션은 이 목록에 있는 메시지만
+// 관리자 화면에 그대로 보여준다 — Prisma가 던지는 영어 예외를 노출하지 않기 위해서다.
+export const ABSORB_MEMBER_ERRORS = {
+  alreadyMerged: "이미 다른 회원에게 흡수된 계정입니다.",
+  platformAccountId: "플랫폼 계정 ID를 가진 회원은 흡수할 수 없습니다. 카톡 닉네임만 있는 회원만 흡수됩니다.",
+  selfAbsorb: "자기 자신에게 흡수시킬 수 없습니다.",
+} as const;
+
 /**
  * loser를 survivor에게 흡수시킨다. 행을 지우지 않고 mergedIntoId만 심으므로
  * releaseMember로 되돌릴 수 있고, loser의 kakaoNickname은 과거 닉네임으로 남아
@@ -34,11 +42,11 @@ export async function absorbMember(
       const loser = await tx.member.findUniqueOrThrow({ where: { id: loserId } });
 
       if (loser.mergedIntoId !== null) {
-        throw new Error("이미 다른 회원에게 흡수된 계정입니다.");
+        throw new Error(ABSORB_MEMBER_ERRORS.alreadyMerged);
       }
       // 묘비가 유니크 컬럼을 쥐고 있으면 같은 계정을 다시 가져올 때 제약에 막힌다.
       if (loser.discordUserId !== null || loser.kakaoUserId !== null) {
-        throw new Error("플랫폼 계정 ID를 가진 회원은 흡수할 수 없습니다. 카톡 닉네임만 있는 회원만 흡수됩니다.");
+        throw new Error(ABSORB_MEMBER_ERRORS.platformAccountId);
       }
 
       // 대상이 이미 묘비면 그 생존자를 가리키게 한다 — mergedIntoId는 항상 활성 회원을 가리킨다.
@@ -49,7 +57,7 @@ export async function absorbMember(
           : await tx.member.findUniqueOrThrow({ where: { id: target.mergedIntoId } });
 
       if (survivor.id === loser.id) {
-        throw new Error("자기 자신에게 흡수시킬 수 없습니다.");
+        throw new Error(ABSORB_MEMBER_ERRORS.selfAbsorb);
       }
 
       const survivorLastActiveAt = await effectiveLastActiveAt(tx, survivor.id, survivor.lastActiveAt);
@@ -62,6 +70,16 @@ export async function absorbMember(
           realName: survivor.realName ?? loser.realName,
           age: survivor.age ?? loser.age,
           riotId: survivor.riotId ?? loser.riotId,
+          // "연결 완료"의 판정은 전부 생존자 행의 kakaoNickname을 본다(매칭 후보 풀,
+          // saveGameResult, 미활동 리포트, 반쪽 회원 집계). 묘비에만 남겨두면 연결을
+          // 끝낸 회원이 계속 미연결로 취급되므로 생존자에게도 복사한다. kakaoNickname에는
+          // 유니크 제약이 없어 묘비와 같은 값을 함께 들고 있어도 된다.
+          //
+          // 의도된 결과: 이미 연결된 회원이 새 닉네임 행을 흡수하는 개명 경로에서는
+          // ??가 생존자의 기존 값을 지키므로, 화면에는 예전 닉네임이 계속 보이고 새
+          // 닉네임은 묘비에 남는다. releaseMember가 이 대입을 정확히 되돌릴 수 있게
+          // 하려고 감수한 것이며, 닉네임 표시 갱신은 여기서 다루지 않는다.
+          kakaoNickname: survivor.kakaoNickname ?? loser.kakaoNickname,
           lastActiveAt: laterOf(survivorLastActiveAt, loserLastActiveAt),
         },
       });
