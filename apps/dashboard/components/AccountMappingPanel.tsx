@@ -209,18 +209,21 @@ export function AccountMappingPanel({
             <span className="text-[12.5px] font-bold">연결된 계정</span>
             <span className="font-mono text-[11px] text-[#7A8496]">{membersWithAliases.length}</span>
           </div>
-          <div className="flex flex-col gap-2 p-3">
+          {/* 연결이 늘수록 길어지는 목록이라 남는 가로 폭을 빈칸이 아니라 단으로 쓴다. */}
+          <div className="grid grid-cols-1 gap-x-5 gap-y-3 p-3 md:grid-cols-2 xl:grid-cols-3">
             {membersWithAliases.map((m) => (
-              <div key={m.id} className="flex flex-col gap-1.5">
+              <div key={m.id} className="flex flex-col items-start gap-1.5">
                 <span className="text-[12px] font-semibold">{m.label}</span>
                 {m.aliases.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-white/[.05] bg-[#1A2130] px-2.5 py-1.5">
-                    <span className="font-mono text-[11px] text-[#8A94A6]">{a.kakaoNickname}</span>
+                  // 행을 내용 폭에 맞춘다. 늘리면 「끊기」가 자기가 끊는 별칭에서
+                  // 멀찍이 떨어진 오른쪽 끝에 가서 붙는다.
+                  <div key={a.id} className="flex max-w-full items-center gap-2 rounded-lg border border-white/[.05] bg-[#1A2130] px-2.5 py-1.5">
+                    <span className="truncate font-mono text-[11px] text-[#8A94A6]">{a.kakaoNickname}</span>
                     {isAdmin && (
                       <button
                         onClick={() => handleRelease(a.id)}
                         disabled={isPending}
-                        className="rounded-md border border-white/[.08] px-2 py-1 text-[10.5px] text-[#C6553F] disabled:cursor-not-allowed disabled:text-[#5C6577]"
+                        className="shrink-0 rounded-md border border-white/[.08] px-2 py-1 text-[10.5px] text-[#C6553F] disabled:cursor-not-allowed disabled:text-[#5C6577]"
                       >
                         끊기
                       </button>
