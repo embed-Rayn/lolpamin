@@ -13,7 +13,8 @@ import {
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
-import type { DrawAnimator } from "./animator";
+import type { PlaybackAnimator } from "./animator";
+import { BallLotteryCanvas } from "./BallLotteryCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
 import { DrawControls } from "./DrawControls";
 import { PickSpotlight } from "./PickSpotlight";
@@ -34,7 +35,7 @@ export function DrawScreen({
   // panel. The first draw freezes it into a DrawState.
   const [state, setState] = useState<DrawState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const animatorRef = useRef<DrawAnimator>(null);
+  const animatorRef = useRef<PlaybackAnimator>(null);
 
   const setupCandidates = useMemo(
     () =>
@@ -94,7 +95,11 @@ export function DrawScreen({
           locked={locked}
         />
 
-        <PickSpotlight ref={animatorRef} remaining={remaining} />
+        {variant === "ball" ? (
+          <BallLotteryCanvas ref={animatorRef} remaining={remaining} />
+        ) : (
+          <PickSpotlight ref={animatorRef} remaining={remaining} />
+        )}
 
         <div className="flex items-center justify-between">
           <DrawControls

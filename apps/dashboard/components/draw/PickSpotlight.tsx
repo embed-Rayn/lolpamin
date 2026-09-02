@@ -2,11 +2,11 @@
 
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import type { DrawCandidate } from "@lolpamin/core";
-import type { DrawAnimator } from "./animator";
+import type { PlaybackAnimator } from "./animator";
 
 // Text-only animator. Used while a canvas renderer is unavailable and as the
 // fallback when a browser cannot give us a 2D context.
-export const PickSpotlight = forwardRef<DrawAnimator, { remaining: DrawCandidate[] }>(
+export const PickSpotlight = forwardRef<PlaybackAnimator, { remaining: DrawCandidate[] }>(
   function PickSpotlight({ remaining }, ref) {
     const [shown, setShown] = useState<DrawCandidate | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
