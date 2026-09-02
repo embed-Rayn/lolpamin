@@ -197,3 +197,58 @@ describe("getMemberListData 디코 닉네임 표시", () => {
     expect(byHandle.rows).toHaveLength(1);
   });
 });
+
+// 라이엇 아이디를 바꾸면 카톡 닉네임이 따라 바뀌고, 임포트가 새 행을 만들어 같은 디코
+// 회원에게 흡수된다. 묘비가 둘 이상 쌓였을 때 어느 것이 현재 닉네임인지 정해야 한다.
+describe("닉네임을 바꾼 회원의 카톡 칸", () => {
+  it("가장 나중에 붙은 묘비의 닉네임을 띄운다", async () => {
+    await resetDatabase(prisma);
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", discordHandle: "daehyeok_", realName: "유대혁" },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/옛날아이디#KR1",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/새아이디#KR3",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].kakaoNickname).toBe("유대혁/95/새아이디#KR3");
+  });
+
+  it("옛 닉네임으로도 여전히 검색된다 — 묘비가 과거 이름을 들고 있다", async () => {
+    await resetDatabase(prisma);
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", discordHandle: "daehyeok_", realName: "유대혁" },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/옛날아이디#KR1",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/새아이디#KR3",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
+
+    const found = await getMemberListData("all", "옛날아이디", "mmr", "desc");
+
+    expect(found.rows).toHaveLength(1);
+  });
+});

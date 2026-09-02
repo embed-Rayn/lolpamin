@@ -35,8 +35,11 @@ export async function getInactiveReportData(): Promise<InactiveReportData> {
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
     include: {
-      _count: { select: { participants: true } },
-      absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "asc" } },
+      // 「내전 N회」에 취소한 경기는 넣지 않는다 — 되돌린 판은 없던 일이다. 참가 기록은
+      // 지우지 않으므로(경기 기록에 남아야 한다) 세는 쪽에서 걸러야 한다.
+      _count: { select: { participants: { where: { gameResult: { cancelledAt: null } } } } },
+      // 최신순 — effectiveKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
+      absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "desc" } },
     },
   });
 

@@ -71,3 +71,67 @@ describe("getInactiveReportData", () => {
     expect(data.rows.map((r) => r.id)).toEqual([loser.id]);
   });
 });
+
+describe("getInactiveReportData의 내전 횟수", () => {
+  async function playAndCancel(cancel: boolean) {
+    const { saveGameResult } = await import("@/lib/mutations/save-game-result");
+    const { cancelGameResult } = await import("@/lib/mutations/cancel-game-result");
+    const blue = await prisma.member.create({
+      data: { discordUserId: "d-b", kakaoNickname: "블루/95/blue#KR1", lastActiveAt: daysAgo(40) },
+    });
+    const red = await prisma.member.create({
+      data: { discordUserId: "d-r", kakaoNickname: "레드/95/red#KR1", lastActiveAt: daysAgo(40) },
+    });
+    const game = await saveGameResult(prisma, {
+      playedAt: daysAgo(3),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+    });
+    if (cancel) await cancelGameResult(prisma, game.gameResultId, null);
+    return blue;
+  }
+
+  it("counts a live game", async () => {
+    const blue = await playAndCancel(false);
+
+    const data = await getInactiveReportData();
+
+    expect(data.rows.find((r) => r.id === blue.id)?.gameCount).toBe(1);
+  });
+
+  // 취소한 경기는 없던 일이다. 빼지 않으면 되돌린 뒤에도 내전 횟수가 그대로 남는다.
+  it("leaves a cancelled game out of the count", async () => {
+    const blue = await playAndCancel(true);
+
+    const data = await getInactiveReportData();
+
+    expect(data.rows.find((r) => r.id === blue.id)?.gameCount).toBe(0);
+  });
+});
+
+describe("미활동 리포트의 카톡 닉네임", () => {
+  it("닉네임을 바꾼 회원은 최신 묘비의 이름으로 뜬다", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", realName: "유대혁", lastActiveAt: daysAgo(40) },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/옛날아이디#KR1",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/새아이디#KR3",
+        mergedIntoId: survivor.id,
+        createdAt: new Date("2026-09-01T00:00:00Z"),
+      },
+    });
+
+    const data = await getInactiveReportData();
+
+    expect(data.rows.find((r) => r.id === survivor.id)?.kakaoNickname).toBe("유대혁/95/새아이디#KR3");
+  });
+});

@@ -23,6 +23,11 @@ function isHalfMember(m: MemberWithCounts): boolean {
 
 // 화면에 띄울 카톡 닉네임. 흡수한 회원은 자기 행이 비어 있고 묘비가 값을 들고 있으므로,
 // 그대로 두면 연결을 끝낸 회원이 목록에서 "-"로 보인다.
+//
+// 묘비가 둘 이상일 수 있다 — 라이엇 아이디를 바꾸면 카톡 닉네임이 따라 바뀌고, 임포트가
+// 만든 새 행이 같은 회원에게 또 흡수된다. 그래서 조회는 묘비를 최신순으로 실어 오고
+// (getMemberListData의 orderBy) 여기서 첫 번째를 집는다. 오래된 쪽을 집으면 이름을
+// 바꿀 때마다 목록이 옛 닉네임으로 굳는다.
 function displayKakaoNickname(m: MemberWithCounts): string {
   return (
     m.kakaoNickname ??
@@ -142,6 +147,8 @@ export async function getMemberListData(
       // kakaoNickname은 반쪽 회원 판정용 — 흡수한 회원의 닉네임은 묘비에 남는다.
       absorbed: {
         select: { kakaoNickname: true, _count: { select: { mentionLogs: true, participants: true } } },
+        // 최신순 — displayKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
+        orderBy: { createdAt: "desc" },
       },
     },
   });
@@ -158,9 +165,15 @@ export async function getMemberListData(
   // 비어 있어서, 표시하는 값만 보면 이 목록에서 아예 찾을 수 없는 회원이 된다.
   function matchesQuery(m: MemberWithCounts, row: MemberRow): boolean {
     if (!trimmedQuery) return true;
-    return [row.realName, row.kakaoNickname, m.discordDisplayName, m.discordHandle].some(
-      (v) => v !== null && v.toLowerCase().includes(trimmedQuery)
-    );
+    // 묘비의 닉네임을 전부 훑는다. 화면에는 현재 닉네임 하나만 뜨지만, 닉네임을 바꾼
+    // 회원을 옛 이름으로 찾는 일이 잦다 — 카톡 대화에 남은 이름이 그것이다.
+    return [
+      row.realName,
+      m.kakaoNickname,
+      ...m.absorbed.map((a) => a.kakaoNickname),
+      m.discordDisplayName,
+      m.discordHandle,
+    ].some((v) => v !== null && v.toLowerCase().includes(trimmedQuery));
   }
 
   const rows = allMembers
