@@ -50,8 +50,8 @@ describe("deleteMember", () => {
     const game = await prisma.gameResult.create({ data: { playedAt: new Date(2026, 7, 29), winner: "BLUE" } });
     await prisma.gameParticipant.createMany({
       data: [
-        { gameResultId: game.id, memberId: leaving.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
-        { gameResultId: game.id, memberId: staying.id, team: "RED", eloBefore: 1000, eloAfter: 984 },
+        { gameResultId: game.id, memberId: leaving.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1016 },
+        { gameResultId: game.id, memberId: staying.id, team: "RED", mmrBefore: 1000, mmrAfter: 984 },
       ],
     });
 

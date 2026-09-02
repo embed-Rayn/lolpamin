@@ -43,10 +43,10 @@ describe("absorbMember", () => {
     expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
   });
 
-  it("fills the survivor's blank fields and keeps its elo", async () => {
-    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", elo: 1200 } });
+  it("fills the survivor's blank fields and keeps its mmr", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", mmr: 1200 } });
     const loser = await prisma.member.create({
-      data: { kakaoNickname: "유대혁/95/유대혁#KR1", realName: "유대혁", age: 95, riotId: "유대혁#KR1", elo: 900 },
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", realName: "유대혁", age: 95, riotId: "유대혁#KR1", mmr: 900 },
     });
 
     await absorbMember(prisma, loser.id, survivor.id);
@@ -55,7 +55,7 @@ describe("absorbMember", () => {
     expect(after.realName).toBe("유대혁");
     expect(after.age).toBe(95);
     expect(after.riotId).toBe("유대혁#KR1");
-    expect(after.elo).toBe(1200);
+    expect(after.mmr).toBe(1200);
   });
 
   it("does not overwrite a field the survivor already has", async () => {

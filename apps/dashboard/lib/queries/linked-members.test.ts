@@ -46,6 +46,38 @@ describe("getLinkedMembers", () => {
     expect(pool.map((m) => m.id)).toEqual([survivor.id]);
   });
 
+  it("exposes the discord handle and a zero record for a member who has never played", async () => {
+    await prisma.member.create({
+      data: { realName: "김도현", discordUserId: "d-1", discordHandle: "dohyun_kr", kakaoUserId: "k-1" },
+    });
+
+    const [option] = await getLinkedMembers();
+
+    expect(option.discordHandle).toBe("dohyun_kr");
+    expect(option).toMatchObject({ wins: 0, losses: 0 });
+  });
+
+  it("counts a win for the side that matches the game winner and a loss for the other", async () => {
+    const blue = await prisma.member.create({
+      data: { realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoUserId: "k-1" },
+    });
+    const red = await prisma.member.create({
+      data: { realName: "패자", discordUserId: "d-2", discordHandle: "loser", kakaoUserId: "k-2" },
+    });
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "BLUE" } });
+    await prisma.gameParticipant.createMany({
+      data: [
+        { gameResultId: game.id, memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
+        { gameResultId: game.id, memberId: red.id, team: "RED", mmrBefore: 1000, mmrAfter: 985 },
+      ],
+    });
+
+    const byName = new Map((await getLinkedMembers()).map((o) => [o.name, o]));
+
+    expect(byName.get("승자")).toMatchObject({ wins: 1, losses: 0 });
+    expect(byName.get("패자")).toMatchObject({ wins: 0, losses: 1 });
+  });
+
   it("takes the survivor back out of the pool when the link is released", async () => {
     const survivor = await prisma.member.create({ data: { discordUserId: "d-1", discordHandle: "daehyeok_" } });
     const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });

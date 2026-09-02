@@ -6,7 +6,7 @@ const LEADERBOARD_SIZE = 10;
 
 export const data = new SlashCommandBuilder()
   .setName("랭킹")
-  .setDescription(`ELO 상위 ${LEADERBOARD_SIZE}명을 보여줍니다`);
+  .setDescription(`MMR 상위 ${LEADERBOARD_SIZE}명을 보여줍니다`);
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   const entries = await getLeaderboard(prisma, LEADERBOARD_SIZE);
@@ -16,6 +16,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const lines = entries.map((e) => `${e.rank}. ${e.name} — ${e.elo}`).join("\n");
-  await interaction.reply(`**ELO 랭킹 TOP ${entries.length}**\n${lines}`);
+  const lines = entries.map((e) => `${e.rank}. ${e.name} — ${e.mmr}`).join("\n");
+  await interaction.reply(`**MMR 랭킹 TOP ${entries.length}**\n${lines}`);
 }

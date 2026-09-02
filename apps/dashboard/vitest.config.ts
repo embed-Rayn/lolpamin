@@ -1,7 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
-
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const dashboardRoot = fileURLToPath(new URL("./", import.meta.url));
 

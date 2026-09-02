@@ -23,7 +23,7 @@ model Member {
   discordJoinedAt    DateTime?
   kakaoUserId        String?  @unique
   kakaoNickname      String?
-  elo                Int      @default(1000)
+  mmr                Int      @default(1000)
   lastActiveAt       DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -56,8 +56,8 @@ model GameParticipant {
   memberId     String
   member       Member     @relation(fields: [memberId], references: [id])
   team         Team
-  eloBefore    Int
-  eloAfter     Int
+  mmrBefore    Int
+  mmrAfter     Int
 
   @@unique([gameResultId, memberId])
 }

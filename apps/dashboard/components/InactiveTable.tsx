@@ -2,7 +2,7 @@ import type { InactiveRow } from "@/lib/queries/inactive";
 import { LONG_INACTIVITY_THRESHOLD_DAYS } from "@lolpamin/core";
 
 export function InactiveTable({ rows }: { rows: InactiveRow[] }) {
-  const maxDays = Math.max(60, ...rows.map((r) => r.daysSinceActive));
+  const maxDays = Math.max(30, ...rows.map((r) => r.daysSinceActive));
 
   return (
     <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
@@ -15,7 +15,7 @@ export function InactiveTable({ rows }: { rows: InactiveRow[] }) {
         <div>카톡 닉네임</div>
         <div>경과일</div>
         <div className="text-right">마지막 활동</div>
-        <div className="text-right">ELO / 최근 내전</div>
+        <div className="text-right">MMR / 최근 내전</div>
       </div>
       {rows.map((r) => (
         <div key={r.id} className="grid grid-cols-[170px_150px_1fr_110px_130px] items-center border-b border-white/[.04] px-4.5 py-3 hover:bg-[#181E29]">
@@ -40,7 +40,7 @@ export function InactiveTable({ rows }: { rows: InactiveRow[] }) {
           </div>
           <div className="text-right font-mono text-[11.5px] text-[#7A8496]">{r.lastActiveDate}</div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="font-mono text-xs font-bold">{r.elo}</span>
+            <span className="font-mono text-xs font-bold">{r.mmr}</span>
             <span className="text-[10.5px] text-[#6E7889]">내전 {r.gameCount}회</span>
           </div>
         </div>

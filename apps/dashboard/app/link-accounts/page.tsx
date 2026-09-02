@@ -4,6 +4,10 @@ import { getPendingDiscordAccounts } from "@/lib/queries/pending-accounts";
 import { getKakaoAccountsWithCandidates, getMembersWithAliases } from "@/lib/queries/link-candidates";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
+// AppShell and the page queries read live DB rows; without this Next prerenders
+// them at build time and `next start` would serve a frozen snapshot.
+export const dynamic = "force-dynamic";
+
 export default async function LinkAccountsPage() {
   const [discordAccounts, kakaoAccounts, membersWithAliases, currentAdmin] = await Promise.all([
     getPendingDiscordAccounts(),

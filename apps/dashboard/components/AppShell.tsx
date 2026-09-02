@@ -6,7 +6,15 @@ import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { HeaderAuth } from "./HeaderAuth";
 
 export interface AppShellProps {
-  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts" | "admins";
+  activeNav:
+    | "members"
+    | "matches"
+    | "inactive"
+    | "kakao-import"
+    | "link-accounts"
+    | "admins"
+    | "draw-cannon"
+    | "draw-plinko";
   pageTitle: string;
   pageDesc: string;
   children: React.ReactNode;
@@ -41,10 +49,13 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "03", badge: String(inactiveNavCount) },
     { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "04" },
     { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "05" },
+    { key: "draw-cannon" as const, href: "/draw/cannon", label: "대포 뽑기", icon: "06" },
+    { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "07" },
   ];
 
   if (currentAdmin) {
-    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "06" });
+    // 06·07은 뽑기 두 개가 쓰므로 관리자는 08로 민다.
+    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "08" });
   }
 
   return (

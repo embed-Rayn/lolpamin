@@ -36,7 +36,7 @@ describe("normalizeKakaoNicknames", () => {
         kakaoNickname: "유승수/98/ModCow#KR98",
         createdAt: new Date("2026-08-01T00:00:00Z"),
         lastActiveAt: new Date("2026-08-10T00:00:00Z"),
-        elo: 1200,
+        mmr: 1200,
       },
     });
     const newer = await prisma.member.create({
@@ -53,7 +53,7 @@ describe("normalizeKakaoNicknames", () => {
     expect(result.merged).toBe(1);
     const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
     expect(survivor.mergedIntoId).toBeNull();
-    expect(survivor.elo).toBe(1200);
+    expect(survivor.mmr).toBe(1200);
     expect(survivor.lastActiveAt).toEqual(new Date("2026-08-20T00:00:00Z"));
     const loser = await prisma.member.findUniqueOrThrow({ where: { id: newer.id } });
     expect(loser.mergedIntoId).toBe(older.id);
@@ -191,7 +191,7 @@ describe("normalizeKakaoNicknames", () => {
     });
     const game = await prisma.gameResult.create({ data: { playedAt: new Date("2026-08-10T00:00:00Z"), winner: "BLUE" } });
     await prisma.gameParticipant.create({
-      data: { gameResultId: game.id, memberId: newer.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+      data: { gameResultId: game.id, memberId: newer.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1016 },
     });
 
     const result = await normalizeKakaoNicknames(prisma);
@@ -220,10 +220,10 @@ describe("normalizeKakaoNicknames", () => {
     });
     const game = await prisma.gameResult.create({ data: { playedAt: new Date("2026-08-10T00:00:00Z"), winner: "BLUE" } });
     await prisma.gameParticipant.create({
-      data: { gameResultId: game.id, memberId: older.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+      data: { gameResultId: game.id, memberId: older.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1016 },
     });
     await prisma.gameParticipant.create({
-      data: { gameResultId: game.id, memberId: newer.id, team: "RED", eloBefore: 1000, eloAfter: 984 },
+      data: { gameResultId: game.id, memberId: newer.id, team: "RED", mmrBefore: 1000, mmrAfter: 984 },
     });
 
     const result = await normalizeKakaoNicknames(prisma);

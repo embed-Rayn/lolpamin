@@ -1,5 +1,5 @@
 import { REST, Routes } from "discord.js";
-import * as eloCommand from "./commands/elo";
+import * as mmrCommand from "./commands/mmr";
 import * as leaderboardCommand from "./commands/leaderboard";
 import * as recordCommand from "./commands/record";
 
@@ -11,7 +11,7 @@ for (const key of REQUIRED_ENV_VARS) {
   }
 }
 
-const commandPayloads = [eloCommand.data.toJSON(), leaderboardCommand.data.toJSON(), recordCommand.data.toJSON()];
+const commandPayloads = [mmrCommand.data.toJSON(), leaderboardCommand.data.toJSON(), recordCommand.data.toJSON()];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 

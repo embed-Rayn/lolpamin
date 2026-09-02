@@ -20,9 +20,9 @@ const { getMemberListData, parseMemberSort, parseSortDirection } = await import(
 
 beforeEach(async () => {
   await resetDatabase(prisma);
-  await prisma.member.create({ data: { realName: "나회원", kakaoNickname: "나회원/95/na#1", elo: 1200 } });
-  await prisma.member.create({ data: { realName: "가회원", kakaoNickname: "가회원/95/ga#1", elo: 1500 } });
-  await prisma.member.create({ data: { realName: null, kakaoNickname: null, discordUserId: "d-1", elo: 1000 } });
+  await prisma.member.create({ data: { realName: "나회원", kakaoNickname: "나회원/95/na#1", mmr: 1200 } });
+  await prisma.member.create({ data: { realName: "가회원", kakaoNickname: "가회원/95/ga#1", mmr: 1500 } });
+  await prisma.member.create({ data: { realName: null, kakaoNickname: null, discordUserId: "d-1", mmr: 1000 } });
 });
 
 afterAll(async () => {
@@ -30,9 +30,9 @@ afterAll(async () => {
 });
 
 describe("parseMemberSort / parseSortDirection", () => {
-  it("defaults to elo descending", () => {
-    expect(parseMemberSort(undefined)).toBe("elo");
-    expect(parseMemberSort("nonsense")).toBe("elo");
+  it("defaults to mmr descending", () => {
+    expect(parseMemberSort(undefined)).toBe("mmr");
+    expect(parseMemberSort("nonsense")).toBe("mmr");
     expect(parseSortDirection(undefined)).toBe("desc");
     expect(parseSortDirection("nonsense")).toBe("desc");
   });
@@ -45,16 +45,16 @@ describe("parseMemberSort / parseSortDirection", () => {
 });
 
 describe("getMemberListData sorting", () => {
-  it("sorts by elo descending by default", async () => {
-    const data = await getMemberListData("all", "", "elo", "desc");
+  it("sorts by mmr descending by default", async () => {
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
-    expect(data.rows.map((r) => r.elo)).toEqual([1500, 1200, 1000]);
+    expect(data.rows.map((r) => r.mmr)).toEqual([1500, 1200, 1000]);
   });
 
-  it("sorts by elo ascending", async () => {
-    const data = await getMemberListData("all", "", "elo", "asc");
+  it("sorts by mmr ascending", async () => {
+    const data = await getMemberListData("all", "", "mmr", "asc");
 
-    expect(data.rows.map((r) => r.elo)).toEqual([1000, 1200, 1500]);
+    expect(data.rows.map((r) => r.mmr)).toEqual([1000, 1200, 1500]);
   });
 
   it("sorts by realName and puts members without one last in both directions", async () => {
@@ -87,10 +87,10 @@ describe("getMemberListData sorting", () => {
     });
     const game = await prisma.gameResult.create({ data: { playedAt: new Date(2026, 7, 3), winner: "BLUE" } });
     await prisma.gameParticipant.create({
-      data: { gameResultId: game.id, memberId: tombstone.id, team: "BLUE", eloBefore: 1000, eloAfter: 1016 },
+      data: { gameResultId: game.id, memberId: tombstone.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1016 },
     });
 
-    const data = await getMemberListData("all", "", "elo", "desc");
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].mentionCount).toBe(2);
@@ -105,7 +105,7 @@ describe("getMemberListData sorting", () => {
       data: { realName: "유대혁", kakaoNickname: "옛닉", mergedIntoId: survivor.id },
     });
 
-    const data = await getMemberListData("all", "", "elo", "desc");
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].id).toBe(survivor.id);
@@ -126,7 +126,7 @@ describe("getMemberListData 디코 닉네임 표시", () => {
       },
     });
 
-    const data = await getMemberListData("all", "", "elo", "desc");
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].discordName).toBe("손민준/fukcin216#7980/정글제외 무관");
@@ -138,7 +138,7 @@ describe("getMemberListData 디코 닉네임 표시", () => {
       data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
     });
 
-    const data = await getMemberListData("all", "", "elo", "desc");
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].discordName).toBe("-");
@@ -153,7 +153,7 @@ describe("getMemberListData 디코 닉네임 표시", () => {
       data: { kakaoNickname: "유대혁/95/유대혁#KR1", mergedIntoId: survivor.id },
     });
 
-    const data = await getMemberListData("all", "", "elo", "desc");
+    const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].discordName).toBe("유대혁/95/유대혁#KR1/sup");
@@ -166,8 +166,8 @@ describe("getMemberListData 디코 닉네임 표시", () => {
       data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
     });
 
-    const byDisplayName = await getMemberListData("all", "백승호", "elo", "desc");
-    const byHandle = await getMemberListData("all", "baegseungho", "elo", "desc");
+    const byDisplayName = await getMemberListData("all", "백승호", "mmr", "desc");
+    const byHandle = await getMemberListData("all", "baegseungho", "mmr", "desc");
 
     expect(byDisplayName.rows).toHaveLength(1);
     expect(byHandle.rows).toHaveLength(1);

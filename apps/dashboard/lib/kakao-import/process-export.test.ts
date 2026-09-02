@@ -51,7 +51,7 @@ describe("processKakaoExport", () => {
       data: {
         kakaoNickname: "이서준/96/뚜비뚜밥#뚜비얌",
         realName: "이서준",
-        elo: 1200,
+        mmr: 1200,
         lastActiveAt: new Date("2026-08-01T00:00:00Z"),
       },
     });
@@ -61,7 +61,7 @@ describe("processKakaoExport", () => {
     expect(result).toEqual({ newMembers: 1, activityUpdates: 1, skippedAsAlreadyProcessed: 0 });
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: existing.id } });
-    expect(refreshed.elo).toBe(1200);
+    expect(refreshed.mmr).toBe(1200);
     expect(refreshed.realName).toBe("이서준");
     expect(refreshed.lastActiveAt).toEqual(new Date(2026, 7, 29, 9, 0));
   });
