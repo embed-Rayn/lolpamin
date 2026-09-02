@@ -18,7 +18,7 @@ export async function deleteMember(
 
     // Neither relation is ON DELETE CASCADE, so the children have to go first.
     // The GameResult rows themselves stay: a past game keeps the participants
-    // it still has, and its recorded elo deltas are never recalculated.
+    // it still has, and its recorded mmr deltas are never recalculated.
     const gameParticipants = await tx.gameParticipant.deleteMany({ where: { memberId: { in: ids } } });
     const mentionLogs = await tx.mentionLog.deleteMany({ where: { memberId: { in: ids } } });
     await tx.member.deleteMany({ where: { id: { in: ids } } });

@@ -40,13 +40,13 @@ export function parseMemberFilter(value: string | undefined): MemberFilter {
   return MEMBER_FILTERS.includes(value as MemberFilter) ? (value as MemberFilter) : "all";
 }
 
-export type MemberSort = "elo" | "realName" | "kakaoNickname";
+export type MemberSort = "mmr" | "realName" | "kakaoNickname";
 export type SortDirection = "asc" | "desc";
 
-const MEMBER_SORTS: MemberSort[] = ["elo", "realName", "kakaoNickname"];
+const MEMBER_SORTS: MemberSort[] = ["mmr", "realName", "kakaoNickname"];
 
 export function parseMemberSort(value: string | undefined): MemberSort {
-  return MEMBER_SORTS.includes(value as MemberSort) ? (value as MemberSort) : "elo";
+  return MEMBER_SORTS.includes(value as MemberSort) ? (value as MemberSort) : "mmr";
 }
 
 export function parseSortDirection(value: string | undefined): SortDirection {
@@ -56,7 +56,7 @@ export function parseSortDirection(value: string | undefined): SortDirection {
 // 값이 비어 있는 행은 방향과 무관하게 마지막에 둔다 — 실명 없는 회원이 목록 맨 위를
 // 차지하면 정렬이 쓸모없어진다. id 2차 정렬은 동점일 때 순서를 고정하기 위한 것이다.
 function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByWithRelationInput[] {
-  if (sort === "elo") return [{ elo: dir }, { id: "asc" }];
+  if (sort === "mmr") return [{ mmr: dir }, { id: "asc" }];
   if (sort === "realName") return [{ realName: { sort: dir, nulls: "last" } }, { id: "asc" }];
   return [{ kakaoNickname: { sort: dir, nulls: "last" } }, { id: "asc" }];
 }
@@ -67,7 +67,7 @@ export interface MemberRow {
   kakaoNickname: string;
   // 서버 별명. 카톡과 연결되지 않은 계정은 "-"다 — displayDiscordName 참고.
   discordName: string;
-  elo: number;
+  mmr: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
@@ -85,7 +85,7 @@ export interface MemberListData {
   totalCount: number;
   halfCount: number;
   unassignedCount: number;
-  averageElo: number;
+  averageMmr: number;
   rows: MemberRow[];
 }
 
@@ -113,7 +113,7 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     realName: m.realName ?? "-",
     kakaoNickname: displayKakaoNickname(m),
     discordName: displayDiscordName(m),
-    elo: m.elo,
+    mmr: m.mmr,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: isHalfMember(m),
@@ -128,7 +128,7 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
 export async function getMemberListData(
   filter: MemberFilter,
   query: string,
-  sort: MemberSort = "elo",
+  sort: MemberSort = "mmr",
   dir: SortDirection = "desc"
 ): Promise<MemberListData> {
   const now = new Date();
@@ -148,9 +148,9 @@ export async function getMemberListData(
   const totalCount = allMembers.length;
   const halfCount = allMembers.filter(isHalfMember).length;
   const unassignedCount = halfCount;
-  const averageElo = totalCount === 0
+  const averageMmr = totalCount === 0
     ? 0
-    : Math.round(allMembers.reduce((sum, m) => sum + m.elo, 0) / totalCount);
+    : Math.round(allMembers.reduce((sum, m) => sum + m.mmr, 0) / totalCount);
 
   const trimmedQuery = query.trim().toLowerCase();
   // 검색은 화면에 안 띄우는 값까지 훑는다. 미연결 디스코드 계정은 실명도 카톡 닉네임도
@@ -173,5 +173,5 @@ export async function getMemberListData(
     })
     .map(({ row }) => row);
 
-  return { totalCount, halfCount, unassignedCount, averageElo, rows };
+  return { totalCount, halfCount, unassignedCount, averageMmr, rows };
 }

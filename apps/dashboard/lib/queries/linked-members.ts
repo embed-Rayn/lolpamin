@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@lolpamin/db";
+import { prisma } from "@/lib/prisma";
 import { getDisplayName } from "@lolpamin/core";
 
 export interface LinkedMemberOption {
@@ -10,7 +10,7 @@ export interface LinkedMemberOption {
   losses: number;
 }
 
-export async function getLinkedMembers(prisma: PrismaClient): Promise<LinkedMemberOption[]> {
+export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   const members = await prisma.member.findMany({
     where: {
       mergedIntoId: null,

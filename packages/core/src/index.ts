@@ -1,4 +1,4 @@
-export * from "./elo";
+export * from "./mmr";
 export * from "./inactivity";
 export * from "./get-display-name";
 export * from "./parse-kakao-nickname";

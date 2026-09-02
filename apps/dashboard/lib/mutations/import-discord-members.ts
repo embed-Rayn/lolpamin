@@ -33,7 +33,7 @@ export async function importDiscordMembers(
         const existing = await tx.member.findUnique({ where: { discordUserId: member.discordUserId } });
 
         if (existing) {
-          // 핸들만 최신으로 맞춘다. 카톡 연결이나 elo 등 다른 필드는 건드리지 않는다.
+          // 핸들만 최신으로 맞춘다. 카톡 연결이나 mmr 등 다른 필드는 건드리지 않는다.
           await tx.member.update({
             where: { id: existing.id },
             data: {

@@ -39,12 +39,12 @@ describe("importDiscordMembers", () => {
     expect(member.discordHandle).toBe("minjun");
     expect(member.discordJoinedAt).toEqual(new Date("2026-08-01T00:00:00Z"));
     expect(member.kakaoNickname).toBeNull();
-    expect(member.elo).toBe(1000);
+    expect(member.mmr).toBe(1000);
   });
 
   it("updates the handle of an account it has seen before", async () => {
     await prisma.member.create({
-      data: { discordUserId: "d-1", discordHandle: "old-handle", elo: 1400 },
+      data: { discordUserId: "d-1", discordHandle: "old-handle", mmr: 1400 },
     });
 
     const result = await importDiscordMembers(prisma, [guildMember({ username: "new-handle" })]);
@@ -52,7 +52,7 @@ describe("importDiscordMembers", () => {
     expect(result).toEqual({ created: 0, updated: 1, skippedBots: 0 });
     const member = await prisma.member.findFirstOrThrow();
     expect(member.discordHandle).toBe("new-handle");
-    expect(member.elo).toBe(1400);
+    expect(member.mmr).toBe(1400);
   });
 
   it("skips bot accounts", async () => {

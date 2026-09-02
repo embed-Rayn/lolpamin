@@ -41,13 +41,13 @@ describe("updateMemberRealName", () => {
 
   it("touches nothing but realName", async () => {
     const member = await prisma.member.create({
-      data: { kakaoNickname: "유승수/98/ModCow#KR98", elo: 1400, discordUserId: "d-1" },
+      data: { kakaoNickname: "유승수/98/ModCow#KR98", mmr: 1400, discordUserId: "d-1" },
     });
 
     await updateMemberRealName(prisma, member.id, "유승수");
 
     const updated = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
-    expect(updated.elo).toBe(1400);
+    expect(updated.mmr).toBe(1400);
     expect(updated.discordUserId).toBe("d-1");
     expect(updated.kakaoNickname).toBe("유승수/98/ModCow#KR98");
   });

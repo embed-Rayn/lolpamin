@@ -8,10 +8,10 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
 - `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
-- `packages/core` — pure domain functions (MMR, merge, inactivity, display name, nickname parsing). No I/O, fully unit-tested.
+- `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
 
 Workspace packages are consumed as TypeScript source (`main`/`types` point at `src/index.ts`); Next transpiles them via `transpilePackages`. There is no build step for `packages/*`.
 
@@ -56,7 +56,7 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 ## Domain model and its non-obvious rules
 
-`Member` is one human, with a Discord side and a KakaoTalk side that arrive independently. A row holding only one side is a "반쪽(half) 회원". `linkMembers()` merges the Kakao-side row **into** the Discord-side row: it repoints `MentionLog` and `GameParticipant`, deletes the Kakao row *before* copying `kakaoUserId` onto the survivor (unique constraint would otherwise reject the update), and never rewrites `kakaoNickname` — the raw nickname string is the match key for future re-imports. `realName`/`age` are parsed out of the `이름/나이/닉네임태그` nickname format by `parseKakaoNickname`, best-effort only.
+`Member` is one human, with a Discord side and a KakaoTalk side that arrive independently. A row holding only one side is a "반쪽(half) 회원". Linking is **reversible**: `absorbMember()` points the Kakao-side row at the survivor via `mergedIntoId` instead of deleting it, leaving a tombstone that keeps its own `kakaoNickname` so future imports still match on the raw string; `releaseMember()` undoes it. Queries therefore filter on `mergedIntoId: null` and treat a survivor whose tombstone holds a nickname as linked. `realName`/`age` are parsed out of the `이름/나이/닉네임태그` nickname format by `parseKakaoNickname`, best-effort only.
 
 MMR is team-average Elo, K=32, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant — winners and losers alike — gains `PARTICIPATION_POINT` (1), so a game is worth +17/-15 between even teams and the rating pool inflates by one point per player per game. That is deliberate: showing up is always worth something.
 
@@ -66,11 +66,24 @@ Inactivity: >= 7 days since `lastActiveAt` (falling back to `createdAt`); 14+ da
 
 KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` export: `--------------- YYYY년 M월 D일 요일 ---------------` date separators plus `[이름] [오전 H:MM] 본문` headers, with continuation lines folded into the preceding message. A mention is `@` anywhere in a line to end of line (recruitment posts write `1. @닉네임`). Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
 
-## Known inconsistencies
+## Deployment
 
-- `getLinkedMembers()` (match builder pool) treats `kakaoUserId OR kakaoNickname` as linked, but `saveGameResult()` still requires `kakaoUserId`. Members created by the `.txt` import only ever get `kakaoNickname`, so they can be added to a team and then fail on save.
-- Display name fallback differs per surface: `getDisplayName()` in core is `realName ?? discordHandle ?? kakaoNickname ?? "이름 미확인"`, but `/mmr` and `/전적` build their own shorter chain.
-- Slash command names are Korean (`랭킹`, `전적`). If the Discord API rejects them, the documented fallback is renaming to `ranking`/`record` and re-deploying.
+The OCI instance runs `docker-compose.prod.yml`: a Postgres container with no
+published host port, plus a dashboard and a discord-bot image built from
+`apps/*/Dockerfile`. The dashboard's `CMD` runs `prisma migrate deploy` before
+`next start` — a schema mismatch keeps the container down rather than serving
+against the wrong shape. The bot never migrates.
+
+Server-side `.env` follows `.env.prod.example`, not `.env.example`: it has
+`POSTGRES_PASSWORD` and the admin bootstrap pair, no `DATABASE_URL` (compose
+composes it), and `COOKIE_SECURE="false"` because the service is plain HTTP.
+
+The server checkout is a plain file copy, not a git clone. Deploying means
+syncing the tree and rebuilding, so anything not committed here exists only
+there — commit 2026-09-02 `import: production tree as deployed` recovered four
+feature tracks that had been in exactly that position.
+
+## Known inconsistencies
 
 ## Conventions
 

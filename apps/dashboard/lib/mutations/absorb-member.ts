@@ -63,7 +63,7 @@ export async function absorbMember(
       const survivorLastActiveAt = await effectiveLastActiveAt(tx, survivor.id, survivor.lastActiveAt);
       const loserLastActiveAt = await effectiveLastActiveAt(tx, loser.id, loser.lastActiveAt);
 
-      // elo는 건드리지 않는다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
+      // mmr은 건드리지 않는다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
       await tx.member.update({
         where: { id: survivor.id },
         data: {

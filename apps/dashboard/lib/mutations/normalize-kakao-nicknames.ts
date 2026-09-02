@@ -134,7 +134,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
           });
         }
 
-        // elo는 생존자 값을 유지한다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
+        // mmr은 생존자 값을 유지한다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
         const nextLastActiveAt = latest([survivor.lastActiveAt, ...losers.map((l) => l.lastActiveAt)]);
         const nextRealName = survivor.realName ?? losers.find((l) => l.realName !== null)?.realName ?? null;
         const nextAge = survivor.age ?? losers.find((l) => l.age !== null)?.age ?? null;

@@ -48,8 +48,8 @@ export function MemberTable({
           카톡 닉네임{sortMark("kakaoNickname")}
         </Link>
         <div>디코 닉네임</div>
-        <Link href={sortHref("elo")} className="text-right hover:text-[#B7C0D0]">
-          ELO{sortMark("elo")}
+        <Link href={sortHref("mmr")} className="text-right hover:text-[#B7C0D0]">
+          MMR{sortMark("mmr")}
         </Link>
         <div className="text-right">마지막 활동</div>
         <div className="text-right">관리</div>
@@ -66,8 +66,8 @@ export function MemberTable({
           <div className={`truncate font-mono text-[12.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
             {m.discordName}
           </div>
-          <div className={`text-right font-mono text-[14.5px] font-bold ${m.elo >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
-            {m.elo}
+          <div className={`text-right font-mono text-[14.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
+            {m.mmr}
           </div>
           <div
             className={`text-right font-mono text-[12.5px] ${
