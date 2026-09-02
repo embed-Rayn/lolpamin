@@ -9,9 +9,9 @@ import {
 } from "./candidates";
 
 const members = [
-  { id: "m1", name: "박병준", discordHandle: "byungjun", mmr: 1100, wins: 3, losses: 1 },
-  { id: "m2", name: "김철수", discordHandle: "chulsoo", mmr: 1000, wins: 1, losses: 1 },
-  { id: "m3", name: "이영희", discordHandle: null, mmr: 980, wins: 0, losses: 2 },
+  { id: "m1", name: "박병준", discordName: "byungjun", mmr: 1100, wins: 3, losses: 1 },
+  { id: "m2", name: "김철수", discordName: "chulsoo", mmr: 1000, wins: 1, losses: 1 },
+  { id: "m3", name: "이영희", discordName: "younghee", mmr: 980, wins: 0, losses: 2 },
 ];
 
 describe("toMemberCandidates", () => {

@@ -4,7 +4,10 @@ import { getDisplayName } from "@lolpamin/core";
 export interface LinkedMemberOption {
   id: string;
   name: string;
-  discordHandle: string | null;
+  // 서버 별명. 핸들("dohyun_kr")은 디코 아이디라 사람을 알아볼 수 없으므로 별명을 먼저
+  // 본다 — queries/members.ts의 displayDiscordName과 같은 규칙이다. 이 명단은 디코가
+  // 붙은 회원만 들어오므로 셋 중 하나는 반드시 있다.
+  discordName: string;
   mmr: number;
   wins: number;
   losses: number;
@@ -43,7 +46,7 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   return members.map((m) => ({
     id: m.id,
     name: getDisplayName(m),
-    discordHandle: m.discordHandle,
+    discordName: m.discordDisplayName ?? m.discordHandle ?? m.discordUserId!,
     mmr: m.mmr,
     ...record.get(m.id)!,
   }));

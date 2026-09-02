@@ -179,7 +179,7 @@ export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; is
                   <div key={id} className={`${ROSTER_GRID} border-b border-white/[.04] px-4 py-2.5 text-[12.5px]`}>
                     <div className="text-right font-mono text-[11px] text-[#5C6577]">{index + 1}</div>
                     <div className="truncate font-semibold">{m.name}</div>
-                    <div className="truncate font-mono text-[11.5px] text-[#8FA9F5]">{m.discordHandle ?? "-"}</div>
+                    <div className="truncate font-mono text-[11.5px] text-[#8FA9F5]">{m.discordName}</div>
                     <div className="text-right font-mono text-[12px] text-[#9BD173]">{m.wins}</div>
                     <div className="text-right font-mono text-[12px] text-[#EE8B8B]">{m.losses}</div>
                     <div className="text-right font-mono text-[12.5px] font-bold">{m.mmr}</div>

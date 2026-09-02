@@ -46,15 +46,42 @@ describe("getLinkedMembers", () => {
     expect(pool.map((m) => m.id)).toEqual([survivor.id]);
   });
 
-  it("exposes the discord handle and a zero record for a member who has never played", async () => {
+  it("exposes a zero record for a member who has never played", async () => {
     await prisma.member.create({
       data: { realName: "김도현", discordUserId: "d-1", discordHandle: "dohyun_kr", kakaoUserId: "k-1" },
     });
 
     const [option] = await getLinkedMembers();
 
-    expect(option.discordHandle).toBe("dohyun_kr");
     expect(option).toMatchObject({ wins: 0, losses: 0 });
+  });
+
+  // 참석 명단은 사람을 눈으로 알아보는 화면이다. 핸들("dohyun_kr")은 디코 아이디라
+  // 누군지 알 수 없으므로 서버 별명을 먼저 쓴다 — queries/members.ts와 같은 규칙.
+  it("names a member by the discord server nickname, not the handle", async () => {
+    await prisma.member.create({
+      data: {
+        realName: "김도현",
+        discordUserId: "d-1",
+        discordHandle: "dohyun_kr",
+        discordDisplayName: "김도현/95/도현#KR1",
+        kakaoUserId: "k-1",
+      },
+    });
+
+    const [option] = await getLinkedMembers();
+
+    expect(option.discordName).toBe("김도현/95/도현#KR1");
+  });
+
+  it("falls back to the handle when a member has no server nickname", async () => {
+    await prisma.member.create({
+      data: { realName: "김도현", discordUserId: "d-1", discordHandle: "dohyun_kr", kakaoUserId: "k-1" },
+    });
+
+    const [option] = await getLinkedMembers();
+
+    expect(option.discordName).toBe("dohyun_kr");
   });
 
   it("counts a win for the side that matches the game winner and a loss for the other", async () => {
