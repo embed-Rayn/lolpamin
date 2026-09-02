@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-02-random-draw-games-design.md`
 
+> **구현 중 변경 (2026-09-02):** Task 3·7의 유도형 플린코는 **matter.js 실물리 구슬 레이스**로 대체됐다(스펙의 「설계 변경」절 참고). `lib/draw/plinko-path.ts`는 삭제됐고, 코스는 `lib/draw/marble-course.ts` + `components/draw/MarbleRaceCanvas.tsx`에 있다. 07에서는 물리가 승자를 정하고 `drawById()`로 상태에 커밋한다.
+
 ## Global Constraints
 
 - 새 npm 의존성을 추가하지 않는다. 물리엔진·애니메이션 라이브러리 금지.
