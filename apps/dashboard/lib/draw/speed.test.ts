@@ -17,6 +17,14 @@ describe("sliderToSpeed", () => {
     expect(sliderToSpeed(1)).toBeCloseTo(MAX_SPEED, 10);
   });
 
+  // 물리 스텝은 배속과 무관하게 STEP_MS 고정이라, 배속이 낮을수록 스텝 사이 간격이
+  // 벌어져 화면이 계단처럼 끊긴다. 1/16배속이면 60fps에서 약 0.27초에 한 스텝으로
+  // 슬로모션으로 읽히지만, 그보다 아래는 슬라이드쇼가 된다.
+  it("stops at 1/16x on the left so slow motion never turns into a slideshow", () => {
+    expect(MIN_SPEED).toBeCloseTo(1 / 16, 10);
+    expect(sliderToSpeed(0)).toBeCloseTo(1 / 16, 10);
+  });
+
   // 로그스케일의 정의: 슬라이더를 같은 거리 움직이면 같은 배율이 곱해진다. 가운데 값의
   // 제곱이 양 끝의 곱과 같다는 것이 그 성질을 가장 짧게 검사한다.
   it("scales logarithmically — equal travel multiplies by an equal factor", () => {
