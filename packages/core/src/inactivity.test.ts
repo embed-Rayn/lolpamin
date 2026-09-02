@@ -31,7 +31,7 @@ describe("getInactiveMembers", () => {
 
   it("excludes members active within the threshold", () => {
     const result = getInactiveMembers(
-      [{ id: "1", kakaoUserId: "k1", kakaoNickname: null, lastActiveAt: daysAgo(13), createdAt: daysAgo(30) }],
+      [{ id: "1", kakaoUserId: "k1", kakaoNickname: null, lastActiveAt: daysAgo(6), createdAt: daysAgo(30) }],
       NOW
     );
     expect(result).toEqual([]);
@@ -39,11 +39,11 @@ describe("getInactiveMembers", () => {
 
   it("includes members at or beyond the threshold, with days since active", () => {
     const result = getInactiveMembers(
-      [{ id: "1", kakaoUserId: "k1", kakaoNickname: null, lastActiveAt: daysAgo(14), createdAt: daysAgo(60) }],
+      [{ id: "1", kakaoUserId: "k1", kakaoNickname: null, lastActiveAt: daysAgo(7), createdAt: daysAgo(60) }],
       NOW
     );
-    expect(result).toEqual([{ id: "1", daysSinceActive: 14 }]);
-    expect(INACTIVITY_THRESHOLD_DAYS).toBe(14);
+    expect(result).toEqual([{ id: "1", daysSinceActive: 7 }]);
+    expect(INACTIVITY_THRESHOLD_DAYS).toBe(7);
   });
 
   it("falls back to createdAt when lastActiveAt is null, treating them as inactive since joining", () => {

@@ -2,7 +2,7 @@ import type { InactiveRow } from "@/lib/queries/inactive";
 import { LONG_INACTIVITY_THRESHOLD_DAYS } from "@lolpamin/core";
 
 export function InactiveTable({ rows }: { rows: InactiveRow[] }) {
-  const maxDays = Math.max(60, ...rows.map((r) => r.daysSinceActive));
+  const maxDays = Math.max(30, ...rows.map((r) => r.daysSinceActive));
 
   return (
     <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">

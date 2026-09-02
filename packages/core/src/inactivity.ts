@@ -1,5 +1,5 @@
-export const INACTIVITY_THRESHOLD_DAYS = 14;
-export const LONG_INACTIVITY_THRESHOLD_DAYS = 30;
+export const INACTIVITY_THRESHOLD_DAYS = 7;
+export const LONG_INACTIVITY_THRESHOLD_DAYS = 14;
 
 export interface MemberActivity {
   id: string;
