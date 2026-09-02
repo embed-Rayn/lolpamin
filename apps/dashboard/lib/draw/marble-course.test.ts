@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  GOAL_Y,
   MAX_RACE_MS,
   STEP_MS,
   advance,
@@ -86,6 +87,29 @@ describe("marble race", () => {
       if (findWinner(marbles, elapsed)) break;
     }
     expect(leaders.size).toBeGreaterThan(1);
+  });
+
+  it("lets every marble reach the goal given enough time", () => {
+    // Nothing may be left behind on a ledge: a marble that can never finish is a
+    // dead spot in the map, and frictionless surfaces make those easy to create.
+    for (let run = 0; run < 3; run++) {
+      const engine = createRaceEngine();
+      const movers = buildCourse(engine);
+      const marbles = spawnMarbles(
+        engine,
+        Array.from({ length: 8 }, (_, i) => ({ id: `c${i}`, label: `후보${i}` }))
+      );
+      const finished = new Set<string>();
+      let elapsed = 0;
+      while (elapsed < 120_000 && finished.size < marbles.length) {
+        advance(engine, movers, STEP_MS, elapsed);
+        elapsed += STEP_MS;
+        for (const marble of marbles) {
+          if (marble.body.position.y >= GOAL_Y) finished.add(marble.id);
+        }
+      }
+      expect([...finished].length).toBe(marbles.length);
+    }
   });
 
   it("finishes with a single marble", () => {

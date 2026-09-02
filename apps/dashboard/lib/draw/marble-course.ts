@@ -1,4 +1,4 @@
-import { Bodies, Body, Composite, Engine } from "matter-js";
+import { Bodies, Body, Composite, Engine, Events } from "matter-js";
 
 // The 07 course is authored in fixed units and scaled to the canvas at draw time,
 // so the physics behaves identically at any window size. Keeping it out of the
@@ -22,6 +22,10 @@ const GRAVITY_Y = 0.45;
 const MARBLE_AIR_FRICTION = 0.004;
 // The gates funnel onto this column and the bumper cluster sits under it.
 const BUMPER_CENTRE_X = 200;
+// Matter's restitution saturates around 1 — a bumper set to 2 or 4 bounces no
+// harder than one set to 1.2. A pinball kick has to be applied by hand, so every
+// marble that touches a bumper leaves it at this speed, straight outward.
+export const BUMPER_KICK = 16;
 
 export interface Mover {
   body: Body;
@@ -62,7 +66,7 @@ export function buildCourse(engine: Engine): Mover[] {
   // 1. Opening peg field — spreads the pack out immediately.
   for (const [row, y] of [120, 165, 210, 255, 300].entries()) {
     const offset = row % 2 === 0 ? 0 : 22;
-    for (let x = 28 + offset; x < WIDTH_UNITS - 16; x += 44) {
+    for (let x = 44 + offset; x < WIDTH_UNITS - 44; x += 44) {
       parts.push(Bodies.circle(x, y, 5, { ...staticOptions, restitution: 0.5 }));
     }
   }
@@ -114,7 +118,7 @@ export function buildCourse(engine: Engine): Mover[] {
   for (const [row, y] of [1350, 1425, 1500].entries()) {
     const offset = row % 2 === 0 ? 0 : 50;
     for (let x = BUMPER_CENTRE_X - 150 + offset; x <= BUMPER_CENTRE_X + 150; x += 100) {
-      parts.push(Bodies.circle(x, y, 16, { ...staticOptions, restitution: 2 }));
+      parts.push(Bodies.circle(x, y, 16, { ...staticOptions, label: "bumper", restitution: 1 }));
     }
   }
 
@@ -122,7 +126,7 @@ export function buildCourse(engine: Engine): Mover[] {
   // before the moving obstacles scramble it again.
   for (const [row, y] of [1580, 1625, 1670, 1715].entries()) {
     const offset = row % 2 === 0 ? 22 : 0;
-    for (let x = 28 + offset; x < WIDTH_UNITS - 16; x += 44) {
+    for (let x = 44 + offset; x < WIDTH_UNITS - 44; x += 44) {
       parts.push(Bodies.circle(x, y, 5, { ...staticOptions, restitution: 0.5 }));
     }
   }
@@ -130,7 +134,11 @@ export function buildCourse(engine: Engine): Mover[] {
   // 7. Sliding bars — a moving floor that opens and closes the way through. The
   // sweep stops well short of the walls so nothing gets crushed against them.
   for (const [i, y] of [1830, 1930].entries()) {
-    const bar = Bodies.rectangle(WIDTH_UNITS / 2, y, 130, 12, staticOptions);
+    // Tilted, because a marble resting on a flat frictionless bar never rolls off.
+    const bar = Bodies.rectangle(WIDTH_UNITS / 2, y, 130, 12, {
+      ...staticOptions,
+      angle: i % 2 === 0 ? 0.16 : -0.16,
+    });
     movers.push({
       body: bar,
       kind: "slide",
@@ -203,8 +211,8 @@ export function buildCourse(engine: Engine): Mover[] {
   // A shallow ridge under each wheel so a marble has to ride it rather than roll
   // straight past the side.
   parts.push(
-    Bodies.rectangle(40, 2525, 120, 10, { ...staticOptions, angle: -0.3 }),
-    Bodies.rectangle(WIDTH_UNITS - 40, 2525, 120, 10, { ...staticOptions, angle: 0.3 })
+    Bodies.rectangle(40, 2525, 120, 10, { ...staticOptions, angle: 0.3 }),
+    Bodies.rectangle(WIDTH_UNITS - 40, 2525, 120, 10, { ...staticOptions, angle: -0.3 })
   );
 
   // 10. Final funnel: everyone squeezes through one last opening above the goal.
@@ -214,12 +222,28 @@ export function buildCourse(engine: Engine): Mover[] {
   );
 
   Composite.add(engine.world, parts);
+  Events.on(engine, "collisionStart", (event) => {
+    for (const pair of event.pairs) {
+      const marble = pair.bodyA.label === "marble" ? pair.bodyA : pair.bodyB;
+      const bumper = pair.bodyA.label === "bumper" ? pair.bodyA : pair.bodyB;
+      if (marble.label !== "marble" || bumper.label !== "bumper") continue;
+      const dx = marble.position.x - bumper.position.x;
+      const dy = marble.position.y - bumper.position.y;
+      const length = Math.hypot(dx, dy) || 1;
+      Body.setVelocity(marble, {
+        x: (dx / length) * BUMPER_KICK,
+        y: (dy / length) * BUMPER_KICK,
+      });
+    }
+  });
   return movers;
 }
 
-// A gate half built from short overlapping segments that ripple around a steady
-// downhill slope. `direction` is +1 for a barrier that drains to the right and
-// -1 for one that drains to the left.
+// A gate half built from short segments chained end to end. Each segment tilts a
+// little differently so the bounce direction is unpredictable, but every one of
+// them points downhill and each starts where the last ended: the surface only
+// ever descends toward the gap. A ripple in the segment *heights* would dig a
+// concave pocket, and a frictionless marble that settles in one never leaves.
 function wavyBarrier(
   fromX: number,
   toX: number,
@@ -230,23 +254,25 @@ function wavyBarrier(
   const span = toX - fromX;
   if (span < 24) return [];
   const segments = Math.max(2, Math.round(span / 42));
-  const segmentWidth = (span / segments) * 1.25;
-  const slope = 0.42;
+  const length = span / segments;
   const bodies: Body[] = [];
 
+  // Walk from the wall end down to the gap, so the chain starts high and ends low.
+  let x = direction === 1 ? fromX : toX;
+  let y = baseY - (span / 2) * 0.42;
   for (let i = 0; i < segments; i++) {
-    const t = (i + 0.5) / segments;
-    const x = fromX + span * t;
-    // Height falls steadily toward the gap; the ripple only tilts each segment,
-    // so every part of the chain still drains downhill.
-    const drop = direction === 1 ? (t - 0.5) * span * slope : (0.5 - t) * span * slope;
-    const ripple = Math.sin(t * Math.PI * 2.5) * 7;
+    const wobble = Math.sin(((i + 0.5) / segments) * Math.PI * 2.5) * 0.2;
+    const angle = 0.42 + wobble;
+    const dx = direction * length;
+    const dy = Math.abs(dx) * Math.tan(angle);
     bodies.push(
-      Bodies.rectangle(x, baseY + drop + ripple, segmentWidth, 11, {
+      Bodies.rectangle(x + dx / 2, y + dy / 2, length * 1.3, 11, {
         ...options,
-        angle: direction * slope + Math.cos(t * Math.PI * 2.5) * 0.22,
+        angle: direction * angle,
       })
     );
+    x += dx;
+    y += dy;
   }
   return bodies;
 }

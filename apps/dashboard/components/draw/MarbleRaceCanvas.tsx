@@ -204,11 +204,13 @@ function draw(
 
   drawDepthMarks(ctx, cameraY);
 
-  ctx.fillStyle = "rgba(255,255,255,.22)";
   for (const body of Composite.allBodies(engine.world)) {
     if (body.label === "marble") continue;
-    // Cull anything outside the visible slice — the course is four screens tall.
+    // Cull anything outside the visible slice — the course is five screens tall.
     if (body.bounds.max.y < cameraY - 40 || body.bounds.min.y > cameraY + VIEW_HEIGHT + 40) continue;
+    // Bumpers kick hard, so they are the one obstacle worth calling out by colour.
+    const isBumper = body.label === "bumper";
+    ctx.fillStyle = isBumper ? "#E0603C" : "rgba(255,255,255,.22)";
     for (const part of body.parts.length > 1 ? body.parts.slice(1) : body.parts) {
       const [first, ...rest] = part.vertices;
       ctx.beginPath();
@@ -216,6 +218,11 @@ function draw(
       for (const vertex of rest) ctx.lineTo(vertex.x, vertex.y);
       ctx.closePath();
       ctx.fill();
+      if (isBumper) {
+        ctx.strokeStyle = "#FFC48A";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     }
   }
 
