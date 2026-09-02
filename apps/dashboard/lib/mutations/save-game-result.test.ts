@@ -55,6 +55,23 @@ describe("saveGameResult", () => {
     expect(participants).toHaveLength(4);
   });
 
+  it("records which admin entered the game", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+
+    const result = await saveGameResult(prisma, {
+      playedAt: new Date("2026-09-01T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+      createdById: "admin-3",
+    });
+
+    const row = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(row.createdById).toBe("admin-3");
+    expect(row.cancelledAt).toBeNull();
+  });
+
   it("rejects a participant who is not fully linked", async () => {
     const halfMember = await prisma.member.create({ data: { discordUserId: "d-half" } });
     const red1 = await createLinkedMember(1500);

@@ -6,6 +6,8 @@ export interface SaveGameResultInput {
   blueMemberIds: string[];
   redMemberIds: string[];
   winner: "BLUE" | "RED";
+  // 입력한 운영진. 스크립트로 넣는 경로가 생기면 null이 된다.
+  createdById?: string | null;
 }
 
 export interface SaveGameResultOutput {
@@ -17,7 +19,7 @@ export async function saveGameResult(
   prisma: PrismaClient,
   input: SaveGameResultInput
 ): Promise<SaveGameResultOutput> {
-  const { playedAt, blueMemberIds, redMemberIds, winner } = input;
+  const { playedAt, blueMemberIds, redMemberIds, winner, createdById = null } = input;
 
   const overlap = blueMemberIds.filter((id) => redMemberIds.includes(id));
   if (overlap.length > 0) {
@@ -58,7 +60,7 @@ export async function saveGameResult(
     });
 
     const gameResult = await tx.gameResult.create({
-      data: { playedAt, winner: winner as Team },
+      data: { playedAt, winner: winner as Team, createdById },
     });
 
     const updates: SaveGameResultOutput["updates"] = [];

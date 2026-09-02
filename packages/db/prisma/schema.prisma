@@ -46,7 +46,16 @@ model GameResult {
   winner    Team
   createdAt DateTime @default(now())
 
+  // 입력·취소한 운영진. Admin.createdById와 같은 이유로 외래키를 걸지 않는다 — 관리자
+  // 계정이 지워져도 「누가 무엇을 했는지」는 남아야 한다.
+  createdById   String?
+  cancelledAt   DateTime?
+  cancelledById String?
+
   participants GameParticipant[]
+
+  // 되돌리기 대상은 "살아 있는 것 중 가장 나중에 입력된 것"이라 이 순서로 찾는다.
+  @@index([cancelledAt, createdAt])
 }
 
 model GameParticipant {
