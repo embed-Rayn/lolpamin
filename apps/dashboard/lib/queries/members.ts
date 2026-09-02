@@ -95,10 +95,11 @@ function daysSince(date: Date | null, now: Date): number | null {
 }
 
 // 「디코 닉네임」 칸에 띄울 값. 핸들("k._.dj")은 사람을 알아볼 수 없으므로 서버 별명을
-// 먼저 본다. 그리고 카톡과 연결되지 않은 계정은 아직 회원으로 확정된 게 아니라서 비운다
-// — 연결 작업은 /link-accounts에서 하고, 여기는 확정된 회원 명부다.
+// 먼저 본다. 카톡과 연결되지 않은 계정도 채운다 — 그 행은 실명도 카톡 닉네임도 비어
+// 있어서, 디코 칸까지 비우면 누구인지 알 수 없는 "-" 세 칸짜리 행이 된다. 연결 여부는
+// 「카톡만·디코만」 필터와 빈 카톡 칸이 이미 말해 준다.
 function displayDiscordName(m: MemberWithCounts): string {
-  if (m.discordUserId === null || !hasKakao(m)) return "-";
+  if (m.discordUserId === null) return "-";
   return m.discordDisplayName ?? m.discordHandle ?? m.discordUserId;
 }
 

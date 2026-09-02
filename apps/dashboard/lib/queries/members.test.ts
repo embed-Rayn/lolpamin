@@ -132,7 +132,9 @@ describe("getMemberListData 디코 닉네임 표시", () => {
     expect(data.rows[0].discordName).toBe("손민준/fukcin216#7980/정글제외 무관");
   });
 
-  it("카톡과 연결되지 않은 디스코드 계정은 디코 칸을 비운다", async () => {
+  // 임포트만 하고 아직 카톡에 못 붙인 계정은 실명도 카톡 닉네임도 비어 있다. 디코 칸까지
+  // 비우면 행 전체가 "-"라 누구인지 알 수 없고, 연결해 줄 수도 없다.
+  it("카톡과 연결되지 않은 디스코드 계정도 디코 칸에 서버 별명을 띄운다", async () => {
     await resetDatabase(prisma);
     await prisma.member.create({
       data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
@@ -141,6 +143,28 @@ describe("getMemberListData 디코 닉네임 표시", () => {
     const data = await getMemberListData("all", "", "mmr", "desc");
 
     expect(data.rows).toHaveLength(1);
+    expect(data.rows[0].realName).toBe("-");
+    expect(data.rows[0].kakaoNickname).toBe("-");
+    expect(data.rows[0].discordName).toBe("백승호/98/탑원딜할래여#kr2");
+  });
+
+  it("서버 별명이 없는 미연결 계정은 핸들로라도 알아볼 수 있다", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({
+      data: { discordUserId: "d-alone", discordHandle: "baegseungho5754" },
+    });
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(data.rows[0].discordName).toBe("baegseungho5754");
+  });
+
+  it("디스코드 계정이 없는 회원만 디코 칸이 비어 있다", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({ data: { kakaoNickname: "백승호/98/탑원딜할래여#kr2" } });
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
     expect(data.rows[0].discordName).toBe("-");
   });
 
@@ -160,7 +184,7 @@ describe("getMemberListData 디코 닉네임 표시", () => {
     expect(data.rows[0].kakaoNickname).toBe("유대혁/95/유대혁#KR1");
   });
 
-  it("화면에 안 뜨는 디스코드 계정도 검색으로는 찾을 수 있다", async () => {
+  it("미연결 디스코드 계정은 서버 별명으로도 핸들로도 검색된다", async () => {
     await resetDatabase(prisma);
     await prisma.member.create({
       data: { discordUserId: "d-alone", discordHandle: "baegseungho5754", discordDisplayName: "백승호/98/탑원딜할래여#kr2" },
@@ -171,6 +195,5 @@ describe("getMemberListData 디코 닉네임 표시", () => {
 
     expect(byDisplayName.rows).toHaveLength(1);
     expect(byHandle.rows).toHaveLength(1);
-    expect(byDisplayName.rows[0].discordName).toBe("-");
   });
 });
