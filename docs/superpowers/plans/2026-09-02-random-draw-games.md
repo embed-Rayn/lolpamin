@@ -56,7 +56,7 @@
 **수정:**
 
 - `packages/core/src/index.ts` — `export * from "./draw";`
-- `apps/dashboard/components/AppShell.tsx:6` (activeNav 유니온), `:22-28` (navItems)
+- `apps/dashboard/components/AppShell.tsx` — activeNav 유니온에 두 키 추가, navItems에 06·07 추가, 조건부 `admins` 항목의 아이콘을 `06` → `08`로 변경
 
 ---
 
@@ -292,7 +292,7 @@ git commit -m "feat(core): add draw-without-replacement state machine"
 - Create: `apps/dashboard/lib/draw/candidates.ts`, `apps/dashboard/lib/draw/candidates.test.ts`
 
 **Interfaces:**
-- Consumes: `DrawCandidate` (Task 1), `LinkedMemberOption { id: string; name: string; mmr: number }` from `@/lib/queries/linked-members`
+- Consumes: `DrawCandidate` (Task 1), `LinkedMemberOption { id: string; name: string; elo: number }` from `@/lib/queries/linked-members` (이 브랜치는 MMR 리네임 이전이라 필드명이 `elo`다)
 - Produces: `secureNextIndex(upperExclusive: number): number`, `MAX_NUMBER_CANDIDATES = 1000`, `toMemberCandidates(members: LinkedMemberOption[], selectedIds: ReadonlySet<string>): DrawCandidate[]`, `toNumberCandidates(min: number, max: number): DrawCandidate[]`, `validateNumberRange(min: number, max: number): string | null`, `normalizeManualName(raw: string): string`, `nextManualId(existing: DrawCandidate[]): string`
 
 - [ ] **Step 1: Write the failing tests**
@@ -345,9 +345,9 @@ import {
 } from "./candidates";
 
 const members = [
-  { id: "m1", name: "박병준", mmr: 1100 },
-  { id: "m2", name: "김철수", mmr: 1000 },
-  { id: "m3", name: "이영희", mmr: 980 },
+  { id: "m1", name: "박병준", elo: 1100 },
+  { id: "m2", name: "김철수", elo: 1000 },
+  { id: "m3", name: "이영희", elo: 980 },
 ];
 
 describe("toMemberCandidates", () => {
@@ -791,7 +791,7 @@ git commit -m "feat(dashboard): serve bgm tracks from public/bgm with a listing 
 애니메이션 없이 추첨이 끝까지 동작하는 상태를 먼저 만든다. 이 단계의 연출은 `PickSpotlight`(당첨자 이름을 크게 띄우는 텍스트 폴백)이며, Task 6·7에서 캔버스가 그 자리를 대신한다. `PickSpotlight`는 캔버스를 못 쓰는 환경의 폴백으로 계속 남는다.
 
 **Files:**
-- Modify: `apps/dashboard/components/AppShell.tsx:6`, `:22-28`
+- Modify: `apps/dashboard/components/AppShell.tsx`
 - Create: `apps/dashboard/app/draw/ball/page.tsx`, `apps/dashboard/app/draw/plinko/page.tsx`
 - Create: `apps/dashboard/components/draw/animator.ts`, `DrawScreen.tsx`, `CandidateSetup.tsx`, `DrawControls.tsx`, `ResultList.tsx`, `PickSpotlight.tsx`
 
@@ -801,7 +801,7 @@ git commit -m "feat(dashboard): serve bgm tracks from public/bgm with a listing 
 
 - [ ] **Step 1: Add the two nav entries**
 
-`apps/dashboard/components/AppShell.tsx` — `AppShellProps.activeNav` 유니온을 교체:
+`apps/dashboard/components/AppShell.tsx` — `AppShellProps.activeNav` 유니온에 두 키를 추가한다 (기존 `admins` 키는 그대로 둔다):
 
 ```tsx
   activeNav:
@@ -811,14 +811,23 @@ git commit -m "feat(dashboard): serve bgm tracks from public/bgm with a listing 
     | "kakao-import"
     | "link-accounts"
     | "draw-ball"
-    | "draw-plinko";
+    | "draw-plinko"
+    | "admins";
 ```
 
-그리고 `navItems`의 `link-accounts` 줄 뒤에 두 줄을 추가:
+`navItems`의 `link-accounts` 줄 뒤에 두 줄을 추가:
 
 ```tsx
     { key: "draw-ball" as const, href: "/draw/ball", label: "공 뽑기", icon: "06" },
     { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "07" },
+```
+
+그리고 로그인 시에만 붙는 관리자 항목의 아이콘을 `06`에서 `08`로 민다 (06·07은 뽑기가 쓴다):
+
+```tsx
+  if (currentAdmin) {
+    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "08" });
+  }
 ```
 
 - [ ] **Step 2: Add the animator contract**
@@ -1387,7 +1396,7 @@ export default async function PlinkoDrawPage() {
 
 Run: `npm run dev --workspace=dashboard`, `http://localhost:3000/draw/ball` 접속
 확인할 것:
-1. 사이드바에 06 공 뽑기 / 07 핀볼 뽑기가 보이고 현재 항목이 강조된다.
+1. 사이드바에 06 공 뽑기 / 07 핀볼 뽑기가 보이고 현재 항목이 강조된다. 로그인한 상태라면 관리자 항목이 08로 표시된다.
 2. 회원 탭에 연결 회원이 전부 체크된 채로 보인다. 검색·전체 선택/해제가 동작한다.
 3. 수동 이름 추가 후 칩이 생기고, 같은 이름을 또 넣으면 "이미 있는 이름입니다."가 뜬다.
 4. 숫자 탭에서 1~10이 후보가 되고, 10부터 3까지로 뒤집으면 검증 메시지가 뜬다.
@@ -2170,4 +2179,4 @@ git commit -m "feat(dashboard): add bgm player to the draw pages"
 
 - **스펙 커버리지**: 사이드바 06/07 → T5. 코어 상태머신 → T1. 후보 3종(회원·수동·숫자) → T2·T5. 뽑는 순간 확정 → T5 `handleDraw`. 연출 중 잠금·후보 편집 잠금·역재생 없음 → T5. 공 뽑기 → T6. 플린코(경로 생성기 분리, 슬롯 재배치, 20개 초과 번호 라벨) → T3·T7. BGM(이동·커밋, `/api/bgm` 런타임 목록, 클릭 재생) → T4·T8. 엣지(회원 0명, 후보 0/1명, 숫자 범위 검증, 수동 이름 중복·공백, BGM 없음, 캔버스 컨텍스트 없음) → T2·T5·T6·T8. 테스트 4개 파일 → T1~T4.
 - **플레이스홀더 없음**: 모든 스텝에 실제 코드가 들어 있다.
-- **타입 일관성**: `DrawCandidate`/`DrawState`는 T1 정의를 T2·T5~T8이 그대로 쓴다. `DrawAnimator`의 `play`/`skip`/`sync`는 T5 정의를 T6·T7이 같은 시그니처로 구현한다. `buildPlinkoPlan(rows, spacing, dx, nextIndex)`는 T3 정의를 T7이 같은 인자 순서로 호출한다. `nextManualId`는 T2에서 정의하고 T5의 `CandidateSetup`이 import 한다. `LinkedMemberOption`은 MMR 리네임 이후의 `{ id, name, mmr }`.
+- **타입 일관성**: `DrawCandidate`/`DrawState`는 T1 정의를 T2·T5~T8이 그대로 쓴다. `DrawAnimator`의 `play`/`skip`/`sync`는 T5 정의를 T6·T7이 같은 시그니처로 구현한다. `buildPlinkoPlan(rows, spacing, dx, nextIndex)`는 T3 정의를 T7이 같은 인자 순서로 호출한다. `nextManualId`는 T2에서 정의하고 T5의 `CandidateSetup`이 import 한다. `LinkedMemberOption`은 이 브랜치 기준 `{ id, name, elo }` (뽑기 코드는 등급 필드를 쓰지 않으므로 이름만 맞추면 된다).
