@@ -98,11 +98,14 @@ export const MarbleRaceCanvas = forwardRef<RaceAnimator, { remaining: DrawCandid
 
       function resize() {
         const width = canvas!.clientWidth;
-        canvas!.width = width * dpr;
-        canvas!.height = COURSE_HEIGHT * dpr;
-        // Draw in course units and let the transform scale them to the canvas.
+        // One scale for both axes — scaling x alone would squash the pegs into
+        // ellipses and stretch the labels. The element's height follows the
+        // course ratio so the board always fills it exactly.
         const scale = width / WIDTH_UNITS;
-        ctx!.setTransform(dpr * scale, 0, 0, dpr, 0, 0);
+        canvas!.style.height = `${COURSE_HEIGHT * scale}px`;
+        canvas!.width = width * dpr;
+        canvas!.height = COURSE_HEIGHT * scale * dpr;
+        ctx!.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
       }
       resize();
       const observer = new ResizeObserver(resize);
@@ -150,11 +153,12 @@ export const MarbleRaceCanvas = forwardRef<RaceAnimator, { remaining: DrawCandid
     }, []);
 
     return (
-      <canvas
-        ref={canvasRef}
-        style={{ height: COURSE_HEIGHT }}
-        className="w-full rounded-xl border border-white/[.07] bg-[#12161F]"
-      />
+      <div className="mx-auto w-full max-w-[520px]">
+        <canvas
+          ref={canvasRef}
+          className="w-full rounded-xl border border-white/[.07] bg-[#12161F]"
+        />
+      </div>
     );
   }
 );
