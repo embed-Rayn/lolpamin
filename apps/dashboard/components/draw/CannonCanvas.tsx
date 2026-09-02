@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type { DrawCandidate } from "@lolpamin/core";
+import { frameBudget } from "@/lib/draw/speed";
 import type { PlaybackAnimator } from "./animator";
 
 // 06 is the 대포뽑기 (cannon draw) from HJPyo/RandomSeqGenerator: a cannon sits
@@ -30,20 +31,20 @@ interface Scene {
   angle: number;
 }
 
-export const CannonCanvas = forwardRef<PlaybackAnimator, { remaining: DrawCandidate[] }>(
-  function CannonCanvas({ remaining }, ref) {
+export const CannonCanvas = forwardRef<
+  PlaybackAnimator,
+  { remaining: DrawCandidate[]; speed: number }
+>(
+  function CannonCanvas({ remaining, speed }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const phaseRef = useRef<Phase>({ kind: "idle" });
     const resolveRef = useRef<(() => void) | null>(null);
     const poolRef = useRef<DrawCandidate[]>(remaining);
     const widthRef = useRef(0);
-
-    function scale(ms: number): number {
-      const reduced =
-        typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      return reduced ? ms * 0.12 : ms;
-    }
+    // 단계의 start/end는 performance.now()가 아니라 이 연출 시계 위의 값이다. 시계가
+    // 배속만큼 빠르게 흐르므로, 단계 도중에 배속을 바꿔도 다음 프레임부터 바로 먹는다.
+    const clockRef = useRef(0);
+    const speedRef = useRef(speed);
 
     function settle() {
       phaseRef.current = { kind: "idle" };
@@ -53,8 +54,8 @@ export const CannonCanvas = forwardRef<PlaybackAnimator, { remaining: DrawCandid
 
     useImperativeHandle(ref, () => ({
       play(winner) {
-        const now = performance.now();
-        phaseRef.current = { kind: "aim", start: now, end: now + scale(AIM_MS), winner };
+        const now = clockRef.current;
+        phaseRef.current = { kind: "aim", start: now, end: now + AIM_MS, winner };
         return new Promise<void>((resolve) => {
           resolveRef.current = resolve;
         });
@@ -70,6 +71,10 @@ export const CannonCanvas = forwardRef<PlaybackAnimator, { remaining: DrawCandid
     }, [remaining]);
 
     useEffect(() => {
+      speedRef.current = speed;
+    }, [speed]);
+
+    useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
@@ -78,6 +83,7 @@ export const CannonCanvas = forwardRef<PlaybackAnimator, { remaining: DrawCandid
       if (!ctx) return;
 
       let frame = 0;
+      let lastNow: number | null = null;
       const dpr = window.devicePixelRatio || 1;
 
       function resize() {
@@ -91,17 +97,22 @@ export const CannonCanvas = forwardRef<PlaybackAnimator, { remaining: DrawCandid
       const observer = new ResizeObserver(resize);
       observer.observe(canvas);
 
-      function step(now: number) {
+      function step(realNow: number) {
+        const delta = lastNow === null ? 0 : realNow - lastNow;
+        lastNow = realNow;
+        clockRef.current += frameBudget(delta, speedRef.current);
+        const now = clockRef.current;
+
         const phase = phaseRef.current;
         if (phase.kind === "aim" && now >= phase.end) {
           phaseRef.current = {
             kind: "fire",
             start: now,
-            end: now + scale(FIRE_MS),
+            end: now + FIRE_MS,
             winner: phase.winner,
           };
         } else if (phase.kind === "fire" && now >= phase.end) {
-          phaseRef.current = { kind: "show", until: now + scale(SHOW_MS), label: phase.winner.label };
+          phaseRef.current = { kind: "show", until: now + SHOW_MS, label: phase.winner.label };
         } else if (phase.kind === "show" && now >= phase.until) {
           settle();
         }

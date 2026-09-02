@@ -14,6 +14,7 @@ import {
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
+import { clampSpeed } from "@/lib/draw/speed";
 import type { PlaybackAnimator, RaceAnimator } from "./animator";
 import { CannonCanvas } from "./CannonCanvas";
 import { BgmPlayer } from "./BgmPlayer";
@@ -21,6 +22,19 @@ import { MarbleRaceCanvas } from "./MarbleRaceCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
 import { DrawControls } from "./DrawControls";
 import { ResultList } from "./ResultList";
+
+const SPEED_KEY = "lolpamin.draw.speed";
+
+function readStoredSpeed(): number | null {
+  try {
+    const raw = window.localStorage.getItem(SPEED_KEY);
+    if (raw === null) return null;
+    const value = Number(raw);
+    return Number.isNaN(value) ? null : clampSpeed(value);
+  } catch {
+    return null;
+  }
+}
 
 export function DrawScreen({
   pool,
@@ -37,10 +51,33 @@ export function DrawScreen({
   // panel. The first draw freezes it into a DrawState.
   const [state, setState] = useState<DrawState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  // 서버 렌더와 첫 클라이언트 렌더가 어긋나면 안 되므로 1x로 시작하고, 마운트 뒤에
+  // 저장된 값이나 reduced-motion 기본값으로 갈아끼운다.
+  const [speed, setSpeed] = useState(1);
   // 06 plays back a winner the state machine already picked; 07 races marbles
   // and reports back who crossed first. Each variant mounts exactly one of these.
   const playbackRef = useRef<PlaybackAnimator>(null);
   const raceRef = useRef<RaceAnimator>(null);
+
+  useEffect(() => {
+    const stored = readStoredSpeed();
+    if (stored !== null) {
+      setSpeed(stored);
+      return;
+    }
+    // 저장된 값이 없을 때만 reduced-motion을 본다. 이건 기본값이지 강제가 아니다 —
+    // 켜져 있어도 슬라이더로 되돌릴 수 있다.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setSpeed(4);
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SPEED_KEY, String(speed));
+    } catch {
+      // 시크릿 창이나 사이트 데이터 차단 설정에서는 쓰기가 막힌다. 이번 세션 동안만
+      // 유지되면 충분하므로 조용히 넘어간다.
+    }
+  }, [speed]);
 
   const setupCandidates = useMemo(
     () =>
@@ -110,9 +147,9 @@ export function DrawScreen({
         />
 
         {variant === "cannon" ? (
-          <CannonCanvas ref={playbackRef} remaining={remaining} />
+          <CannonCanvas ref={playbackRef} remaining={remaining} speed={speed} />
         ) : (
-          <MarbleRaceCanvas ref={raceRef} remaining={remaining} />
+          <MarbleRaceCanvas ref={raceRef} remaining={remaining} speed={speed} />
         )}
 
         <div className="flex items-center justify-between">
@@ -125,6 +162,8 @@ export function DrawScreen({
             onUndo={handleUndo}
             onReset={handleReset}
             onSkip={() => (variant === "plinko" ? raceRef.current : playbackRef.current)?.skip()}
+            speed={speed}
+            onSpeedChange={setSpeed}
           />
           <div className="font-mono text-[12px] text-[#8A94A6]">
             남은 {remaining.length} / 전체 {active.candidates.length}
