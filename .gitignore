@@ -6,3 +6,9 @@ dist/
 
 # Real KakaoTalk chat exports — contain members' real names and nicknames
 data/
+
+# Private keys — a deploy key dropped in the repo root must never be committed
+*.key
+*.pem
+id_rsa*
+id_ed25519*
