@@ -11,11 +11,11 @@ async function main() {
 
   const fullMembers = await Promise.all(
     [
-      { realName: "김도현", riotId: "칼바람장인#KR1", discordUserId: "d-dohyun", discordHandle: "dohyun_kr", kakaoUserId: "k-dohyun", kakaoNickname: "도현", elo: 1482, days: 0 },
-      { realName: "박서준", riotId: "미드갱킹#KR1", discordUserId: "d-seojun", discordHandle: "seojun.p", kakaoUserId: "k-seojun", kakaoNickname: "서준찡", elo: 1618, days: 1 },
-      { realName: "정우성", riotId: "정글의왕#KR1", discordUserId: "d-woosung", discordHandle: "woosung", kakaoUserId: "k-woosung", kakaoNickname: "우성", elo: 1701, days: 1 },
-      { realName: "신유진", riotId: "유진미드#KR1", discordUserId: "d-yujin", discordHandle: "yujin.s", kakaoUserId: "k-yujin", kakaoNickname: "유진", elo: 1573, days: 17 },
-      { realName: "배성민", riotId: "성민탑#KR1", discordUserId: "d-sungmin", discordHandle: "sungmin.b", kakaoUserId: "k-sungmin", kakaoNickname: "성민", elo: 1489, days: 33 },
+      { realName: "김도현", riotId: "칼바람장인#KR1", discordUserId: "d-dohyun", discordHandle: "dohyun_kr", kakaoUserId: "k-dohyun", kakaoNickname: "도현", mmr: 1482, days: 0 },
+      { realName: "박서준", riotId: "미드갱킹#KR1", discordUserId: "d-seojun", discordHandle: "seojun.p", kakaoUserId: "k-seojun", kakaoNickname: "서준찡", mmr: 1618, days: 1 },
+      { realName: "정우성", riotId: "정글의왕#KR1", discordUserId: "d-woosung", discordHandle: "woosung", kakaoUserId: "k-woosung", kakaoNickname: "우성", mmr: 1701, days: 1 },
+      { realName: "신유진", riotId: "유진미드#KR1", discordUserId: "d-yujin", discordHandle: "yujin.s", kakaoUserId: "k-yujin", kakaoNickname: "유진", mmr: 1573, days: 17 },
+      { realName: "배성민", riotId: "성민탑#KR1", discordUserId: "d-sungmin", discordHandle: "sungmin.b", kakaoUserId: "k-sungmin", kakaoNickname: "성민", mmr: 1489, days: 33 },
     ].map((m) =>
       prisma.member.create({
         data: {
@@ -25,7 +25,7 @@ async function main() {
           discordHandle: m.discordHandle,
           kakaoUserId: m.kakaoUserId,
           kakaoNickname: m.kakaoNickname,
-          elo: m.elo,
+          mmr: m.mmr,
           lastActiveAt: daysAgo(m.days),
         },
       })
@@ -58,10 +58,10 @@ async function main() {
   });
   await prisma.gameParticipant.createMany({
     data: [
-      { gameResultId: game.id, memberId: blue1.id, team: "BLUE", eloBefore: 1466, eloAfter: 1482 },
-      { gameResultId: game.id, memberId: blue2.id, team: "BLUE", eloBefore: 1602, eloAfter: 1618 },
-      { gameResultId: game.id, memberId: red1.id, team: "RED", eloBefore: 1717, eloAfter: 1701 },
-      { gameResultId: game.id, memberId: red2.id, team: "RED", eloBefore: 1589, eloAfter: 1573 },
+      { gameResultId: game.id, memberId: blue1.id, team: "BLUE", mmrBefore: 1466, mmrAfter: 1482 },
+      { gameResultId: game.id, memberId: blue2.id, team: "BLUE", mmrBefore: 1602, mmrAfter: 1618 },
+      { gameResultId: game.id, memberId: red1.id, team: "RED", mmrBefore: 1717, mmrAfter: 1701 },
+      { gameResultId: game.id, memberId: red2.id, team: "RED", mmrBefore: 1589, mmrAfter: 1573 },
     ],
   });
 

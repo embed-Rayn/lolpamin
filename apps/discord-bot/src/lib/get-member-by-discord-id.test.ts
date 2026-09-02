@@ -21,7 +21,7 @@ afterAll(async () => {
 describe("getMemberByDiscordId", () => {
   it("returns the member matching the given discordUserId", async () => {
     const created = await prisma.member.create({
-      data: { discordUserId: "d-123", kakaoUserId: "k-123", realName: "김도현", elo: 1500 },
+      data: { discordUserId: "d-123", kakaoUserId: "k-123", realName: "김도현", mmr: 1500 },
     });
 
     const found = await getMemberByDiscordId(prisma, "d-123");

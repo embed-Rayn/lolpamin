@@ -19,24 +19,24 @@ afterAll(async () => {
 });
 
 describe("getMemberRank", () => {
-  it("returns 1 when no one has a higher elo", async () => {
-    await prisma.member.create({ data: { discordUserId: "d-1", elo: 1000 } });
+  it("returns 1 when no one has a higher mmr", async () => {
+    await prisma.member.create({ data: { discordUserId: "d-1", mmr: 1000 } });
     const rank = await getMemberRank(prisma, 1500);
     expect(rank).toBe(1);
   });
 
-  it("returns 1 + count of members with a strictly higher elo", async () => {
-    await prisma.member.create({ data: { discordUserId: "d-1", elo: 1700 } });
-    await prisma.member.create({ data: { discordUserId: "d-2", elo: 1600 } });
-    await prisma.member.create({ data: { discordUserId: "d-3", elo: 1500 } });
+  it("returns 1 + count of members with a strictly higher mmr", async () => {
+    await prisma.member.create({ data: { discordUserId: "d-1", mmr: 1700 } });
+    await prisma.member.create({ data: { discordUserId: "d-2", mmr: 1600 } });
+    await prisma.member.create({ data: { discordUserId: "d-3", mmr: 1500 } });
 
     const rank = await getMemberRank(prisma, 1500);
     expect(rank).toBe(3);
   });
 
   it("ties do not count as higher", async () => {
-    await prisma.member.create({ data: { discordUserId: "d-1", elo: 1500 } });
-    await prisma.member.create({ data: { discordUserId: "d-2", elo: 1500 } });
+    await prisma.member.create({ data: { discordUserId: "d-1", mmr: 1500 } });
+    await prisma.member.create({ data: { discordUserId: "d-2", mmr: 1500 } });
 
     const rank = await getMemberRank(prisma, 1500);
     expect(rank).toBe(1);

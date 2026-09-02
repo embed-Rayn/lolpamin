@@ -1,6 +1,6 @@
 import { Client, Collection, Events, GatewayIntentBits, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "@lolpamin/db";
-import * as eloCommand from "./commands/elo";
+import * as mmrCommand from "./commands/mmr";
 import * as leaderboardCommand from "./commands/leaderboard";
 import * as recordCommand from "./commands/record";
 
@@ -18,7 +18,7 @@ interface Command {
 }
 
 const commands = new Collection<string, Command>();
-for (const command of [eloCommand, leaderboardCommand, recordCommand]) {
+for (const command of [mmrCommand, leaderboardCommand, recordCommand]) {
   commands.set(command.data.name, command);
 }
 

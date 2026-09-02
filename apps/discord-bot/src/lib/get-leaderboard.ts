@@ -4,7 +4,7 @@ import { getDisplayName } from "@lolpamin/core";
 export interface LeaderboardEntry {
   rank: number;
   name: string;
-  elo: number;
+  mmr: number;
 }
 
 export async function getLeaderboard(
@@ -12,18 +12,19 @@ export async function getLeaderboard(
   limit: number
 ): Promise<LeaderboardEntry[]> {
   const members = await prisma.member.findMany({
-    orderBy: [{ elo: "desc" }, { id: "asc" }],
+    where: { mergedIntoId: null },
+    orderBy: [{ mmr: "desc" }, { id: "asc" }],
     take: limit,
   });
 
   let rank = 0;
-  let previousElo: number | null = null;
+  let previousMmr: number | null = null;
 
   return members.map((m, index) => {
-    if (m.elo !== previousElo) {
+    if (m.mmr !== previousMmr) {
       rank = index + 1;
-      previousElo = m.elo;
+      previousMmr = m.mmr;
     }
-    return { rank, name: getDisplayName(m), elo: m.elo };
+    return { rank, name: getDisplayName(m), mmr: m.mmr };
   });
 }
