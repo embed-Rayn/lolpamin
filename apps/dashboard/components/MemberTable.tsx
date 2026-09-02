@@ -1,105 +1,73 @@
-"use client";
+import Link from "next/link";
+import type { MemberFilter, MemberRow, MemberSort, SortDirection } from "@/lib/queries/members";
+import { DeleteMemberButton } from "@/components/DeleteMemberButton";
+import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 
-import { useMemo, useState } from "react";
-import type { MemberRow } from "@/lib/queries/members";
-
-type SortKey = "kakaoNickname" | "discordHandle" | "mmr" | "lastActive";
-type SortDir = "asc" | "desc";
-
-const GRID = "grid grid-cols-[52px_1fr_1fr_1fr_100px_140px] gap-4";
-
-const EMPTY = "-";
-
-function isMissing(row: MemberRow, key: SortKey): boolean {
-  if (key === "lastActive") return row.daysSinceActive === null;
-  if (key === "mmr") return false;
-  return row[key] === EMPTY;
+function displayLabel(m: MemberRow): string {
+  for (const candidate of [m.realName, m.kakaoNickname, m.discordName]) {
+    if (candidate !== "-") return candidate;
+  }
+  return "이름 미확인";
 }
 
-function compare(a: MemberRow, b: MemberRow, key: SortKey): number {
-  if (key === "mmr") return a.mmr - b.mmr;
-  if (key === "lastActive") return (a.daysSinceActive ?? 0) - (b.daysSinceActive ?? 0);
-  return a[key].localeCompare(b[key], "ko");
-}
-
-function SortHeader({
-  label,
-  sortKey,
-  active,
+export function MemberTable({
+  rows,
+  isAdmin,
+  sort,
   dir,
-  onSort,
-  align = "left",
+  filter,
+  query,
 }: {
-  label: string;
-  sortKey: SortKey;
-  active: boolean;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-  align?: "left" | "right";
+  rows: MemberRow[];
+  isAdmin: boolean;
+  sort: MemberSort;
+  dir: SortDirection;
+  filter: MemberFilter;
+  query: string;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(sortKey)}
-      className={`flex items-center gap-1 text-[11.5px] font-bold tracking-wide hover:text-[#8FB4F5] ${
-        align === "right" ? "justify-end" : "justify-start"
-      } ${active ? "text-[#8FB4F5]" : "text-[#6E7889]"}`}
-    >
-      <span>{label}</span>
-      <span className="text-[9px] leading-none">{active ? (dir === "asc" ? "▲" : "▼") : "⇅"}</span>
-    </button>
-  );
-}
-
-export function MemberTable({ rows }: { rows: MemberRow[] }) {
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
-
-  function onSort(key: SortKey) {
-    setSort((prev) => {
-      if (prev?.key !== key) return { key, dir: "asc" };
-      if (prev.dir === "asc") return { key, dir: "desc" };
-      return null; // 세 번째 클릭 → 기본 순서 복귀
-    });
+  function sortHref(key: MemberSort): string {
+    // 같은 기준을 다시 누르면 방향을 뒤집고, 다른 기준으로 바꾸면 내림차순부터 시작한다.
+    const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
+    const params = new URLSearchParams({ filter, sort: key, dir: nextDir });
+    if (query) params.set("q", query);
+    return `/members?${params.toString()}`;
   }
 
-  const sorted = useMemo(() => {
-    if (!sort) return rows;
-    const factor = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      // 값 없는 항목("-"/기록 없음)은 정렬 방향과 무관하게 항상 뒤로
-      const aMissing = isMissing(a, sort.key);
-      const bMissing = isMissing(b, sort.key);
-      if (aMissing !== bMissing) return aMissing ? 1 : -1;
-      if (aMissing) return 0;
-      return compare(a, b, sort.key) * factor;
-    });
-  }, [rows, sort]);
+  function sortMark(key: MemberSort): string {
+    if (sort !== key) return "";
+    return dir === "desc" ? " ↓" : " ↑";
+  }
 
   return (
     <>
-      <div className={`${GRID} border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[11.5px] font-bold tracking-wide text-[#6E7889]`}>
-        <div className="text-right">#</div>
-        <div>실명</div>
-        <SortHeader label="카톡 닉네임" sortKey="kakaoNickname" active={sort?.key === "kakaoNickname"} dir={sort?.dir ?? "asc"} onSort={onSort} />
-        <SortHeader label="디코 닉네임" sortKey="discordHandle" active={sort?.key === "discordHandle"} dir={sort?.dir ?? "asc"} onSort={onSort} />
-        <SortHeader label="MMR" sortKey="mmr" active={sort?.key === "mmr"} dir={sort?.dir ?? "asc"} onSort={onSort} align="right" />
-        <SortHeader label="마지막 활동" sortKey="lastActive" active={sort?.key === "lastActive"} dir={sort?.dir ?? "asc"} onSort={onSort} align="right" />
+      <div className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[11.5px] font-bold tracking-wide text-[#6E7889]">
+        <Link href={sortHref("realName")} className="hover:text-[#B7C0D0]">
+          실명{sortMark("realName")}
+        </Link>
+        <Link href={sortHref("kakaoNickname")} className="hover:text-[#B7C0D0]">
+          카톡 닉네임{sortMark("kakaoNickname")}
+        </Link>
+        <div>디코 닉네임</div>
+        <Link href={sortHref("elo")} className="text-right hover:text-[#B7C0D0]">
+          ELO{sortMark("elo")}
+        </Link>
+        <div className="text-right">마지막 활동</div>
+        <div className="text-right">관리</div>
       </div>
-      {sorted.map((m, i) => (
+      {rows.map((m) => (
         <div
           key={m.id}
-          className={`${GRID} items-center border-b border-white/[.04] px-5 py-3.5 text-[14px] hover:bg-[#181E29]`}
+          className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[14px] hover:bg-[#181E29]"
         >
-          <div className="text-right font-mono text-[12.5px] text-[#5C6577]">{i + 1}</div>
-          <div className={`truncate font-semibold ${m.realName === EMPTY ? "text-[#5C6577]" : ""}`}>{m.realName}</div>
-          <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === EMPTY ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
+          <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
+          <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
             {m.kakaoNickname}
           </div>
-          <div className={`truncate font-mono text-[12.5px] ${m.discordHandle === EMPTY ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
-            {m.discordHandle}
+          <div className={`truncate font-mono text-[12.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
+            {m.discordName}
           </div>
-          <div className={`text-right font-mono text-[14.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
-            {m.mmr}
+          <div className={`text-right font-mono text-[14.5px] font-bold ${m.elo >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
+            {m.elo}
           </div>
           <div
             className={`text-right font-mono text-[12.5px] ${
@@ -112,6 +80,17 @@ export function MemberTable({ rows }: { rows: MemberRow[] }) {
           >
             {m.lastActiveLabel}
           </div>
+          {isAdmin ? (
+            <DeleteMemberButton
+              memberId={m.id}
+              label={displayLabel(m)}
+              mentionCount={m.mentionCount}
+              gameCount={m.gameCount}
+              aliasCount={m.aliasCount}
+            />
+          ) : (
+            <div />
+          )}
         </div>
       ))}
     </>

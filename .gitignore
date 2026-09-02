@@ -7,7 +7,7 @@ dist/
 # Real KakaoTalk chat exports — contain members' real names and nicknames
 data/
 
-# Private keys — a deploy key dropped in the repo root must never be committed
+# SSH/배포용 개인키 (예: ssh-key-2026-07-09.key)
 *.key
 *.pem
 id_rsa*

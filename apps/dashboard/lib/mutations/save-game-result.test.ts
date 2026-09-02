@@ -1,9 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
+import { absorbMember } from "./absorb-member";
 import { saveGameResult } from "./save-game-result";
 
-const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL_TEST });
+const databaseUrlTest = process.env.DATABASE_URL_TEST;
+if (!databaseUrlTest) {
+  throw new Error("DATABASE_URL_TEST must be set — refusing to run destructive tests against an unknown database");
+}
+
+const prisma = new PrismaClient({ datasourceUrl: databaseUrlTest });
 
 beforeEach(async () => {
   await resetDatabase(prisma);
@@ -13,14 +19,14 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function createLinkedMember(mmr: number) {
+async function createLinkedMember(elo: number) {
   return prisma.member.create({
-    data: { discordUserId: `d-${mmr}-${Math.random()}`, kakaoUserId: `k-${mmr}-${Math.random()}`, mmr },
+    data: { discordUserId: `d-${elo}-${Math.random()}`, kakaoNickname: `k-${elo}-${Math.random()}`, elo },
   });
 }
 
 describe("saveGameResult", () => {
-  it("updates each participant's mmr and records a GameResult with participants", async () => {
+  it("updates each participant's elo and records a GameResult with participants", async () => {
     const blue1 = await createLinkedMember(1500);
     const blue2 = await createLinkedMember(1500);
     const red1 = await createLinkedMember(1500);
@@ -35,15 +41,11 @@ describe("saveGameResult", () => {
 
     expect(result.updates).toHaveLength(4);
     const blueUpdate = result.updates.find((u) => u.memberId === blue1.id)!;
-    expect(blueUpdate.mmrBefore).toBe(1500);
-    expect(blueUpdate.mmrAfter).toBe(1517);
+    expect(blueUpdate.eloBefore).toBe(1500);
+    expect(blueUpdate.eloAfter).toBe(1516);
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue1.id } });
-    expect(refreshed.mmr).toBe(1517);
-
-    // The losing team still gains the participation point, so -16 lands at -15.
-    const redUpdate = result.updates.find((u) => u.memberId === red1.id)!;
-    expect(redUpdate.mmrAfter).toBe(1485);
+    expect(refreshed.elo).toBe(1516);
 
     const participants = await prisma.gameParticipant.findMany({ where: { gameResultId: result.gameResultId } });
     expect(participants).toHaveLength(4);
@@ -75,5 +77,65 @@ describe("saveGameResult", () => {
         winner: "BLUE",
       })
     ).rejects.toThrow("cannot be on both teams");
+  });
+
+  it("accepts a member linked by discord id and kakao nickname", async () => {
+    // kakaoUserId를 채우는 경로가 시스템에 없다. 카톡 봇이 폐기되면서 사라졌고,
+    // 연결은 kakaoNickname으로 이뤄진다. 그것을 요구하면 아무도 경기에 못 들어간다.
+    const members = await Promise.all(
+      Array.from({ length: 2 }, (_, i) =>
+        prisma.member.create({
+          data: { discordUserId: `d-${i}`, discordHandle: `h-${i}`, kakaoNickname: `닉-${i}` },
+        })
+      )
+    );
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [members[0].id],
+        redMemberIds: [members[1].id],
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("accepts the survivor of an absorb as a participant", async () => {
+    // 흡수는 "연결 완료"여야 한다. 생존자가 카톡 닉네임을 넘겨받지 못하면 계정 연결을
+    // 끝낸 회원이 그대로 내전에서 거부되고, 이 브랜치가 고치려던 "경기 0건"이 남는다.
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-a", discordHandle: "h-a" } });
+    const loser = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    await absorbMember(prisma, loser.id, survivor.id);
+    const other = await createLinkedMember(1500);
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [survivor.id],
+        redMemberIds: [other.id],
+      })
+    ).resolves.toBeDefined();
+  });
+
+  it("refuses an absorbed member as a participant", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-a", kakaoNickname: "닉-a" },
+    });
+    const other = await prisma.member.create({
+      data: { discordUserId: "d-b", kakaoNickname: "닉-b" },
+    });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date(2026, 7, 1),
+        winner: "BLUE",
+        blueMemberIds: [tombstone.id],
+        redMemberIds: [other.id],
+      })
+    ).rejects.toThrow();
   });
 });

@@ -1,30 +1,51 @@
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers } from "@lolpamin/core";
+import { effectiveKakaoNickname } from "@/lib/queries/inactive";
 import { NavLink } from "./NavLink";
+import { getCurrentAdmin } from "@/lib/auth/current-admin";
+import { HeaderAuth } from "./HeaderAuth";
 
 export interface AppShellProps {
-  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts";
+  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts" | "admins";
   pageTitle: string;
   pageDesc: string;
   children: React.ReactNode;
 }
 
 export async function AppShell({ activeNav, pageTitle, pageDesc, children }: AppShellProps) {
-  const [totalCount, allMembersForInactivity] = await Promise.all([
-    prisma.member.count(),
+  const [totalCount, allMembersForInactivity, currentAdmin] = await Promise.all([
+    prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
-      select: { id: true, kakaoUserId: true, kakaoNickname: true, lastActiveAt: true, createdAt: true },
+      where: { mergedIntoId: null },
+      // absorbed는 미활동 후보 판정용 — 흡수한 회원의 카톡 닉네임은 묘비에 남으므로
+      // 자기 행만 보면 연결을 끝낸 회원이 사이드바 배지에서 통째로 빠진다.
+      select: {
+        id: true,
+        kakaoUserId: true,
+        kakaoNickname: true,
+        lastActiveAt: true,
+        createdAt: true,
+        absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "asc" } },
+      },
     }),
+    getCurrentAdmin(),
   ]);
-  const inactiveNavCount = getInactiveMembers(allMembersForInactivity, new Date()).length;
+  const inactiveNavCount = getInactiveMembers(
+    allMembersForInactivity.map((m) => ({ ...m, kakaoNickname: effectiveKakaoNickname(m) })),
+    new Date(),
+  ).length;
 
-  const navItems = [
+  const navItems: Array<{ key: AppShellProps["activeNav"]; href: string; label: string; icon: string; badge?: string }> = [
     { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },
     { key: "matches" as const, href: "/matches", label: "게임 결과 입력", icon: "02" },
     { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "03", badge: String(inactiveNavCount) },
     { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "04" },
     { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "05" },
   ];
+
+  if (currentAdmin) {
+    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "06" });
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0E1117] font-sans text-[#E6EAF2]">
@@ -63,8 +84,11 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
             <h1 className="m-0 text-[15.5px] font-bold">{pageTitle}</h1>
             <span className="text-[11.5px] text-[#6E7889]">{pageDesc}</span>
           </div>
-          <div className="text-[11.5px] text-[#8A94A6]">
-            회원 <span className="font-mono font-semibold text-[#E6EAF2]">{totalCount}</span>명
+          <div className="flex items-center gap-4">
+            <div className="text-[11.5px] text-[#8A94A6]">
+              회원 <span className="font-mono font-semibold text-[#E6EAF2]">{totalCount}</span>명
+            </div>
+            <HeaderAuth username={currentAdmin?.username ?? null} />
           </div>
         </header>
 
