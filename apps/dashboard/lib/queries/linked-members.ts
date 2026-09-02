@@ -30,8 +30,11 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
     orderBy: { mmr: "desc" },
   });
 
+  // 되돌린 경기는 승/패에 넣지 않는다. 참가 기록은 경기 기록에 남아야 해서 지우지
+  // 않으므로(cancelGameResult 참고) 세는 쪽에서 걸러야 한다. 빼지 않으면 MMR만
+  // 되돌아가고 전적은 그대로여서 같은 화면 안에서 두 숫자가 어긋난다.
   const participations = await prisma.gameParticipant.findMany({
-    where: { memberId: { in: members.map((m) => m.id) } },
+    where: { memberId: { in: members.map((m) => m.id) }, gameResult: { cancelledAt: null } },
     select: { memberId: true, team: true, gameResult: { select: { winner: true } } },
   });
 

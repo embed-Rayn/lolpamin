@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "@lolpamin/db";
 import { getMemberByDiscordId } from "../lib/get-member-by-discord-id";
+import { getGameCount } from "../lib/get-game-count";
 
 export const data = new SlashCommandBuilder()
   .setName("전적")
@@ -21,7 +22,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const gameCount = await prisma.gameParticipant.count({ where: { memberId: member.id } });
+  const gameCount = await getGameCount(prisma, member.id);
   // Deliberately no kakaoNickname fallback (unlike getDisplayName elsewhere) — this
   // command exposes another member's identity in a public, non-ephemeral reply, and
   // raw kakaoNickname values often embed real name/age.

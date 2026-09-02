@@ -119,4 +119,30 @@ describe("getLinkedMembers", () => {
     expect(loserAfter.mergedIntoId).toBeNull();
     expect(loserAfter.kakaoNickname).toBe("유대혁/95/유대혁#KR1");
   });
+
+  // 되돌린 경기는 없던 일이다. 빼지 않으면 참가 기록이 남아 있다는 이유로 승/패가
+  // 그대로 보이고, MMR만 되돌아가 화면이 서로 어긋난다.
+  it("leaves a cancelled game out of the win/loss record", async () => {
+    const { cancelGameResult } = await import("@/lib/mutations/cancel-game-result");
+    const { saveGameResult } = await import("@/lib/mutations/save-game-result");
+    // saveGameResult는 kakaoUserId가 아니라 kakaoNickname을 연결의 근거로 본다.
+    const blue = await prisma.member.create({
+      data: { realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoNickname: "승자/95/w#KR1" },
+    });
+    const red = await prisma.member.create({
+      data: { realName: "패자", discordUserId: "d-2", discordHandle: "loser", kakaoNickname: "패자/95/l#KR1" },
+    });
+    const game = await saveGameResult(prisma, {
+      playedAt: new Date("2026-09-01T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+    });
+
+    await cancelGameResult(prisma, game.gameResultId, null);
+
+    const byName = new Map((await getLinkedMembers()).map((o) => [o.name, o]));
+    expect(byName.get("승자")).toMatchObject({ wins: 0, losses: 0 });
+    expect(byName.get("패자")).toMatchObject({ wins: 0, losses: 0 });
+  });
 });
