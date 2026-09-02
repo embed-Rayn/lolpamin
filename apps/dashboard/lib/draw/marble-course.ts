@@ -18,7 +18,7 @@ export const MAX_RACE_MS = 90_000;
 // Gravity is deliberately low and the marbles carry air drag, so they drift down
 // at a readable pace instead of dropping like stones. Cutting it to 0.5 puts the
 // fall at roughly 70% of the speed it ran at before.
-const GRAVITY_Y = 0.4;
+const GRAVITY_Y = 0.45;
 const MARBLE_AIR_FRICTION = 0.004;
 // The gates funnel onto this column and the bumper cluster sits under it.
 const BUMPER_CENTRE_X = 200;
@@ -108,16 +108,14 @@ export function buildCourse(engine: Engine): Mover[] {
     );
   }
 
-  // 5. Bumper cluster — high restitution, so a marble can be flung back uphill.
-  // The gate above drops the pack right onto the middle bumper.
-  for (const [x, y] of [
-    [BUMPER_CENTRE_X - 110, 1360],
-    [BUMPER_CENTRE_X, 1410],
-    [BUMPER_CENTRE_X + 110, 1360],
-    [BUMPER_CENTRE_X - 55, 1480],
-    [BUMPER_CENTRE_X + 55, 1480],
-  ] as const) {
-    parts.push(Bodies.circle(x, y, 16, { ...staticOptions, restitution: 1.2 }));
+  // 5. Bumper field — restitution 2 gives back more than it takes, so a marble
+  // can be kicked hard enough to climb back up through the cluster. The gate
+  // above drops the pack right onto the middle column.
+  for (const [row, y] of [1350, 1425, 1500].entries()) {
+    const offset = row % 2 === 0 ? 0 : 50;
+    for (let x = BUMPER_CENTRE_X - 150 + offset; x <= BUMPER_CENTRE_X + 150; x += 100) {
+      parts.push(Bodies.circle(x, y, 16, { ...staticOptions, restitution: 2 }));
+    }
   }
 
   // 6. Second peg field — a long, quiet stretch that lets the order settle
