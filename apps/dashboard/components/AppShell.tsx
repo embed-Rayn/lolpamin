@@ -9,6 +9,7 @@ export interface AppShellProps {
   activeNav:
     | "members"
     | "matches"
+    | "match-history"
     | "inactive"
     | "kakao-import"
     | "link-accounts"
@@ -33,7 +34,8 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
         kakaoNickname: true,
         lastActiveAt: true,
         createdAt: true,
-        absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "asc" } },
+        // 최신순 — effectiveKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
+        absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "desc" } },
       },
     }),
     getCurrentAdmin(),
@@ -46,16 +48,17 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
   const navItems: Array<{ key: AppShellProps["activeNav"]; href: string; label: string; icon: string; badge?: string }> = [
     { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },
     { key: "matches" as const, href: "/matches", label: "게임 결과 입력", icon: "02" },
-    { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "03", badge: String(inactiveNavCount) },
-    { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "04" },
-    { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "05" },
-    { key: "draw-cannon" as const, href: "/draw/cannon", label: "대포 뽑기", icon: "06" },
-    { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "07" },
+    { key: "match-history" as const, href: "/match-history", label: "경기 기록", icon: "03" },
+    { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "04", badge: String(inactiveNavCount) },
+    { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "05" },
+    { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "06" },
+    { key: "draw-cannon" as const, href: "/draw/cannon", label: "대포 뽑기", icon: "07" },
+    { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "08" },
   ];
 
   if (currentAdmin) {
-    // 06·07은 뽑기 두 개가 쓰므로 관리자는 08로 민다.
-    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "08" });
+    // 앞이 08까지 찼으므로 관리자는 09다.
+    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "09" });
   }
 
   return (
