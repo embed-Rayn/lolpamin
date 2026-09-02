@@ -16,6 +16,7 @@ import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
 import type { PlaybackAnimator, RaceAnimator } from "./animator";
 import { BallLotteryCanvas } from "./BallLotteryCanvas";
+import { BgmPlayer } from "./BgmPlayer";
 import { MarbleRaceCanvas } from "./MarbleRaceCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
 import { DrawControls } from "./DrawControls";
@@ -131,7 +132,10 @@ export function DrawScreen({
         </div>
       </div>
 
-      <ResultList drawn={drawn} />
+      <div className="flex flex-col gap-4">
+        <BgmPlayer />
+        <ResultList drawn={drawn} />
+      </div>
     </div>
   );
 }
