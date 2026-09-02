@@ -13,7 +13,14 @@ import {
 
 // The physics itself decides who wins in 07, so these tests are the guarantee
 // that a race always ends: no wedged marble, no run past the time cap.
-function race(count: number): { winnerId: string; elapsed: number } {
+// y at which the leader has cleared everything above the paddle wheels.
+const WHEEL_ENTRY_Y = 2330;
+
+function race(count: number): {
+  winnerId: string;
+  elapsed: number;
+  leaderAtWheels: string | null;
+} {
   const engine = createRaceEngine();
   const movers = buildCourse(engine);
   const marbles = spawnMarbles(
@@ -22,11 +29,16 @@ function race(count: number): { winnerId: string; elapsed: number } {
   );
 
   let elapsed = 0;
+  let leaderAtWheels: string | null = null;
   for (;;) {
     advance(engine, movers, STEP_MS, elapsed);
     elapsed += STEP_MS;
+    const front = leader(marbles);
+    if (leaderAtWheels === null && front && front.body.position.y > WHEEL_ENTRY_Y) {
+      leaderAtWheels = front.id;
+    }
     const winner = findWinner(marbles, elapsed);
-    if (winner) return { winnerId: winner.id, elapsed };
+    if (winner) return { winnerId: winner.id, elapsed, leaderAtWheels };
   }
 }
 
@@ -38,13 +50,23 @@ describe("marble race", () => {
     }
   });
 
-  it("takes long enough to build tension but is not a slog", () => {
-    // The old single-screen course was over in about two seconds, which is what
-    // made it feel like nothing was at stake.
+  it("runs for about twenty seconds", () => {
+    // The first single-screen course was over in two seconds, which is what made
+    // it feel like nothing was at stake.
     const runs = Array.from({ length: 6 }, () => race(8).elapsed);
     const average = runs.reduce((a, b) => a + b, 0) / runs.length;
-    expect(average).toBeGreaterThan(8_000);
-    expect(average).toBeLessThan(45_000);
+    expect(average).toBeGreaterThan(14_000);
+    expect(average).toBeLessThan(28_000);
+  });
+
+  it("lets the paddle wheels steal the win from the marble that arrives first", () => {
+    // Roughly two races in five turn over at the wheels; over twelve runs, never
+    // seeing it would mean the last obstacle stopped mattering.
+    const runs = Array.from({ length: 12 }, () => race(8));
+    const flipped = runs.filter(
+      (r) => r.leaderAtWheels !== null && r.leaderAtWheels !== r.winnerId
+    );
+    expect(flipped.length).toBeGreaterThan(0);
   });
 
   it("changes leader at least once on the way down", () => {
