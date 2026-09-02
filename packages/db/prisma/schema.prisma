@@ -13,22 +13,31 @@ enum Team {
 }
 
 model Member {
-  id              String   @id @default(uuid())
-  realName        String?
-  age             Int?
-  riotId          String?
-  discordUserId   String?  @unique
-  discordHandle   String?
-  discordJoinedAt DateTime?
-  kakaoUserId     String?  @unique
-  kakaoNickname   String?
-  elo             Int      @default(1000)
-  lastActiveAt    DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  realName           String?
+  age                Int?
+  riotId             String?
+  discordUserId      String?  @unique
+  discordHandle      String?
+  discordDisplayName String?
+  discordJoinedAt    DateTime?
+  kakaoUserId        String?  @unique
+  kakaoNickname      String?
+  elo                Int      @default(1000)
+  lastActiveAt       DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // 흡수된 행(묘비)이 가리키는 생존자. null이면 활성 회원이다.
+  // 묘비는 자기 kakaoNickname을 과거 닉네임으로 보존해 임포트 매칭에 쓰인다.
+  mergedIntoId String?
+  mergedInto   Member?  @relation("MemberMerge", fields: [mergedIntoId], references: [id])
+  absorbed     Member[] @relation("MemberMerge")
 
   mentionLogs  MentionLog[]
   participants GameParticipant[]
+
+  @@index([mergedIntoId])
 }
 
 model GameResult {
@@ -59,4 +68,25 @@ model MentionLog {
   member      Member   @relation(fields: [memberId], references: [id])
   mentionedAt DateTime
   rawMessage  String?
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  // 이 관리자를 추가한 관리자의 id. FK가 아니다 — 추가한 사람이 삭제돼도
+  // "누가 추가했는지"는 남아야 하고, 화면에서는 조회 실패 시 "삭제된 관리자"로 표시한다.
+  createdById  String?
+
+  sessions AdminSession[]
+}
+
+model AdminSession {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
