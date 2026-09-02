@@ -15,7 +15,7 @@ import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
 import type { PlaybackAnimator, RaceAnimator } from "./animator";
-import { BallLotteryCanvas } from "./BallLotteryCanvas";
+import { CannonCanvas } from "./CannonCanvas";
 import { BgmPlayer } from "./BgmPlayer";
 import { MarbleRaceCanvas } from "./MarbleRaceCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
@@ -27,7 +27,7 @@ export function DrawScreen({
   variant,
 }: {
   pool: LinkedMemberOption[];
-  variant: "ball" | "plinko";
+  variant: "cannon" | "plinko";
 }) {
   const [source, setSource] = useState<CandidateSource>("members");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(pool.map((m) => m.id)));
@@ -109,8 +109,8 @@ export function DrawScreen({
           locked={locked}
         />
 
-        {variant === "ball" ? (
-          <BallLotteryCanvas ref={playbackRef} remaining={remaining} />
+        {variant === "cannon" ? (
+          <CannonCanvas ref={playbackRef} remaining={remaining} />
         ) : (
           <MarbleRaceCanvas ref={raceRef} remaining={remaining} />
         )}
