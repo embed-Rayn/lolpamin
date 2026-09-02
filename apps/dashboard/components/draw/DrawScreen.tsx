@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createDrawState,
+  drawById,
   drawNext,
   drawnCandidates,
   remainingCandidates,
@@ -13,11 +14,11 @@ import {
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
-import type { PlaybackAnimator } from "./animator";
+import type { PlaybackAnimator, RaceAnimator } from "./animator";
 import { BallLotteryCanvas } from "./BallLotteryCanvas";
+import { MarbleRaceCanvas } from "./MarbleRaceCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
 import { DrawControls } from "./DrawControls";
-import { PickSpotlight } from "./PickSpotlight";
 import { ResultList } from "./ResultList";
 
 export function DrawScreen({
@@ -35,7 +36,10 @@ export function DrawScreen({
   // panel. The first draw freezes it into a DrawState.
   const [state, setState] = useState<DrawState | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const animatorRef = useRef<PlaybackAnimator>(null);
+  // 06 plays back a winner the state machine already picked; 07 races marbles
+  // and reports back who crossed first. Each variant mounts exactly one of these.
+  const playbackRef = useRef<PlaybackAnimator>(null);
+  const raceRef = useRef<RaceAnimator>(null);
 
   const setupCandidates = useMemo(
     () =>
@@ -52,19 +56,28 @@ export function DrawScreen({
   const remainingKey = remaining.map((c) => c.id).join(",");
 
   useEffect(() => {
-    animatorRef.current?.sync(remaining);
+    playbackRef.current?.sync(remaining);
+    raceRef.current?.sync(remaining);
     // Redraw whenever the pool identity changes — after a draw, an undo, a reset
     // or a setup edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingKey]);
 
   async function handleDraw() {
-    const result = drawNext(active, secureNextIndex);
-    if (!result) return;
-    setState(result.state);
+    if (remaining.length === 0) return;
     setIsAnimating(true);
     try {
-      await animatorRef.current?.play(result.picked);
+      if (variant === "plinko") {
+        // Physics decides this one, so the state is committed after the race.
+        const winner = await raceRef.current?.race();
+        const result = winner ? drawById(active, winner.id) : null;
+        if (result) setState(result.state);
+        return;
+      }
+      const result = drawNext(active, secureNextIndex);
+      if (!result) return;
+      setState(result.state);
+      await playbackRef.current?.play(result.picked);
     } finally {
       setIsAnimating(false);
     }
@@ -96,9 +109,9 @@ export function DrawScreen({
         />
 
         {variant === "ball" ? (
-          <BallLotteryCanvas ref={animatorRef} remaining={remaining} />
+          <BallLotteryCanvas ref={playbackRef} remaining={remaining} />
         ) : (
-          <PickSpotlight ref={animatorRef} remaining={remaining} />
+          <MarbleRaceCanvas ref={raceRef} remaining={remaining} />
         )}
 
         <div className="flex items-center justify-between">
@@ -110,7 +123,7 @@ export function DrawScreen({
             onDraw={handleDraw}
             onUndo={handleUndo}
             onReset={handleReset}
-            onSkip={() => animatorRef.current?.skip()}
+            onSkip={() => (variant === "plinko" ? raceRef.current : playbackRef.current)?.skip()}
           />
           <div className="font-mono text-[12px] text-[#8A94A6]">
             남은 {remaining.length} / 전체 {active.candidates.length}

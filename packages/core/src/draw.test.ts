@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createDrawState,
+  drawById,
   drawNext,
   drawnCandidates,
   remainingCandidates,
@@ -117,5 +118,35 @@ describe("resetDraw", () => {
     const reset = resetDraw(state);
     expect(remainingCandidates(reset)).toEqual(people);
     expect(drawnCandidates(reset)).toEqual([]);
+  });
+});
+
+describe("drawById", () => {
+  it("draws the named candidate", () => {
+    const result = drawById(createDrawState(people), "b")!;
+    expect(result.picked.id).toBe("b");
+    expect(remainingCandidates(result.state).map((c) => c.id)).toEqual(["a", "c"]);
+  });
+
+  it("appends to the same draw order stack as drawNext", () => {
+    let state = createDrawState(people);
+    state = drawNext(state, alwaysFirst)!.state;
+    state = drawById(state, "c")!.state;
+    expect(drawnCandidates(state).map((c) => c.id)).toEqual(["a", "c"]);
+  });
+
+  it("returns null for an unknown id", () => {
+    expect(drawById(createDrawState(people), "zzz")).toBeNull();
+  });
+
+  it("returns null for a candidate that is already drawn", () => {
+    const state = drawById(createDrawState(people), "a")!.state;
+    expect(drawById(state, "a")).toBeNull();
+  });
+
+  it("does not mutate the input state", () => {
+    const state = createDrawState(people);
+    drawById(state, "a");
+    expect(state.drawnIds).toEqual([]);
   });
 });

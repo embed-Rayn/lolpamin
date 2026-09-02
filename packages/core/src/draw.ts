@@ -50,3 +50,18 @@ export function undoDraw(state: DrawState): DrawState {
 export function resetDraw(state: DrawState): DrawState {
   return { candidates: state.candidates, drawnIds: [] };
 }
+
+// Used when the animation itself decides the winner (the marble race in 07):
+// the renderer hands back whoever crossed the goal first and the state records
+// that pick. Returns null if the id is unknown or already drawn.
+export function drawById(
+  state: DrawState,
+  id: string
+): { state: DrawState; picked: DrawCandidate } | null {
+  const picked = remainingCandidates(state).find((c) => c.id === id);
+  if (!picked) return null;
+  return {
+    state: { candidates: state.candidates, drawnIds: [...state.drawnIds, picked.id] },
+    picked,
+  };
+}
