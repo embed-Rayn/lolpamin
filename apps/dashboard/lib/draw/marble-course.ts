@@ -25,7 +25,7 @@ const BUMPER_CENTRE_X = 200;
 // Matter's restitution saturates around 1 — a bumper set to 2 or 4 bounces no
 // harder than one set to 1.2. A pinball kick has to be applied by hand, so every
 // marble that touches a bumper leaves it at this speed, straight outward.
-export const BUMPER_KICK = 16;
+export const BUMPER_KICK = 6;
 
 export interface Mover {
   body: Body;
@@ -215,10 +215,15 @@ export function buildCourse(engine: Engine): Mover[] {
     Bodies.rectangle(WIDTH_UNITS - 40, 2525, 120, 10, { ...staticOptions, angle: -0.3 })
   );
 
-  // 10. Final funnel: everyone squeezes through one last opening above the goal.
+  // 10. Final funnel: everyone squeezes through one last opening above the goal,
+  // with a single bumper sitting in the mouth of it. Arriving dead centre is the
+  // one thing you do not want on the last obstacle.
   parts.push(
-    Bodies.rectangle(78, 2615, 200, 12, { ...staticOptions, angle: 0.55 }),
-    Bodies.rectangle(WIDTH_UNITS - 78, 2615, 200, 12, { ...staticOptions, angle: -0.55 })
+    // The mouth is widened to leave a marble-sized lane on each side of the
+    // bumper — at the old width the bumper simply corked the funnel.
+    Bodies.rectangle(48, 2615, 200, 12, { ...staticOptions, angle: 0.55 }),
+    Bodies.rectangle(WIDTH_UNITS - 48, 2615, 200, 12, { ...staticOptions, angle: -0.55 }),
+    Bodies.circle(WIDTH_UNITS / 2, 2660, 16, { ...staticOptions, label: "bumper", restitution: 1 })
   );
 
   Composite.add(engine.world, parts);
