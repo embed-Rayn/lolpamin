@@ -3,7 +3,14 @@ import { getInactiveMembers } from "@lolpamin/core";
 import { NavLink } from "./NavLink";
 
 export interface AppShellProps {
-  activeNav: "members" | "matches" | "inactive" | "kakao-import" | "link-accounts";
+  activeNav:
+    | "members"
+    | "matches"
+    | "inactive"
+    | "kakao-import"
+    | "link-accounts"
+    | "draw-ball"
+    | "draw-plinko";
   pageTitle: string;
   pageDesc: string;
   children: React.ReactNode;
@@ -24,6 +31,8 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "03", badge: String(inactiveNavCount) },
     { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "04" },
     { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "05" },
+    { key: "draw-ball" as const, href: "/draw/ball", label: "공 뽑기", icon: "06" },
+    { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "07" },
   ];
 
   return (
