@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-02-random-draw-games-design.md`
 
+> **구현 중 변경 2 (2026-09-02):** Task 6의 로또 드럼(`BallLotteryCanvas`)은 **대포 뽑기**(`components/draw/CannonCanvas.tsx`)로 교체됐다. 경로 `/draw/cannon`, 라벨 「대포 뽑기」, `variant="cannon"`. 당첨자 확정 방식은 그대로다.
+>
 > **구현 중 변경 (2026-09-02):** Task 3·7의 유도형 플린코는 **matter.js 실물리 구슬 레이스**로 대체됐다(스펙의 「설계 변경」절 참고). `lib/draw/plinko-path.ts`는 삭제됐고, 코스는 `lib/draw/marble-course.ts` + `components/draw/MarbleRaceCanvas.tsx`에 있다. 07에서는 물리가 승자를 정하고 `drawById()`로 상태에 커밋한다.
 
 ## Global Constraints
