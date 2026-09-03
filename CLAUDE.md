@@ -58,7 +58,9 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 `Member` is one human, with a Discord side and a KakaoTalk side that arrive independently. A row holding only one side is a "반쪽(half) 회원". Linking is **reversible**: `absorbMember()` points the Kakao-side row at the survivor via `mergedIntoId` instead of deleting it, leaving a tombstone that keeps its own `kakaoNickname` so future imports still match on the raw string; `releaseMember()` undoes it. Queries therefore filter on `mergedIntoId: null` and treat a survivor whose tombstone holds a nickname as linked. `realName`/`age` are parsed out of the `이름/나이/닉네임태그` nickname format by `parseKakaoNickname`, best-effort only.
 
-MMR is team-average Elo, K=32, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant — winners and losers alike — gains `PARTICIPATION_POINT` (1), so a game is worth +17/-15 between even teams and the rating pool inflates by one point per player per game. That is deliberate: showing up is always worth something.
+MMR is team-average Elo, K=40, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant gains a flat bonus — `WIN_POINT` (3) for the winning team, `LOSS_POINT` (1) for the losing one — so a game is worth +23/-19 between even teams and the rating pool inflates. That is deliberate: showing up is always worth something, winning a little more.
+
+A quarterly **soft reset** (`applySoftReset`, the button at the bottom of `/admins`) pulls every active member's rating halfway back to 1000, so the ordering survives while the gaps compress. It is a manual admin action with a two-step confirm, keeps no history and cannot be undone; tombstones and recorded `GameParticipant` deltas are left alone.
 
 The rating was called ELO until the rename; the DB columns are `Member.mmr` and `GameParticipant.mmrBefore/mmrAfter`.
 
@@ -89,6 +91,7 @@ feature tracks that had been in exactly that position.
 
 - Domain logic goes in `packages/core` as a pure function with a unit test; DB-touching logic goes in `apps/dashboard/lib/{queries,mutations}/` and takes `prisma` as its first argument (so tests can inject a test client). Multi-row writes go inside `prisma.$transaction`.
 - UI copy, command names, and report labels are Korean; code, identifiers, comments, and commit messages are English.
+- Answer the user in Korean. Chat replies, explanations and questions are Korean; code, identifiers, comments, commit messages and file contents stay English unless they are user-facing UI copy.
 - Plans and specs live in `docs/superpowers/`. The checkboxes in those plan files were never ticked during implementation — read git log, not the checkboxes, to judge progress.
 - `data/` is gitignored: real chat exports contain members' real names. `.env.example` holds placeholders only — real values go in `.env`.
 - Pages that read the DB must declare `export const dynamic = "force-dynamic"`. `AppShell` itself queries Postgres for the sidebar badge, so this applies to every page that renders it, not just the ones with their own query — without it `next build` bakes a snapshot and `next start` serves stale rows.
