@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
+import { calculateTeamMmrChange } from "@lolpamin/core";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { saveGameResult } from "@/lib/mutations/save-game-result";
 import { cancelGameResult } from "@/lib/mutations/cancel-game-result";
@@ -73,9 +74,22 @@ describe("getGameHistory", () => {
 
     const [row] = await getGameHistory();
 
+    // The size of the swing is mmr.test.ts's job; this test is about the split.
+    // Derive it rather than freezing it — the K and bonus change rotted the
+    // literals once already.
+    const { blueDelta, redDelta } = calculateTeamMmrChange({
+      blueRatings: [1000],
+      redRatings: [1000],
+      winner: "BLUE",
+    });
+
     expect(row.winner).toBe("BLUE");
-    expect(row.winners).toEqual([{ name: "블루", mmrBefore: 1000, mmrAfter: 1017, delta: 17 }]);
-    expect(row.losers).toEqual([{ name: "레드", mmrBefore: 1000, mmrAfter: 985, delta: -15 }]);
+    expect(row.winners).toEqual([
+      { name: "블루", mmrBefore: 1000, mmrAfter: 1000 + blueDelta, delta: blueDelta },
+    ]);
+    expect(row.losers).toEqual([
+      { name: "레드", mmrBefore: 1000, mmrAfter: 1000 + redDelta, delta: redDelta },
+    ]);
   });
 
   // 되돌리기 버튼은 딱 한 판에만 붙어야 한다 — cancelGameResult가 그것만 받아들인다.
