@@ -85,6 +85,21 @@ syncing the tree and rebuilding, so anything not committed here exists only
 there — commit 2026-09-02 `import: production tree as deployed` recovered four
 feature tracks that had been in exactly that position.
 
+Access lives in the repo-root `.env` (`OCI_INSTANCE_IP`, `_SSH_PORT`, `_SSH_USER`,
+`_SSH_KEY_PATH`, `_SERVICE_PORT`=3200). The deploy is three commands:
+
+```bash
+git archive main | ssh -i "$KEY" -p "$PORT" "$USER@$IP" 'tar x -C ~/lolpamin'
+ssh ... 'cd ~/lolpamin && sudo docker compose -f docker-compose.prod.yml build'
+ssh ... 'cd ~/lolpamin && sudo docker compose -f docker-compose.prod.yml up -d'
+```
+
+Every docker command on the server needs `sudo` — `ubuntu` is not in the `docker`
+group (`id -nG` gives `ubuntu adm cdrom sudo dip lxd`), and without it the error
+is `permission denied while trying to connect to the docker API`. `sudo` is
+passwordless. Note `git archive` only overwrites: a file deleted in git stays on
+the server until someone removes it by hand.
+
 ## Known inconsistencies
 
 ## Conventions

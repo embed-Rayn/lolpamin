@@ -20,6 +20,7 @@
 - 서버 배포 디렉터리는 `~/lolpamin`, Compose 프로젝트 이름은 `lolpamin`으로 고정한다. 기존 프로젝트의 컨테이너·볼륨과 이름이 겹치지 않아야 한다.
 - 비밀값(`.env`)은 git에 넣지 않는다. 커밋되는 것은 `.env.prod.example`뿐이다.
 - 같은 디스코드 봇 토큰으로 두 프로세스를 동시에 띄우지 않는다.
+- **서버의 docker 명령은 모두 `sudo`가 필요하다.** `ubuntu`는 `docker` 그룹에 없다(`id -nG` → `ubuntu adm cdrom sudo dip lxd`). 아래 명령 블록들은 `sudo` 없이 적혀 있으니그대로 붙여넣으면 `permission denied while trying to connect to the docker API`가 난다. `sudo`는 비밀번호를 묻지 않는다. 2026-09-03 배포에서 확인.
 
 ---
 
