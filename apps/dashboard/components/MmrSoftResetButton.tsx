@@ -40,8 +40,8 @@ export function MmrSoftResetButton() {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-[#E05A5A]/25 bg-[#151A24] px-4 py-3.5">
       <div>
-        <div className="text-[12.5px] font-bold text-[#EE8B8B]">분기 소프트 리셋</div>
-        <div className="text-[11px] text-[#6E7889]">
+        <div className="text-[13.5px] font-bold text-[#EE8B8B]">분기 소프트 리셋</div>
+        <div className="text-[12px] text-[#6E7889]">
           전체 회원의 MMR을 {SOFT_RESET_BASE} 쪽으로 절반 수축시킵니다. 순위는 유지되고 격차만 줄어듭니다. 되돌릴 수
           없습니다.
         </div>
@@ -51,7 +51,7 @@ export function MmrSoftResetButton() {
           type="button"
           onClick={handleClick}
           disabled={isPending}
-          className={`rounded-md border px-3 py-1.5 text-[11px] font-bold ${
+          className={`rounded-md border px-3 py-1.5 text-[12px] font-bold ${
             isPending
               ? "cursor-not-allowed border-white/[.06] text-[#5C6577]"
               : "cursor-pointer border-[#E05A5A]/30 text-[#EE8B8B] hover:bg-[#E05A5A]/[.12]"
@@ -59,8 +59,8 @@ export function MmrSoftResetButton() {
         >
           {isPending ? "리셋 중" : "MMR 소프트 리셋"}
         </button>
-        {doneCount !== null && <span className="text-[11px] text-[#6E7889]">{doneCount}명 리셋 완료</span>}
-        {error && <span className="text-[11px] text-[#EE8B8B]">{error}</span>}
+        {doneCount !== null && <span className="text-[12px] text-[#6E7889]">{doneCount}명 리셋 완료</span>}
+        {error && <span className="text-[12px] text-[#EE8B8B]">{error}</span>}
       </div>
     </div>
   );

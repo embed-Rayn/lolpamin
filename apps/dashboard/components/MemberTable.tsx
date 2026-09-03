@@ -40,7 +40,7 @@ export function MemberTable({
 
   return (
     <>
-      <div className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[11.5px] font-bold tracking-wide text-[#6E7889]">
+      <div className="grid grid-cols-[1fr_1fr_1fr_110px_152px_80px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[12.5px] font-bold tracking-wide text-[#6E7889]">
         <Link href={sortHref("realName")} className="hover:text-[#B7C0D0]">
           실명{sortMark("realName")}
         </Link>
@@ -57,20 +57,20 @@ export function MemberTable({
       {rows.map((m) => (
         <div
           key={m.id}
-          className="grid grid-cols-[1fr_1fr_1fr_100px_140px_72px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[14px] hover:bg-[#181E29]"
+          className="grid grid-cols-[1fr_1fr_1fr_110px_152px_80px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[15px] hover:bg-[#181E29]"
         >
           <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
-          <div className={`truncate font-mono text-[12.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
+          <div className={`truncate font-mono text-[13.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
             {m.kakaoNickname}
           </div>
-          <div className={`truncate font-mono text-[12.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
+          <div className={`truncate font-mono text-[13.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
             {m.discordName}
           </div>
-          <div className={`text-right font-mono text-[14.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
+          <div className={`text-right font-mono text-[15.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
             {m.mmr}
           </div>
           <div
-            className={`text-right font-mono text-[12.5px] ${
+            className={`text-right font-mono text-[13.5px] ${
               m.daysSinceActive !== null && m.daysSinceActive >= 30
                 ? "text-[#EE8B8B]"
                 : m.daysSinceActive !== null && m.daysSinceActive >= 14

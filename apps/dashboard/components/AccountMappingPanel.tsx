@@ -78,8 +78,8 @@ export function AccountMappingPanel({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline gap-2.5">
-        <h2 className="m-0 text-[13.5px] font-bold">계정 매핑</h2>
-        <span className="text-[11.5px] text-[#6E7889]">
+        <h2 className="m-0 text-[14.5px] font-bold">계정 매핑</h2>
+        <span className="text-[12.5px] text-[#6E7889]">
           양쪽에서 한 개씩 골라 연결하세요. 연결하면 하나의 회원 데이터로 합쳐집니다.
         </span>
       </div>
@@ -89,20 +89,20 @@ export function AccountMappingPanel({
             type="button"
             onClick={handleImportDiscord}
             disabled={isImporting}
-            className={`rounded-lg px-3.5 py-2 text-[12px] font-extrabold ${
+            className={`rounded-lg px-3.5 py-2 text-[13px] font-extrabold ${
               isImporting ? "cursor-not-allowed bg-[#1E2534] text-[#5C6577]" : "cursor-pointer bg-[#5865F2] text-white"
             }`}
           >
             {isImporting ? "가져오는 중..." : "디스코드 회원 가져오기"}
           </button>
-          {importStatus && <span className="text-[11.5px] text-[#8A94A6]">{importStatus}</span>}
+          {importStatus && <span className="text-[12.5px] text-[#8A94A6]">{importStatus}</span>}
         </div>
       )}
       <div className="grid grid-cols-[1fr_210px_1fr] items-stretch gap-3.5">
         <div className="flex flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <div className="flex items-center justify-between border-b border-white/[.06] bg-[#5865F2]/[.07] px-4 py-3">
-            <span className="text-[12.5px] font-bold">미연결 Discord 계정</span>
-            <span className="font-mono text-[11px] text-[#7A8496]">{discordAccounts.length}</span>
+            <span className="text-[13.5px] font-bold">미연결 Discord 계정</span>
+            <span className="font-mono text-[12px] text-[#7A8496]">{discordAccounts.length}</span>
           </div>
           <div className="flex max-h-72 flex-col gap-1 overflow-y-auto p-2">
             {discordAccounts.map((d) => (
@@ -113,8 +113,8 @@ export function AccountMappingPanel({
                   selectedCandidateId === d.id ? "border-[#5865F2] bg-[#5865F2]/[.14]" : "border-white/[.05] bg-[#1A2130]"
                 }`}
               >
-                <span className="text-[12px] font-semibold">{d.displayName || d.handle}</span>
-                {d.displayName && <span className="font-mono text-[10px] text-[#7A8496]">{d.handle}</span>}
+                <span className="text-[13px] font-semibold">{d.displayName || d.handle}</span>
+                {d.displayName && <span className="font-mono text-[11.5px] text-[#7A8496]">{d.handle}</span>}
               </button>
             ))}
           </div>
@@ -122,11 +122,11 @@ export function AccountMappingPanel({
 
         <div className="flex flex-col gap-2 rounded-xl border border-dashed border-white/[.1] bg-[#12161F] p-4">
           {selectedKakao === null ? (
-            <div className="text-center text-[11px] leading-relaxed text-[#6E7889]">
+            <div className="text-center text-[12px] leading-relaxed text-[#6E7889]">
               오른쪽에서 카카오톡 계정을 하나 고르세요
             </div>
           ) : selectedKakao.candidates.length === 0 ? (
-            <div className="text-center text-[11px] leading-relaxed text-[#6E7889]">
+            <div className="text-center text-[12px] leading-relaxed text-[#6E7889]">
               닮은 계정을 찾지 못했습니다. 왼쪽 목록에서 직접 고르세요.
             </div>
           ) : (
@@ -140,11 +140,11 @@ export function AccountMappingPanel({
                     : "border-white/[.05] bg-[#1A2130]"
                 }`}
               >
-                <span className="text-[12px] font-semibold">
+                <span className="text-[13px] font-semibold">
                   {c.displayName || c.handle}
-                  {c.isSole && <span className="ml-1.5 text-[10px] text-[#9BD173]">유력</span>}
+                  {c.isSole && <span className="ml-1.5 text-[11.5px] text-[#9BD173]">유력</span>}
                 </span>
-                <span className="font-mono text-[10px] text-[#7A8496]">
+                <span className="font-mono text-[11.5px] text-[#7A8496]">
                   {c.handle} · {c.reasons.join(" · ")}
                   {c.kind === "linked" && " · 이미 연결된 회원"}
                 </span>
@@ -155,7 +155,7 @@ export function AccountMappingPanel({
             <button
               onClick={handleAbsorb}
               disabled={!selectedKakaoId || !selectedCandidateId || isPending}
-              className={`w-full rounded-lg py-2.5 text-[12.5px] font-bold ${
+              className={`w-full rounded-lg py-2.5 text-[13.5px] font-bold ${
                 selectedKakaoId && selectedCandidateId && !isPending
                   ? "cursor-pointer bg-[#4472C4] text-white"
                   : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
@@ -164,13 +164,13 @@ export function AccountMappingPanel({
               ↔ 선택 계정 연결
             </button>
           ) : (
-            <div className="rounded-lg border border-white/[.06] bg-[#0F131B] p-3 text-[11.5px] text-[#8A94A6]">
+            <div className="rounded-lg border border-white/[.06] bg-[#0F131B] p-3 text-[12.5px] text-[#8A94A6]">
               변경하려면 관리자 로그인이 필요합니다.
             </div>
           )}
           {status && (
             <div
-              className={`w-full rounded-lg border p-2.5 text-[10.5px] leading-relaxed ${
+              className={`w-full rounded-lg border p-2.5 text-[12px] leading-relaxed ${
                 status.ok
                   ? "border-[#9BD173]/30 bg-[#9BD173]/[.10] text-[#9BD173]"
                   : "border-[#C6553F]/40 bg-[#C6553F]/[.12] text-[#C6553F]"
@@ -183,8 +183,8 @@ export function AccountMappingPanel({
 
         <div className="flex flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <div className="flex items-center justify-between border-b border-white/[.06] bg-[#FFC000]/[.07] px-4 py-3">
-            <span className="text-[12.5px] font-bold">미연결 카카오톡 계정</span>
-            <span className="font-mono text-[11px] text-[#7A8496]">{kakaoAccounts.length}</span>
+            <span className="text-[13.5px] font-bold">미연결 카카오톡 계정</span>
+            <span className="font-mono text-[12px] text-[#7A8496]">{kakaoAccounts.length}</span>
           </div>
           <div className="flex max-h-72 flex-col gap-1 overflow-y-auto p-2">
             {kakaoAccounts.map((k) => (
@@ -195,8 +195,8 @@ export function AccountMappingPanel({
                   selectedKakaoId === k.id ? "border-[#FFC000] bg-[#FFC000]/[.12]" : "border-white/[.05] bg-[#1A2130]"
                 }`}
               >
-                <span className="text-[12.5px] font-semibold">{k.realName}</span>
-                <span className="font-mono text-[10.5px] text-[#7A8496]">{k.kakaoNickname}</span>
+                <span className="text-[13.5px] font-semibold">{k.realName}</span>
+                <span className="font-mono text-[12px] text-[#7A8496]">{k.kakaoNickname}</span>
               </button>
             ))}
           </div>
@@ -206,24 +206,24 @@ export function AccountMappingPanel({
       {membersWithAliases.length > 0 && (
         <div className="flex flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <div className="flex items-center justify-between border-b border-white/[.06] px-4 py-3">
-            <span className="text-[12.5px] font-bold">연결된 계정</span>
-            <span className="font-mono text-[11px] text-[#7A8496]">{membersWithAliases.length}</span>
+            <span className="text-[13.5px] font-bold">연결된 계정</span>
+            <span className="font-mono text-[12px] text-[#7A8496]">{membersWithAliases.length}</span>
           </div>
           {/* 연결이 늘수록 길어지는 목록이라 남는 가로 폭을 빈칸이 아니라 단으로 쓴다. */}
           <div className="grid grid-cols-1 gap-x-5 gap-y-3 p-3 md:grid-cols-2 xl:grid-cols-3">
             {membersWithAliases.map((m) => (
               <div key={m.id} className="flex flex-col items-start gap-1.5">
-                <span className="text-[12px] font-semibold">{m.label}</span>
+                <span className="text-[13px] font-semibold">{m.label}</span>
                 {m.aliases.map((a) => (
                   // 행을 내용 폭에 맞춘다. 늘리면 「끊기」가 자기가 끊는 별칭에서
                   // 멀찍이 떨어진 오른쪽 끝에 가서 붙는다.
                   <div key={a.id} className="flex max-w-full items-center gap-2 rounded-lg border border-white/[.05] bg-[#1A2130] px-2.5 py-1.5">
-                    <span className="truncate font-mono text-[11px] text-[#8A94A6]">{a.kakaoNickname}</span>
+                    <span className="truncate font-mono text-[12px] text-[#8A94A6]">{a.kakaoNickname}</span>
                     {isAdmin && (
                       <button
                         onClick={() => handleRelease(a.id)}
                         disabled={isPending}
-                        className="shrink-0 rounded-md border border-white/[.08] px-2 py-1 text-[10.5px] text-[#C6553F] disabled:cursor-not-allowed disabled:text-[#5C6577]"
+                        className="shrink-0 rounded-md border border-white/[.08] px-2 py-1 text-[12px] text-[#C6553F] disabled:cursor-not-allowed disabled:text-[#5C6577]"
                       >
                         끊기
                       </button>

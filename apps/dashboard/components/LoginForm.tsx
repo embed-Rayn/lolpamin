@@ -11,7 +11,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className={`rounded-lg px-4 py-2 text-[12.5px] font-extrabold ${
+      className={`rounded-lg px-4 py-2 text-[13.5px] font-extrabold ${
         pending ? "cursor-not-allowed bg-[#1E2534] text-[#5C6577]" : "cursor-pointer bg-[#4472C4] text-white"
       }`}
     >
@@ -25,22 +25,22 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="flex w-[320px] flex-col gap-3 rounded-xl border border-white/[.06] bg-[#151A24] p-5">
-      <div className="text-[12.5px] font-bold">관리자 로그인</div>
+      <div className="text-[13.5px] font-bold">관리자 로그인</div>
       <input
         name="username"
         autoComplete="username"
         placeholder="아이디"
-        className="rounded-lg border border-white/[.08] bg-[#0F131B] px-3 py-2 text-[12.5px] text-[#E6EAF2] outline-none"
+        className="rounded-lg border border-white/[.08] bg-[#0F131B] px-3 py-2 text-[13.5px] text-[#E6EAF2] outline-none"
       />
       <input
         name="password"
         type="password"
         autoComplete="current-password"
         placeholder="비밀번호"
-        className="rounded-lg border border-white/[.08] bg-[#0F131B] px-3 py-2 text-[12.5px] text-[#E6EAF2] outline-none"
+        className="rounded-lg border border-white/[.08] bg-[#0F131B] px-3 py-2 text-[13.5px] text-[#E6EAF2] outline-none"
       />
       {state.error && (
-        <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.12] p-2.5 text-[11px] text-[#EE8B8B]">
+        <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.12] p-2.5 text-[12px] text-[#EE8B8B]">
           {state.error}
         </div>
       )}

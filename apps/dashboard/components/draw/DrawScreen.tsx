@@ -165,7 +165,7 @@ export function DrawScreen({
             speed={speed}
             onSpeedChange={setSpeed}
           />
-          <div className="font-mono text-[12px] text-[#8A94A6]">
+          <div className="font-mono text-[13px] text-[#8A94A6]">
             남은 {remaining.length} / 전체 {active.candidates.length}
           </div>
         </div>

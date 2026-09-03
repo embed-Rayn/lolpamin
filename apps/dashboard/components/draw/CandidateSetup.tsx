@@ -21,7 +21,7 @@ export interface CandidateSetupProps {
 }
 
 const FIELD =
-  "rounded-lg border border-white/[.09] bg-[#0E1117] px-2.5 py-1.5 text-[12.5px] text-[#E6EAF2] outline-none focus:border-[#4472C4] disabled:opacity-40";
+  "rounded-lg border border-white/[.09] bg-[#0E1117] px-2.5 py-1.5 text-[13.5px] text-[#E6EAF2] outline-none focus:border-[#4472C4] disabled:opacity-40";
 
 export function CandidateSetup({
   pool,
@@ -77,7 +77,7 @@ export function CandidateSetup({
               type="button"
               disabled={locked}
               onClick={() => onSourceChange(s)}
-              className={`rounded-md px-3 py-1.5 text-[12px] font-bold disabled:opacity-40 ${
+              className={`rounded-md px-3 py-1.5 text-[13px] font-bold disabled:opacity-40 ${
                 source === s ? "bg-[#20293A] text-white" : "text-[#8A94A6]"
               }`}
             >
@@ -86,7 +86,7 @@ export function CandidateSetup({
           ))}
         </div>
         {locked && (
-          <div className="text-[11px] text-[#F2985C]">진행 중 — 후보를 바꾸려면 리셋하세요</div>
+          <div className="text-[12px] text-[#F2985C]">진행 중 — 후보를 바꾸려면 리셋하세요</div>
         )}
       </div>
 
@@ -119,7 +119,7 @@ export function CandidateSetup({
           </div>
 
           {pool.length === 0 ? (
-            <div className="rounded-lg bg-[#161B26] px-3 py-6 text-center text-[12px] text-[#8A94A6]">
+            <div className="rounded-lg bg-[#161B26] px-3 py-6 text-center text-[13px] text-[#8A94A6]">
               계정이 연결된 회원이 없습니다. 05 계정 연결에서 먼저 연결하거나, 위 탭에서 숫자 뽑기를
               쓰세요.
             </div>
@@ -128,7 +128,7 @@ export function CandidateSetup({
               {visible.map((m) => (
                 <label
                   key={m.id}
-                  className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12.5px] ${
+                  className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13.5px] ${
                     selectedIds.has(m.id) ? "bg-[#20293A] text-white" : "bg-[#161B26] text-[#95A0B2]"
                   } ${locked ? "opacity-50" : "cursor-pointer"}`}
                 >
@@ -168,13 +168,13 @@ export function CandidateSetup({
               추가
             </button>
           </div>
-          {manualError && <div className="text-[11.5px] text-[#E06C75]">{manualError}</div>}
+          {manualError && <div className="text-[12.5px] text-[#E06C75]">{manualError}</div>}
           {manual.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {manual.map((c) => (
                 <span
                   key={c.id}
-                  className="flex items-center gap-1.5 rounded-full bg-[#2A2033] px-2.5 py-1 text-[11.5px] text-[#D8B4F5]"
+                  className="flex items-center gap-1.5 rounded-full bg-[#2A2033] px-2.5 py-1 text-[12.5px] text-[#D8B4F5]"
                 >
                   {c.label}
                   <button
@@ -192,7 +192,7 @@ export function CandidateSetup({
         </>
       ) : (
         <>
-          <div className="flex items-center gap-2 text-[12.5px] text-[#95A0B2]">
+          <div className="flex items-center gap-2 text-[13.5px] text-[#95A0B2]">
             <input
               type="number"
               className={`${FIELD} w-24`}
@@ -210,7 +210,7 @@ export function CandidateSetup({
             />
             <span>까지</span>
           </div>
-          {rangeError && <div className="text-[11.5px] text-[#E06C75]">{rangeError}</div>}
+          {rangeError && <div className="text-[12.5px] text-[#E06C75]">{rangeError}</div>}
         </>
       )}
     </div>

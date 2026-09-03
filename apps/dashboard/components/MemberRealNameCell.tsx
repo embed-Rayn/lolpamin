@@ -54,7 +54,7 @@ export function MemberRealNameCell({
             setIsEditing(false);
           }
         }}
-        className="w-full rounded-md border border-[#4472C4]/50 bg-[#0F131B] px-1.5 py-1 text-[13px] text-[#E6EAF2] outline-none"
+        className="w-full rounded-md border border-[#4472C4]/50 bg-[#0F131B] px-1.5 py-1 text-[14px] text-[#E6EAF2] outline-none"
       />
     );
   }
@@ -76,7 +76,7 @@ export function MemberRealNameCell({
       }`}
     >
       {isPending ? "저장 중..." : realName}
-      {error && <span className="ml-1 text-[10px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="ml-1 text-[11.5px] text-[#EE8B8B]">{error}</span>}
     </button>
   );
 }

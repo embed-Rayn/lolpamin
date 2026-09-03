@@ -18,7 +18,7 @@ export default async function MatchHistoryPage() {
       pageDesc="입력한 순서대로 보기 · 가장 최근 한 판만 되돌릴 수 있습니다"
     >
       <div className="flex flex-col gap-4 px-7 pb-10 pt-6">
-        <div className="font-mono text-[12px] text-[#8A94A6]">
+        <div className="font-mono text-[13px] text-[#8A94A6]">
           살아 있는 경기 {liveCount} / 전체 {rows.length}
         </div>
         <GameHistoryList rows={rows} isAdmin={currentAdmin !== null} />

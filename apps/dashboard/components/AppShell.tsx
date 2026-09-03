@@ -88,14 +88,14 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
 
   return (
     <div className="flex min-h-screen bg-[#0E1117] font-sans text-[#E6EAF2]">
-      <aside className="sticky top-0 flex h-screen w-[232px] flex-none flex-col gap-6 border-r border-white/[.07] bg-[#12161F] p-3.5">
+      <aside className="sticky top-0 flex h-screen w-[250px] flex-none flex-col gap-6 border-r border-white/[.07] bg-[#12161F] p-3.5">
         <div className="flex items-center gap-2.5 px-2">
-          <div className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] bg-gradient-to-br from-[#4472C4] to-[#1E3461] text-sm font-extrabold text-white">
+          <div className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] bg-gradient-to-br from-[#4472C4] to-[#1E3461] text-[15px] font-extrabold text-white">
             롤
           </div>
           <div className="flex flex-col gap-px">
-            <div className="text-[13.5px] font-bold">롤파민</div>
-            <div className="text-[10.5px] text-[#6E7889]">내부 운영 도구</div>
+            <div className="text-[14.5px] font-bold">롤파민</div>
+            <div className="text-[12px] text-[#6E7889]">내부 운영 도구</div>
           </div>
         </div>
 
@@ -124,8 +124,8 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
 
         <div className="mt-auto flex flex-col gap-2.5">
           <div className="flex flex-col gap-2 rounded-[10px] border border-white/[.06] bg-[#161B26] p-3">
-            <div className="text-[10.5px] font-semibold text-[#6E7889]">봇 연동 상태</div>
-            <div className="flex items-center gap-1.5 text-[11.5px] text-[#B7C0D0]">
+            <div className="text-[12px] font-semibold text-[#6E7889]">봇 연동 상태</div>
+            <div className="flex items-center gap-1.5 text-[12.5px] text-[#B7C0D0]">
               <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#70AD47]" />
               Discord Bot · 정상
             </div>
@@ -136,11 +136,11 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-[58px] flex-none items-center justify-between border-b border-white/[.07] bg-[#0E1117]/85 px-7 backdrop-blur">
           <div className="flex items-baseline gap-2.5">
-            <h1 className="m-0 text-[15.5px] font-bold">{pageTitle}</h1>
-            <span className="text-[11.5px] text-[#6E7889]">{pageDesc}</span>
+            <h1 className="m-0 text-[17px] font-bold">{pageTitle}</h1>
+            <span className="text-[12.5px] text-[#6E7889]">{pageDesc}</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[11.5px] text-[#8A94A6]">
+            <div className="text-[12.5px] text-[#8A94A6]">
               회원 <span className="font-mono font-semibold text-[#E6EAF2]">{totalCount}</span>명
             </div>
             <HeaderAuth username={currentAdmin?.username ?? null} />

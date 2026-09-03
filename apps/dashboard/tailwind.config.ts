@@ -5,7 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Pretendard", "'Noto Sans KR'", "sans-serif"],
+        // The CDN's variable build registers itself as 'Pretendard Variable'.
+        // "Pretendard" alone matched no face and silently fell back.
+        sans: ["'Pretendard Variable'", "Pretendard", "'Noto Sans KR'", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono'", "monospace"],
       },
     },

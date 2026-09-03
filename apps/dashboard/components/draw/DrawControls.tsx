@@ -1,6 +1,6 @@
 import { SPEED_TICKS, sliderToSpeed, speedToSlider } from "@/lib/draw/speed";
 
-const BUTTON = "rounded-lg px-4 py-2.5 text-[13px] font-bold transition-colors disabled:opacity-35";
+const BUTTON = "rounded-lg px-4 py-2.5 text-[14px] font-bold transition-colors disabled:opacity-35";
 
 // 슬라이더는 0~1 위치를 다루고 배속 변환은 speed.ts가 한다. step을 잘게 두면 로그스케일
 // 위에서 배율이 촘촘하게 움직인다.
@@ -74,7 +74,7 @@ export function DrawControls({
       )}
 
       {/* 연출 도중에도 움직인다 — 느리게 깔다가 마지막에 올리는 식으로 쓴다. */}
-      <label className="ml-2 flex items-center gap-2 text-[11.5px] text-[#8A94A6]">
+      <label className="ml-2 flex items-center gap-2 text-[12.5px] text-[#8A94A6]">
         <span className="whitespace-nowrap">속도</span>
         <input
           type="range"

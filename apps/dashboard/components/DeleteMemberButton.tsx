@@ -62,7 +62,7 @@ export function DeleteMemberButton({
         onClick={handleClick}
         disabled={isPending}
         title={`${label} 삭제`}
-        className={`rounded-md border px-2 py-1 text-[11px] font-bold ${
+        className={`rounded-md border px-2 py-1 text-[12px] font-bold ${
           isPending
             ? "cursor-not-allowed border-white/[.06] text-[#5C6577]"
             : "cursor-pointer border-[#E05A5A]/30 text-[#EE8B8B] hover:bg-[#E05A5A]/[.12]"
@@ -70,7 +70,7 @@ export function DeleteMemberButton({
       >
         {isPending ? "삭제 중" : "삭제"}
       </button>
-      {error && <span className="text-right text-[10px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="text-right text-[11.5px] text-[#EE8B8B]">{error}</span>}
     </div>
   );
 }

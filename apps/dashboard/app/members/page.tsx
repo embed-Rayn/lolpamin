@@ -27,7 +27,7 @@ export default async function MembersPage({
 
   return (
     <AppShell activeNav="members" pageTitle="회원 관리" pageDesc="전체 회원 조회 및 검색">
-      <div className="flex flex-col gap-5.5 px-7 pb-10 pt-6">
+      <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
         <div className="grid grid-cols-4 gap-3">
           <StatCard label="전체 회원" value={data.totalCount} unit="명" colorClassName="text-[#E6EAF2]" />
           <StatCard label="미연결(반쪽) 회원" value={data.halfCount} unit="명" colorClassName="text-[#F2985C]" />

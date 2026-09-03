@@ -14,10 +14,10 @@ function PlayerLine({ player, up }: { player: GameHistoryPlayer; up: boolean }) 
   return (
     <span className="whitespace-nowrap">
       <span className="text-[#C7D0DF]">{player.name}</span>{" "}
-      <span className="font-mono text-[11px] text-[#6E7889]">
+      <span className="font-mono text-[12px] text-[#6E7889]">
         {player.mmrBefore}→{player.mmrAfter}
       </span>{" "}
-      <span className={`font-mono text-[11px] ${up ? "text-[#9BD173]" : "text-[#EE8B8B]"}`}>
+      <span className={`font-mono text-[12px] ${up ? "text-[#9BD173]" : "text-[#EE8B8B]"}`}>
         {player.delta > 0 ? `+${player.delta}` : player.delta}
       </span>
     </span>
@@ -30,7 +30,7 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[.07] bg-[#12161F] px-5 py-12 text-center text-[12.5px] text-[#5C6577]">
+      <div className="rounded-xl border border-white/[.07] bg-[#12161F] px-5 py-12 text-center text-[13.5px] text-[#5C6577]">
         아직 입력된 경기가 없습니다.
       </div>
     );
@@ -50,7 +50,7 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.10] px-3 py-2.5 text-[12px] text-[#EE8B8B]">
+        <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.10] px-3 py-2.5 text-[13px] text-[#EE8B8B]">
           {error}
         </div>
       )}
@@ -65,14 +65,14 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
           }`}
         >
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[12px] text-[#8A94A6]">{formatPlayedAt(row.playedAt)}</span>
+            <span className="font-mono text-[13px] text-[#8A94A6]">{formatPlayedAt(row.playedAt)}</span>
             {row.isCancelled ? (
-              <span className="rounded-md bg-[#2A2033] px-2 py-0.5 text-[11px] font-bold text-[#C79BE5]">
+              <span className="rounded-md bg-[#2A2033] px-2 py-0.5 text-[12px] font-bold text-[#C79BE5]">
                 취소됨
               </span>
             ) : (
               <span
-                className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
+                className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${
                   row.winner === "BLUE"
                     ? "bg-[#4472C4]/20 text-[#8FB4F5]"
                     : "bg-[#E05A5A]/20 text-[#EE8B8B]"
@@ -81,7 +81,7 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
                 {row.winner === "BLUE" ? "블루 승" : "레드 승"}
               </span>
             )}
-            <span className="text-[11.5px] text-[#6E7889]">
+            <span className="text-[12.5px] text-[#6E7889]">
               {row.createdByLabel} 입력
               {row.cancelledByLabel !== null && ` · ${row.cancelledByLabel} 취소`}
             </span>
@@ -91,14 +91,14 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
                 type="button"
                 disabled={pending}
                 onClick={() => handleCancel(row.id)}
-                className="ml-auto rounded-lg bg-[#20293A] px-3 py-1.5 text-[12px] font-bold text-[#C7D0DF] transition-colors hover:bg-[#27324A] disabled:opacity-35"
+                className="ml-auto rounded-lg bg-[#20293A] px-3 py-1.5 text-[13px] font-bold text-[#C7D0DF] transition-colors hover:bg-[#27324A] disabled:opacity-35"
               >
                 되돌리기
               </button>
             )}
           </div>
 
-          <div className="mt-3 flex flex-col gap-1.5 text-[12.5px]">
+          <div className="mt-3 flex flex-col gap-1.5 text-[13.5px]">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="w-3 flex-none text-[#9BD173]">↑</span>
               {row.winners.map((p) => (

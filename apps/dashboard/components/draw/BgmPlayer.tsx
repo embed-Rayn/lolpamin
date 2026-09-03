@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BgmTrack } from "@/lib/draw/bgm";
 
 const FIELD =
-  "rounded-lg border border-white/[.09] bg-[#0E1117] px-2.5 py-1.5 text-[12px] text-[#E6EAF2] outline-none disabled:opacity-40";
+  "rounded-lg border border-white/[.09] bg-[#0E1117] px-2.5 py-1.5 text-[13px] text-[#E6EAF2] outline-none disabled:opacity-40";
 
 export function BgmPlayer() {
   const [tracks, setTracks] = useState<BgmTrack[]>([]);
@@ -52,9 +52,9 @@ export function BgmPlayer() {
 
   return (
     <div className="flex items-center gap-2 rounded-xl border border-white/[.07] bg-[#12161F] px-3 py-2.5">
-      <span className="text-[11px] font-bold tracking-wider text-[#5C6577]">BGM</span>
+      <span className="text-[12px] font-bold tracking-wider text-[#5C6577]">BGM</span>
       {tracks.length === 0 ? (
-        <span className="text-[12px] text-[#6E7889]">BGM 없음</span>
+        <span className="text-[13px] text-[#6E7889]">BGM 없음</span>
       ) : (
         <>
           <select
