@@ -12,11 +12,53 @@ enum Team {
   RED
 }
 
+// 솔로랭크 티어. 마스터 위쪽은 티어 이름이 아니라 LP 구간으로 자른다 — 그랜드마스터와
+// 챌린저는 별도 티어가 아니라 마스터 LP의 상위 구간이라, LP로 자르면 자동으로 덮인다.
+// 선언 순서는 점수 내림차순이다(packages/core/src/tier.ts의 TIER_SCORES와 같은 순서).
+// 아이언을 1~4로 쪼개지 않는 것은 전부 0점이라서다.
+enum MemberTier {
+  MASTER_1000_PLUS
+  MASTER_800_1000
+  MASTER_600_800
+  MASTER_400_600
+  MASTER_200_400
+  MASTER_0_200
+  DIAMOND_1
+  DIAMOND_2
+  DIAMOND_3
+  DIAMOND_4
+  EMERALD_1
+  EMERALD_2
+  EMERALD_3
+  EMERALD_4
+  PLATINUM_1
+  PLATINUM_2
+  PLATINUM_3
+  PLATINUM_4
+  GOLD_1
+  GOLD_2
+  GOLD_3
+  GOLD_4
+  SILVER_1
+  SILVER_2
+  SILVER_3
+  SILVER_4
+  BRONZE_1
+  BRONZE_2
+  BRONZE_3
+  BRONZE_4
+  IRON
+  UNRANKED
+}
+
 model Member {
   id                 String   @id @default(uuid())
   realName           String?
   age                Int?
   riotId             String?
+  // 「티어를 모른다」와 「언랭이다」는 점수가 0으로 같고 화면 문구도 같다. nullable로
+  // 두면 아무것도 얻지 못하면서 null 분기만 늘어난다.
+  tier               MemberTier @default(UNRANKED)
   discordUserId      String?  @unique
   discordHandle      String?
   discordDisplayName String?
