@@ -74,6 +74,49 @@ describe("normalizeKakaoNicknames", () => {
     ]);
   });
 
+  it("carries the loser's tier onto an UNRANKED survivor when merging", async () => {
+    const older = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98",
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    const newer = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+        tier: "DIAMOND_2",
+      },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.tier).toBe("DIAMOND_2");
+  });
+
+  it("keeps the survivor's own tier when merging, instead of taking the loser's", async () => {
+    const older = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98",
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+        tier: "GOLD_1",
+      },
+    });
+    const newer = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+        tier: "DIAMOND_2",
+      },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.tier).toBe("GOLD_1");
+  });
+
   it("keeps the linked member as the survivor even when it was created later", async () => {
     const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-01T00:00:00Z") },

@@ -62,42 +62,55 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
     const member = id === null ? null : byId.get(id) ?? null;
     const score = member === null ? null : tierScore(member.tier);
 
-    return (
-      <>
-        {/* 점수. 0(아이언·언랭)은 빈칸이다 — 0을 찍으면 "0점짜리 실력"으로 읽히지만
-            실제 의미는 "점수를 매기지 않는 구간"이다. */}
-        <div className="text-right font-mono text-[15.5px] font-bold text-[#E6EAF2]">
-          {score === null || score === 0 ? "" : score}
-        </div>
+    // 점수. 0(아이언·언랭)은 빈칸이다 — 0을 찍으면 "0점짜리 실력"으로 읽히지만
+    // 실제 의미는 "점수를 매기지 않는 구간"이다. 레드는 블루와 좌우 대칭이 되도록
+    // 바깥쪽(56px 트랙 바깥 가장자리)으로 정렬한다.
+    const scoreCell = (
+      <div
+        className={`font-mono text-[15.5px] font-bold text-[#E6EAF2] ${
+          side === "blue" ? "text-right" : "text-left"
+        }`}
+      >
+        {score === null || score === 0 ? "" : score}
+      </div>
+    );
 
-        <div className="min-w-0">
-          {member === null ? (
-            <div className="text-[13.5px] text-[#5C6577]">—</div>
-          ) : (
-            <MemberTierCell memberId={member.id} tier={member.tier} isAdmin={isAdmin} />
-          )}
-        </div>
+    const tierCell = (
+      <div className="min-w-0">
+        {member === null ? (
+          <div className="text-[13.5px] text-[#5C6577]">—</div>
+        ) : (
+          <MemberTierCell key={member.id} memberId={member.id} tier={member.tier} isAdmin={isAdmin} />
+        )}
+      </div>
+    );
 
-        {/* 위는 회원을 고르는 드롭다운, 아래는 그 회원의 Riot ID(운영진이면 편집 가능).
-            한 칸에 「고르기」와 「고치기」를 동시에 넣을 수 없어 두 줄로 나눴다. */}
-        <div className="flex min-w-0 flex-col gap-1">
-          <select
-            value={id ?? ""}
-            onChange={(e) => seat(side, position, e.target.value === "" ? null : e.target.value)}
-            className="w-full min-w-0 cursor-pointer rounded-md border border-white/[.09] bg-[#0F131B] px-1.5 py-1 text-[13.5px] text-[#E6EAF2] outline-none focus:border-[#4472C4]"
-          >
-            <option value="">— 비어 있음 —</option>
-            {candidates(id).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          {member !== null && (
-            <MemberRiotIdCell memberId={member.id} riotId={member.riotId} isAdmin={isAdmin} />
-          )}
-        </div>
-      </>
+    // 위는 회원을 고르는 드롭다운, 아래는 그 회원의 Riot ID(운영진이면 편집 가능).
+    // 한 칸에 「고르기」와 「고치기」를 동시에 넣을 수 없어 두 줄로 나눴다.
+    const pickCell = (
+      <div className="flex min-w-0 flex-col gap-1">
+        <select
+          value={id ?? ""}
+          onChange={(e) => seat(side, position, e.target.value === "" ? null : e.target.value)}
+          className="w-full min-w-0 cursor-pointer rounded-md border border-white/[.09] bg-[#0F131B] px-1.5 py-1 text-[13.5px] text-[#E6EAF2] outline-none focus:border-[#4472C4]"
+        >
+          <option value="">— 비어 있음 —</option>
+          {candidates(id).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {member !== null && (
+          <MemberRiotIdCell key={member.id} memberId={member.id} riotId={member.riotId} isAdmin={isAdmin} />
+        )}
+      </div>
+    );
+
+    return side === "blue" ? (
+      <>{scoreCell}{tierCell}{pickCell}</>
+    ) : (
+      <>{pickCell}{tierCell}{scoreCell}</>
     );
   }
 
@@ -150,7 +163,7 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
             <div className="text-center text-[13px] text-[#8A94A6]">합</div>
             <div />
             <div />
-            <div className="text-right font-mono text-[#EE8B8B]">{redTotal}</div>
+            <div className="text-left font-mono text-[#EE8B8B]">{redTotal}</div>
           </div>
 
           <div className="pt-2 text-center text-[12.5px] text-[#6E7889]">

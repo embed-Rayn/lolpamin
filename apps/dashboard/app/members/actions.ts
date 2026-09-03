@@ -48,7 +48,7 @@ export async function updateMemberTierAction(
 
   // 클라이언트가 보낸 문자열이므로 enum 값인지 여기서 확인한다. Prisma도 거부하지만
   // 그쪽 예외는 영어 스택이 섞인 긴 문자열이라 관리자 화면에 띄울 것이 못 된다.
-  if (!(tier in TIER_SCORES)) {
+  if (!Object.hasOwn(TIER_SCORES, tier)) {
     return { error: "알 수 없는 티어입니다." };
   }
 

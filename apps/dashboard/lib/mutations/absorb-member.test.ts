@@ -68,6 +68,30 @@ describe("absorbMember", () => {
     expect(after.realName).toBe("사람이 고친 이름");
   });
 
+  it("takes the loser's tier when the survivor is UNRANKED", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const loser = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", tier: "DIAMOND_2" },
+    });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(after.tier).toBe("DIAMOND_2");
+  });
+
+  it("keeps the survivor's own tier when it already has one", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1", tier: "GOLD_1" } });
+    const loser = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", tier: "DIAMOND_2" },
+    });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(after.tier).toBe("GOLD_1");
+  });
+
   it("moves the survivor's lastActiveAt forward to the later of the two", async () => {
     const survivor = await prisma.member.create({
       data: { discordUserId: "d-1", lastActiveAt: new Date(2026, 7, 1) },

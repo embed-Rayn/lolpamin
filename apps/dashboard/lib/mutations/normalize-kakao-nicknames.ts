@@ -139,6 +139,11 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         const nextRealName = survivor.realName ?? losers.find((l) => l.realName !== null)?.realName ?? null;
         const nextAge = survivor.age ?? losers.find((l) => l.age !== null)?.age ?? null;
         const nextRiotId = survivor.riotId ?? losers.find((l) => l.riotId !== null)?.riotId ?? null;
+        // tier는 not-null이라 ??가 통하지 않는다 — UNRANKED를 "값 없음"으로 취급한다.
+        const nextTier =
+          survivor.tier !== "UNRANKED"
+            ? survivor.tier
+            : (losers.find((l) => l.tier !== "UNRANKED")?.tier ?? "UNRANKED");
 
         // 아무 값도 바뀌지 않는 no-op UPDATE라도 Prisma는 @updatedAt을 갱신한다.
         // 재실행이 진짜 아무것도 안 건드리도록, 실제로 달라지는 그룹에서만 UPDATE를 낸다.
@@ -148,7 +153,8 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
           datesDiffer(nextLastActiveAt, survivor.lastActiveAt) ||
           nextRealName !== survivor.realName ||
           nextAge !== survivor.age ||
-          nextRiotId !== survivor.riotId;
+          nextRiotId !== survivor.riotId ||
+          nextTier !== survivor.tier;
 
         if (survivorChanged) {
           await tx.member.update({
@@ -159,6 +165,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
               realName: nextRealName,
               age: nextAge,
               riotId: nextRiotId,
+              tier: nextTier,
             },
           });
         }

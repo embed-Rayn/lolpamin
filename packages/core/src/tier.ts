@@ -1,3 +1,6 @@
+// `type`을 빼면 안 된다 — packages/db/src/index.ts는 모듈 로드 시점에 PrismaClient를
+// 만든다. 그 keyword를 빼면 이 순수 도메인 패키지를 로드할 때 Prisma client가 함께
+// 부팅되어, DB 없이 도는 이 패키지의 테스트가 깨진다.
 import type { MemberTier } from "@lolpamin/db";
 
 // 스펙(2026-09-03-tier-score-and-manual-team-builder-design.md)의 참조표 그대로다.
