@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { Member, Prisma } from "@lolpamin/db";
+import type { Member, MemberTier, Prisma } from "@lolpamin/db";
+import { tierScore } from "@lolpamin/core";
 
 type ActivityCounts = { mentionLogs: number; participants: number };
 type MemberWithCounts = Member & {
@@ -45,10 +46,10 @@ export function parseMemberFilter(value: string | undefined): MemberFilter {
   return MEMBER_FILTERS.includes(value as MemberFilter) ? (value as MemberFilter) : "all";
 }
 
-export type MemberSort = "mmr" | "realName" | "kakaoNickname";
+export type MemberSort = "mmr" | "realName" | "kakaoNickname" | "tier";
 export type SortDirection = "asc" | "desc";
 
-const MEMBER_SORTS: MemberSort[] = ["mmr", "realName", "kakaoNickname"];
+const MEMBER_SORTS: MemberSort[] = ["mmr", "realName", "kakaoNickname", "tier"];
 
 export function parseMemberSort(value: string | undefined): MemberSort {
   return MEMBER_SORTS.includes(value as MemberSort) ? (value as MemberSort) : "mmr";
@@ -63,7 +64,21 @@ export function parseSortDirection(value: string | undefined): SortDirection {
 function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByWithRelationInput[] {
   if (sort === "mmr") return [{ mmr: dir }, { id: "asc" }];
   if (sort === "realName") return [{ realName: { sort: dir, nulls: "last" } }, { id: "asc" }];
+  // 티어는 점수 순으로 정렬해야 하는데 Postgres는 enum을 선언 순서로 정렬한다. 지금은
+  // 두 순서가 우연히 같지만 그 우연에 기대면 enum 순서를 바꾸는 순간 정렬이 조용히
+  // 틀어진다. 여기서는 순서를 고정만 하고, 실제 정렬은 조회 뒤 sortByTierScore가 한다.
+  if (sort === "tier") return [{ id: "asc" }];
   return [{ kakaoNickname: { sort: dir, nulls: "last" } }, { id: "asc" }];
+}
+
+function sortByTierScore(rows: MemberRow[], dir: SortDirection): MemberRow[] {
+  const sign = dir === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
+    // 동점(아이언·언랭, 그리고 같은 티어)일 때 순서를 고정한다 — 다른 정렬 기준들이
+    // id를 2차 키로 쓰는 것과 같다.
+    return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
+  });
 }
 
 export interface MemberRow {
@@ -73,6 +88,8 @@ export interface MemberRow {
   // 서버 별명. 카톡과 연결되지 않은 계정은 "-"다 — displayDiscordName 참고.
   discordName: string;
   mmr: number;
+  tier: MemberTier;
+  riotId: string | null;
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
@@ -120,6 +137,8 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     kakaoNickname: displayKakaoNickname(m),
     discordName: displayDiscordName(m),
     mmr: m.mmr,
+    tier: m.tier,
+    riotId: m.riotId,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: isHalfMember(m),
@@ -187,5 +206,7 @@ export async function getMemberListData(
     })
     .map(({ row }) => row);
 
-  return { totalCount, halfCount, unassignedCount, averageMmr, rows };
+  const sortedRows = sort === "tier" ? sortByTierScore(rows, dir) : rows;
+
+  return { totalCount, halfCount, unassignedCount, averageMmr, rows: sortedRows };
 }
