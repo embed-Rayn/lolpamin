@@ -145,4 +145,40 @@ describe("getLinkedMembers", () => {
     expect(byName.get("승자")).toMatchObject({ wins: 0, losses: 0 });
     expect(byName.get("패자")).toMatchObject({ wins: 0, losses: 0 });
   });
+
+  it("carries the tier and the riot id", async () => {
+    await prisma.member.create({
+      data: {
+        realName: "유대혁",
+        discordUserId: "d-tier",
+        discordHandle: "daehyeok_",
+        kakaoNickname: "유대혁/95/유대혁#KR1",
+        tier: "EMERALD_2",
+        riotId: "늑 구#1003",
+      },
+    });
+
+    const pool = await getLinkedMembers();
+
+    const row = pool.find((p) => p.name === "유대혁");
+    expect(row?.tier).toBe("EMERALD_2");
+    expect(row?.riotId).toBe("늑 구#1003");
+  });
+
+  it("defaults an untouched member to unranked with no riot id", async () => {
+    await prisma.member.create({
+      data: {
+        realName: "박시형",
+        discordUserId: "d-plain",
+        discordHandle: "sihyeong",
+        kakaoNickname: "박시형/97/시형#KR1",
+      },
+    });
+
+    const pool = await getLinkedMembers();
+
+    const row = pool.find((p) => p.name === "박시형");
+    expect(row?.tier).toBe("UNRANKED");
+    expect(row?.riotId).toBeNull();
+  });
 });

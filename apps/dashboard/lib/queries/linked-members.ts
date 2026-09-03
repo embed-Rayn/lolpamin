@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getDisplayName } from "@lolpamin/core";
+import type { MemberTier } from "@lolpamin/db";
 
 export interface LinkedMemberOption {
   id: string;
@@ -11,6 +12,9 @@ export interface LinkedMemberOption {
   mmr: number;
   wins: number;
   losses: number;
+  // 팀짜기 화면이 쓰는 값. 점수는 저장하지 않고 tierScore로 계산한다.
+  tier: MemberTier;
+  riotId: string | null;
 }
 
 export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
@@ -51,6 +55,8 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
     name: getDisplayName(m),
     discordName: m.discordDisplayName ?? m.discordHandle ?? m.discordUserId!,
     mmr: m.mmr,
+    tier: m.tier,
+    riotId: m.riotId,
     ...record.get(m.id)!,
   }));
 }
