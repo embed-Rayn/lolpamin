@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers } from "@lolpamin/core";
 import { effectiveKakaoNickname } from "@/lib/queries/inactive";
-import { NavLink } from "./NavLink";
+import { NavGroupLink, NavLink } from "./NavLink";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { HeaderAuth } from "./HeaderAuth";
 
@@ -45,21 +45,46 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     new Date(),
   ).length;
 
-  const navItems: Array<{ key: AppShellProps["activeNav"]; href: string; label: string; icon: string; badge?: string }> = [
-    { key: "members" as const, href: "/members", label: "회원 관리", icon: "01" },
-    { key: "matches" as const, href: "/matches", label: "게임 결과 입력", icon: "02" },
-    { key: "match-history" as const, href: "/match-history", label: "경기 기록", icon: "03" },
-    { key: "inactive" as const, href: "/inactive", label: "미활동 리포트", icon: "04", badge: String(inactiveNavCount) },
-    { key: "kakao-import" as const, href: "/kakao-import", label: "카톡 내보내기", icon: "05" },
-    { key: "link-accounts" as const, href: "/link-accounts", label: "계정 연결", icon: "06" },
-    { key: "draw-cannon" as const, href: "/draw/cannon", label: "대포 뽑기", icon: "07" },
-    { key: "draw-plinko" as const, href: "/draw/plinko", label: "핀볼 뽑기", icon: "08" },
+  // The sidebar is three groups and the displayed numbers come from position, so
+  // adding or removing an item keeps 1.1 / 2.2 correct without hand-editing them.
+  // A group heading is itself a link to that group's first child.
+  interface NavItem {
+    key: AppShellProps["activeNav"];
+    href: string;
+    label: string;
+    badge?: string;
+  }
+
+  const memberItems: NavItem[] = [
+    { key: "members", href: "/members", label: "회원 대시보드" },
+    { key: "kakao-import", href: "/kakao-import", label: "카톡 불러오기" },
+    { key: "link-accounts", href: "/link-accounts", label: "계정 연결" },
+    { key: "inactive", href: "/inactive", label: "미활동 리포트", badge: String(inactiveNavCount) },
   ];
 
+  // Admin management is only offered to a signed-in admin; without it the member
+  // group simply ends at 1.4.
   if (currentAdmin) {
-    // 앞이 08까지 찼으므로 관리자는 09다.
-    navItems.push({ key: "admins" as const, href: "/admins", label: "관리자", icon: "09" });
+    memberItems.push({ key: "admins", href: "/admins", label: "관리자" });
   }
+
+  const navGroups: Array<{ label: string; items: NavItem[] }> = [
+    { label: "회원 관리", items: memberItems },
+    {
+      label: "내전 관리",
+      items: [
+        { key: "match-history", href: "/match-history", label: "경기 기록" },
+        { key: "matches", href: "/matches", label: "게임결과 입력" },
+      ],
+    },
+    {
+      label: "뽑기 게임",
+      items: [
+        { key: "draw-cannon", href: "/draw/cannon", label: "대포뽑기" },
+        { key: "draw-plinko", href: "/draw/plinko", label: "핀볼뽑기" },
+      ],
+    },
+  ];
 
   return (
     <div className="flex min-h-screen bg-[#0E1117] font-sans text-[#E6EAF2]">
@@ -74,10 +99,26 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
           </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
-          <div className="px-2 pb-2 text-[10px] font-bold tracking-wider text-[#5C6577]">운영</div>
-          {navItems.map((n) => (
-            <NavLink key={n.key} href={n.href} label={n.label} icon={n.icon} active={activeNav === n.key} badge={n.badge} />
+        <nav className="flex flex-col gap-4">
+          {navGroups.map((g, gi) => (
+            <div key={g.label} className="flex flex-col gap-0.5">
+              <NavGroupLink
+                href={g.items[0].href}
+                number={String(gi + 1)}
+                label={g.label}
+                active={g.items.some((n) => n.key === activeNav)}
+              />
+              {g.items.map((n, ni) => (
+                <NavLink
+                  key={n.key}
+                  href={n.href}
+                  label={n.label}
+                  icon={`${gi + 1}.${ni + 1}`}
+                  active={activeNav === n.key}
+                  badge={n.badge}
+                />
+              ))}
+            </div>
           ))}
         </nav>
 
