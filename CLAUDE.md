@@ -62,6 +62,15 @@ MMR is team-average Elo, K=40, applied identically to every player on a team (`p
 
 A quarterly **soft reset** (`applySoftReset`, the button at the bottom of `/admins`) pulls every active member's rating halfway back to 1000, so the ordering survives while the gaps compress. It is a manual admin action with a two-step confirm, keeps no history and cannot be undone; tombstones and recorded `GameParticipant` deltas are left alone.
 
+Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
+`UNRANKED`) that an admin sets by hand. Its score comes from a reference table in
+`packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
+that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
+moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
+teams by hand and watches the two totals; that arrangement is browser state and is
+never saved. `packages/core` imports the `MemberTier` type from `@lolpamin/db` — the
+one place it depends on another workspace, and a type-only import.
+
 The rating was called ELO until the rename; the DB columns are `Member.mmr` and `GameParticipant.mmrBefore/mmrAfter`.
 
 Inactivity: >= 7 days since `lastActiveAt` (falling back to `createdAt`); 14+ days is flagged more severely. Only members with a KakaoTalk side are eligible — someone with no chatroom presence cannot be "inactive".

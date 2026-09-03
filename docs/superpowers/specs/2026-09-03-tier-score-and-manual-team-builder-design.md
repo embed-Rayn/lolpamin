@@ -3,6 +3,20 @@
 - 작성일: 2026-09-03
 - 관련 스펙: `docs/superpowers/specs/2026-08-23-discord-kakao-integration-design.md`
 
+## 구현 상태 (2026-09-03)
+
+구현 완료. 계획: `docs/superpowers/plans/2026-09-03-tier-score-and-manual-team-builder.md`.
+
+구현하며 달라진 것:
+
+- 티어 셀은 「클릭하면 열리는」 편집기가 아니라 항상 보이는 `<select>`다. 네이티브
+  select는 그 자체가 한 번의 클릭으로 열린다.
+- 티어·Riot ID 저장 후 `/inactive`는 revalidate하지 않는다. 그 화면은 두 값을
+  보여주지 않는다.
+- 팀짜기의 각 칸은 두 줄이다 — 위는 회원을 고르는 드롭다운, 아래는 Riot ID.
+  한 칸에 「고르기」와 「고치기」를 함께 넣을 수 없어서다.
+- `MemberRow.riotId`와 `LinkedMemberOption.riotId`는 `"-"` 센티넬이 아니라 `string | null`이다.
+
 ## 배경 및 목적
 
 내전 팀을 짤 때 지금은 MMR만 있다. 그런데 MMR은 내전 결과로만 움직이는 값이라, 새로 들어온
