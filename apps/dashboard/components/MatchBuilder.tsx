@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { calculateTeamMmrChange, MMR_K, PARTICIPATION_POINT, type TeamSide } from "@lolpamin/core";
+import { calculateTeamMmrChange, LOSS_POINT, MMR_K, WIN_POINT, type TeamSide } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { saveGameResultAction } from "@/app/matches/actions";
 
@@ -216,7 +216,7 @@ export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; is
           <div>
             <div className="text-[12.5px] font-bold">경기 정보</div>
             <div className="text-[11px] text-[#6E7889]">
-              5v5 내전 · 승/패 방식 · K값 {MMR_K} · 참여 점수 +{PARTICIPATION_POINT}
+              5v5 내전 · 승/패 방식 · K값 {MMR_K} · 승리 점수 +{WIN_POINT} · 패배 점수 +{LOSS_POINT}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -42,14 +42,14 @@ describe("saveGameResult", () => {
     expect(result.updates).toHaveLength(4);
     const blueUpdate = result.updates.find((u) => u.memberId === blue1.id)!;
     expect(blueUpdate.mmrBefore).toBe(1500);
-    expect(blueUpdate.mmrAfter).toBe(1517);
+    expect(blueUpdate.mmrAfter).toBe(1523);
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue1.id } });
-    expect(refreshed.mmr).toBe(1517);
+    expect(refreshed.mmr).toBe(1523);
 
-    // 패배 팀도 참여 점수 1점을 받는다 — -16이 -15로 줄어든다.
+    // 승리 팀은 +3, 패배 팀도 +1을 받는다 — +20이 +23, -20이 -19가 된다.
     const redUpdate = result.updates.find((u) => u.memberId === red1.id)!;
-    expect(redUpdate.mmrAfter).toBe(1485);
+    expect(redUpdate.mmrAfter).toBe(1481);
 
     const participants = await prisma.gameParticipant.findMany({ where: { gameResultId: result.gameResultId } });
     expect(participants).toHaveLength(4);
