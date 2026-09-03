@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
+import { softResetAllMmr } from "@/lib/mutations/soft-reset-mmr";
 
 interface AdminActionResult {
   error: string | null;
@@ -49,4 +50,26 @@ export async function deleteAdminAction(targetId: string): Promise<AdminActionRe
 
   revalidatePath("/admins");
   return { error: null };
+}
+
+export interface SoftResetActionResult {
+  error: string | null;
+  count: number;
+}
+
+export async function softResetMmrAction(): Promise<SoftResetActionResult> {
+  await requireAdmin();
+
+  let count = 0;
+  try {
+    ({ count } = await softResetAllMmr(prisma));
+  } catch {
+    return { error: "MMR을 리셋하지 못했습니다", count: 0 };
+  }
+
+  // 순위 배지와 회원 목록이 모두 옛 mmr을 들고 있으므로 대시보드까지 함께 무효화한다.
+  revalidatePath("/admins");
+  revalidatePath("/members");
+  revalidatePath("/");
+  return { error: null, count };
 }

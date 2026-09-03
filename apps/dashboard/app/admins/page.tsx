@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { AdminPanel, type AdminRow } from "@/components/AdminPanel";
+import { MmrSoftResetButton } from "@/components/MmrSoftResetButton";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
@@ -25,8 +26,9 @@ export default async function AdminsPage() {
 
   return (
     <AppShell activeNav="admins" pageTitle="관리자" pageDesc="대시보드를 변경할 수 있는 계정 관리">
-      <div className="px-7 pb-10 pt-6">
+      <div className="flex flex-col gap-5 px-7 pb-10 pt-6">
         <AdminPanel rows={rows} />
+        <MmrSoftResetButton />
       </div>
     </AppShell>
   );
