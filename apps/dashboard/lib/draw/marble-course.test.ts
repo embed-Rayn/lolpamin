@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Events } from "matter-js";
 import {
   GOAL_Y,
   MAX_RACE_MS,
@@ -142,5 +143,46 @@ describe("marble race", () => {
     spawnMarbles(engine, [{ id: "a", label: "a" }]);
     clearMarbles(engine);
     expect(findWinner([], 0)).toBeNull();
+  });
+});
+
+// 두 풍차가 한 줄에 겹쳐 있던 시절, 첫 번째가 무리를 벽 쪽으로 튕겨 내서 두 번째는 빈
+// 기둥 위에서 헛돌았다(측정: 376대 44). 좌우로 어긋나게 두면서 고쳤으니, 다시 가운데로
+// 모으는 변경이 들어오면 여기서 걸려야 한다.
+describe("spinning crosses", () => {
+  function spinnerHits(races: number): [number, number] {
+    const hits: [number, number] = [0, 0];
+    for (let i = 0; i < races; i++) {
+      const engine = createRaceEngine();
+      const movers = buildCourse(engine);
+      const spinners = movers.filter((m) => m.kind === "spin").slice(0, 2);
+      // 복합 body는 충돌 pair에 part가 실리므로 part id로 부모를 되짚는다.
+      const ownerOf = new Map<number, number>();
+      for (const [index, spinner] of spinners.entries()) {
+        for (const part of spinner.body.parts) ownerOf.set(part.id, index);
+      }
+      spawnMarbles(
+        engine,
+        Array.from({ length: 8 }, (_, n) => ({ id: `c${n}`, label: `후보${n}` }))
+      );
+      Events.on(engine, "collisionStart", (event) => {
+        for (const pair of event.pairs) {
+          for (const body of [pair.bodyA, pair.bodyB]) {
+            const owner = ownerOf.get(body.id);
+            if (owner !== undefined) hits[owner] += 1;
+          }
+        }
+      });
+      // 풍차 구간(y 560·800)만 지나면 되므로 전체 코스를 다 돌릴 필요는 없다.
+      for (let elapsed = 0; elapsed < 20_000; elapsed += STEP_MS) advance(engine, movers, STEP_MS, elapsed);
+    }
+    return hits;
+  }
+
+  it("puts the second cross in the marbles' path, not just the first", () => {
+    const [first, second] = spinnerHits(5);
+
+    expect(first).toBeGreaterThan(0);
+    expect(second).toBeGreaterThan(first / 4);
   });
 });
