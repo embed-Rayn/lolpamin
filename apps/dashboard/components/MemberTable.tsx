@@ -40,7 +40,7 @@ export function MemberTable({
 
   return (
     <>
-      <div className="grid grid-cols-[1fr_1fr_1fr_110px_152px_80px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[12.5px] font-bold tracking-wide text-[#6E7889]">
+      <div className="grid grid-cols-[0.5fr_1fr_1fr_92px_46px_44px_44px_130px_80px] gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[12.5px] font-bold tracking-wide text-[#6E7889]">
         <Link href={sortHref("realName")} className="hover:text-[#B7C0D0]">
           실명{sortMark("realName")}
         </Link>
@@ -51,13 +51,16 @@ export function MemberTable({
         <Link href={sortHref("mmr")} className="text-right hover:text-[#B7C0D0]">
           MMR{sortMark("mmr")}
         </Link>
+        <div className="text-right">판</div>
+        <div className="text-right">승</div>
+        <div className="text-right">패</div>
         <div className="text-right">마지막 활동</div>
         <div className="text-right">관리</div>
       </div>
       {rows.map((m) => (
         <div
           key={m.id}
-          className="grid grid-cols-[1fr_1fr_1fr_110px_152px_80px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[15px] hover:bg-[#181E29]"
+          className="grid grid-cols-[0.5fr_1fr_1fr_92px_46px_44px_44px_130px_80px] items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[15px] hover:bg-[#181E29]"
         >
           <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
           <div className={`truncate font-mono text-[13.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
@@ -68,6 +71,13 @@ export function MemberTable({
           </div>
           <div className={`text-right font-mono text-[15.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
             {m.mmr}
+          </div>
+          <div className="text-right font-mono text-[13.5px] text-[#8A94A6]">{m.playedCount}</div>
+          <div className={`text-right font-mono text-[13.5px] ${m.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
+            {m.wins}
+          </div>
+          <div className={`text-right font-mono text-[13.5px] ${m.losses > 0 ? "text-[#EE8B8B]" : "text-[#5C6577]"}`}>
+            {m.losses}
           </div>
           <div
             className={`text-right font-mono text-[13.5px] ${
