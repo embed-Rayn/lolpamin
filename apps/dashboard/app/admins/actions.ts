@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
 import { softResetAllMmr } from "@/lib/mutations/soft-reset-mmr";
+import { MmrConfigValidationError, updateMmrConfig } from "@/lib/mutations/update-mmr-config";
 
 interface AdminActionResult {
   error: string | null;
@@ -72,4 +73,31 @@ export async function softResetMmrAction(): Promise<SoftResetActionResult> {
   revalidatePath("/members");
   revalidatePath("/");
   return { error: null, count };
+}
+
+export interface MmrConfigActionResult {
+  error: string | null;
+}
+
+export async function updateMmrConfigAction(input: {
+  k: number;
+  winPoint: number;
+  lossPoint: number;
+}): Promise<MmrConfigActionResult> {
+  const acting = await requireAdmin();
+
+  try {
+    await updateMmrConfig(prisma, { ...input, updatedById: acting.id });
+  } catch (error) {
+    // 검증 에러만 그대로 보여 준다 — 나머지(Prisma 원문 등)는 짧은 한글로 대체한다.
+    if (error instanceof MmrConfigValidationError) {
+      return { error: error.errors.join("\n") };
+    }
+    return { error: "MMR 설정을 저장하지 못했습니다" };
+  }
+
+  revalidatePath("/admins");
+  // 경기 입력 화면은 이 값으로 프리뷰와 시뮬레이터를 그리므로 함께 무효화한다.
+  revalidatePath("/matches");
+  return { error: null };
 }
