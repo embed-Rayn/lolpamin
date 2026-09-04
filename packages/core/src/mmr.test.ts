@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   applySoftReset,
   calculateTeamMmrChange,
+  DEFAULT_MMR_CONFIG,
   LOSS_POINT,
   MMR_K,
   SOFT_RESET_BASE,
   SOFT_RESET_RATIO,
+  validateMmrConfig,
   WIN_POINT,
 } from "./mmr";
 
@@ -94,5 +96,80 @@ describe("applySoftReset", () => {
   it("pulls halfway back", () => {
     expect(SOFT_RESET_RATIO).toBe(0.5);
     expect(SOFT_RESET_BASE).toBe(1000);
+  });
+});
+
+describe("mmr config", () => {
+  it("defaults to the built-in K and win/loss points", () => {
+    expect(DEFAULT_MMR_CONFIG).toEqual({ k: MMR_K, winPoint: WIN_POINT, lossPoint: LOSS_POINT });
+  });
+
+  it("scales the swing with a custom K", () => {
+    const result = calculateTeamMmrChange({
+      blueRatings: [1500],
+      redRatings: [1500],
+      winner: "BLUE",
+      config: { k: 20, winPoint: 3, lossPoint: 1 },
+    });
+    expect(result.blueDelta).toBe(13);
+    expect(result.redDelta).toBe(-9);
+  });
+
+  it("uses the configured win and loss points", () => {
+    const result = calculateTeamMmrChange({
+      blueRatings: [1500],
+      redRatings: [1500],
+      winner: "BLUE",
+      config: { k: 40, winPoint: 10, lossPoint: 0 },
+    });
+    expect(result.blueDelta).toBe(30);
+    expect(result.redDelta).toBe(-20);
+  });
+
+  it("makes a K of zero leave nothing but the flat points", () => {
+    const result = calculateTeamMmrChange({
+      blueRatings: [1700],
+      redRatings: [1300],
+      winner: "RED",
+      config: { k: 0, winPoint: 3, lossPoint: 1 },
+    });
+    expect(result.blueDelta).toBe(1);
+    expect(result.redDelta).toBe(3);
+  });
+});
+
+describe("validateMmrConfig", () => {
+  it("accepts the default config", () => {
+    expect(validateMmrConfig(DEFAULT_MMR_CONFIG)).toEqual([]);
+  });
+
+  it("rejects a K outside the allowed range", () => {
+    expect(validateMmrConfig({ k: 0, winPoint: 3, lossPoint: 1 })).toEqual(["K값은 1 이상 200 이하여야 합니다"]);
+    expect(validateMmrConfig({ k: 201, winPoint: 3, lossPoint: 1 })).toEqual(["K값은 1 이상 200 이하여야 합니다"]);
+  });
+
+  it("rejects points outside the allowed range", () => {
+    expect(validateMmrConfig({ k: 40, winPoint: -1, lossPoint: 1 })).toEqual([
+      "승리 점수는 0 이상 50 이하여야 합니다",
+    ]);
+    expect(validateMmrConfig({ k: 40, winPoint: 3, lossPoint: 51 })).toEqual([
+      "패배 점수는 0 이상 50 이하여야 합니다",
+    ]);
+  });
+
+  it("rejects non-integer values", () => {
+    expect(validateMmrConfig({ k: 40.5, winPoint: 3, lossPoint: 1 })).toEqual(["K값은 정수여야 합니다"]);
+  });
+
+  it("reports every problem at once", () => {
+    expect(validateMmrConfig({ k: 0, winPoint: 99, lossPoint: -2 })).toHaveLength(3);
+  });
+
+  // 패점이 승점보다 크면 지는 쪽이 더 벌어 승리 유인이 뒤집힌다. 값 자체는 범위 안이라
+  // 각 항목 검사로는 걸리지 않으므로 조합으로 따로 막는다.
+  it("rejects a loss point larger than the win point", () => {
+    expect(validateMmrConfig({ k: 40, winPoint: 1, lossPoint: 5 })).toEqual([
+      "패배 점수는 승리 점수보다 클 수 없습니다",
+    ]);
   });
 });

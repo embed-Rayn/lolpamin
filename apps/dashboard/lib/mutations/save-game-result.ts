@@ -1,5 +1,6 @@
 import type { PrismaClient, Team } from "@lolpamin/db";
 import { calculateTeamMmrChange } from "@lolpamin/core";
+import { getMmrConfig } from "../queries/mmr-config";
 
 export interface SaveGameResultInput {
   playedAt: Date;
@@ -53,10 +54,14 @@ export async function saveGameResult(
     }
 
     const byId = new Map(members.map((m) => [m.id, m]));
+    // 설정은 트랜잭션 안에서 읽는다 — 저장 도중 어드민이 K값을 바꿔도 이 경기는
+    // 하나의 설정으로만 계산된다.
+    const config = await getMmrConfig(tx);
     const { blueDelta, redDelta } = calculateTeamMmrChange({
       blueRatings: blueMemberIds.map((id) => byId.get(id)!.mmr),
       redRatings: redMemberIds.map((id) => byId.get(id)!.mmr),
       winner,
+      config,
     });
 
     const gameResult = await tx.gameResult.create({

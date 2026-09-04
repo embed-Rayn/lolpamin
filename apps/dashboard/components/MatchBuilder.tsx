@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { calculateTeamMmrChange, LOSS_POINT, MMR_K, WIN_POINT, type TeamSide } from "@lolpamin/core";
+import { calculateTeamMmrChange, type MmrConfig, type TeamSide } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { saveGameResultAction } from "@/app/matches/actions";
 
@@ -12,7 +12,15 @@ const TEAM_SIZE = 5;
 
 const ROSTER_GRID = "grid grid-cols-[34px_1fr_1fr_50px_50px_66px_100px_30px] items-center gap-2";
 
-export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isAdmin: boolean }) {
+export function MatchBuilder({
+  pool,
+  isAdmin,
+  config,
+}: {
+  pool: LinkedMemberOption[];
+  isAdmin: boolean;
+  config: MmrConfig;
+}) {
   const [poolQuery, setPoolQuery] = useState("");
   // Attendance order. Team assignment lives in a separate map so a participant
   // can sit in the roster unassigned until someone picks their side.
@@ -35,13 +43,13 @@ export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; is
     if (blueIds.length === 0 || redIds.length === 0 || !winner) return null;
     const blueRatings = blueIds.map((id) => byId.get(id)!.mmr);
     const redRatings = redIds.map((id) => byId.get(id)!.mmr);
-    const result = calculateTeamMmrChange({ blueRatings, redRatings, winner });
+    const result = calculateTeamMmrChange({ blueRatings, redRatings, winner, config });
     const toRow = (id: string, delta: number) => ({ ...byId.get(id)!, delta, after: byId.get(id)!.mmr + delta });
     return {
       ...result,
       rows: [...blueIds.map((id) => toRow(id, result.blueDelta)), ...redIds.map((id) => toRow(id, result.redDelta))],
     };
-  }, [blueIds, redIds, winner, byId]);
+  }, [blueIds, redIds, winner, byId, config]);
 
   const canSave = blueIds.length > 0 && redIds.length > 0 && winner !== null && unassignedCount === 0;
 
@@ -216,7 +224,7 @@ export function MatchBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; is
           <div>
             <div className="text-[13.5px] font-bold">경기 정보</div>
             <div className="text-[12px] text-[#6E7889]">
-              5v5 내전 · 승/패 방식 · K값 {MMR_K} · 승리 점수 +{WIN_POINT} · 패배 점수 +{LOSS_POINT}
+              5v5 내전 · 승/패 방식 · K값 {config.k} · 승리 점수 +{config.winPoint} · 패배 점수 +{config.lossPoint}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
