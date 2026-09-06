@@ -163,3 +163,15 @@ model RatingReset {
 
   @@index([resetAt])
 }
+
+// MMR 계산식의 조정 가능한 부분. 행은 하나뿐이고 id는 SINGLETON_ID로 고정된다 —
+// 설정에 이력이 필요 없고, 여러 행이 생기면 "어느 것이 진짜인지" 문제가 생긴다.
+model MmrSetting {
+  id        String   @id
+  k         Int      @default(40)
+  winPoint  Int      @default(3)
+  lossPoint Int      @default(1)
+  updatedAt DateTime @updatedAt
+  // 마지막으로 바꾼 운영진. Admin.createdById와 같은 이유로 외래키를 걸지 않는다.
+  updatedById String?
+}

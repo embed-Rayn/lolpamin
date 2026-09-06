@@ -293,3 +293,89 @@ describe("tier and riot id", () => {
     expect(parseMemberSort("tier")).toBe("tier");
   });
 });
+
+describe("getMemberListData 전적", () => {
+  async function playGame(blueId: string, redId: string, winner: "BLUE" | "RED", cancelled = false) {
+    const game = await prisma.gameResult.create({
+      data: { playedAt: new Date(2026, 7, 3), winner, cancelledAt: cancelled ? new Date() : null },
+    });
+    for (const [memberId, team] of [
+      [blueId, "BLUE"],
+      [redId, "RED"],
+    ] as const) {
+      await prisma.gameParticipant.create({
+        data: { gameResultId: game.id, memberId, team, mmrBefore: 1000, mmrAfter: 1000 },
+      });
+    }
+  }
+
+  function rowOf(rows: Awaited<ReturnType<typeof getMemberListData>>["rows"], realName: string) {
+    return rows.find((r) => r.realName === realName)!;
+  }
+
+  it("counts wins and losses per member", async () => {
+    const a = await prisma.member.create({ data: { realName: "전적가", kakaoNickname: "전적가", mmr: 1000 } });
+    const b = await prisma.member.create({ data: { realName: "전적나", kakaoNickname: "전적나", mmr: 1000 } });
+    await playGame(a.id, b.id, "BLUE");
+    await playGame(a.id, b.id, "BLUE");
+    await playGame(a.id, b.id, "RED");
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "전적가")).toMatchObject({ wins: 2, losses: 1, playedCount: 3 });
+    expect(rowOf(data.rows, "전적나")).toMatchObject({ wins: 1, losses: 2, playedCount: 3 });
+  });
+
+  // 되돌린 경기는 MMR이 원복되므로 전적에서도 빠져야 한다. 참가 기록 자체는 남는다
+  // (cancelGameResult 참고) — linked-members와 같은 규칙이다.
+  it("leaves a cancelled game out of the record", async () => {
+    const a = await prisma.member.create({ data: { realName: "전적가", kakaoNickname: "전적가", mmr: 1000 } });
+    const b = await prisma.member.create({ data: { realName: "전적나", kakaoNickname: "전적나", mmr: 1000 } });
+    await playGame(a.id, b.id, "BLUE");
+    await playGame(a.id, b.id, "BLUE", true);
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "전적가")).toMatchObject({ wins: 1, losses: 0, playedCount: 1 });
+  });
+
+  // 리셋은 전적을 0/0/0으로 되돌린다. 경기는 지우지 않으므로 세는 쪽이 기준선을 봐야
+  // 한다 — mutations/reset-ratings.ts와 queries/counted-games.ts 참고.
+  it("leaves a game entered before the last reset out of the record", async () => {
+    const a = await prisma.member.create({ data: { realName: "전적가", kakaoNickname: "전적가", mmr: 1000 } });
+    const b = await prisma.member.create({ data: { realName: "전적나", kakaoNickname: "전적나", mmr: 1000 } });
+    await playGame(a.id, b.id, "BLUE");
+
+    const { resetAllRatings } = await import("@/lib/mutations/reset-ratings");
+    await resetAllRatings(prisma, { kind: "HARD", adminId: null });
+    await playGame(a.id, b.id, "RED");
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "전적가")).toMatchObject({ wins: 0, losses: 1, playedCount: 1 });
+    // 삭제 확인창 숫자는 기준선과 무관하게 실제 참가 기록 수를 센다.
+    expect(rowOf(data.rows, "전적가").gameCount).toBe(2);
+  });
+
+  // 흡수한 회원의 경기 기록은 묘비 쪽에 남는다. 생존자 자기 행만 세면 연결을 끝낸
+  // 회원의 전적이 0판으로 보인다 — gameCount가 묘비를 합산하는 것과 같은 이유다.
+  it("adds the record kept on an absorbed tombstone", async () => {
+    const survivor = await prisma.member.create({ data: { realName: "생존", discordUserId: "d-s", mmr: 1000 } });
+    const opponent = await prisma.member.create({ data: { realName: "상대", kakaoNickname: "상대", mmr: 1000 } });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+    await playGame(tombstone.id, opponent.id, "BLUE");
+    await playGame(survivor.id, opponent.id, "RED");
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "생존")).toMatchObject({ wins: 1, losses: 1, playedCount: 2 });
+  });
+
+  it("reports a member who has never played as no games", async () => {
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "가회원")).toMatchObject({ wins: 0, losses: 0, playedCount: 0 });
+  });
+});

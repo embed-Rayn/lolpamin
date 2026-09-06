@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import type { Member, MemberTier, Prisma } from "@lolpamin/db";
 import { tierScore } from "@lolpamin/core";
+import { getCountedGameFilter } from "./counted-games";
 
 type ActivityCounts = { mentionLogs: number; participants: number };
 type MemberWithCounts = Member & {
   _count: ActivityCounts;
-  absorbed: Array<{ kakaoNickname: string | null; _count: ActivityCounts }>;
+  absorbed: Array<{ id: string; kakaoNickname: string | null; _count: ActivityCounts }>;
 };
+
+export interface MemberRecord {
+  wins: number;
+  losses: number;
+}
 
 // 흡수해도 카톡 닉네임은 생존자에게 복사되지 않고 묘비에 남는다(활동 기록을 옮기지
 // 않으려고). 자기 행만 보면 연결을 끝낸 회원이 계속 "반쪽"으로 집계되므로 묘비까지 본다.
@@ -90,6 +96,11 @@ export interface MemberRow {
   mmr: number;
   tier: MemberTier;
   riotId: string | null;
+  // 되돌린 경기와 마지막 리셋 이전 경기를 뺀 전적. gameCount와 다른 숫자다 — gameCount는
+  // 삭제 확인창용이라 실제로 함께 지워지는 기록 수를 세지만, 이쪽은 전적표라 빠져야 한다.
+  wins: number;
+  losses: number;
+  playedCount: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
   isHalf: boolean;
@@ -125,7 +136,7 @@ function displayDiscordName(m: MemberWithCounts): string {
   return m.discordDisplayName ?? m.discordHandle ?? m.discordUserId;
 }
 
-function toRow(m: MemberWithCounts, now: Date): MemberRow {
+function toRow(m: MemberWithCounts, now: Date, record: MemberRecord): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   // 카톡 멘션은 닉네임을 가진 행에 붙으므로(processKakaoExport), 흡수한 뒤에는 묘비 쪽에
   // 쌓인다. 생존자 자기 _count만 보면 "0건"이라 안내하고 실제로는 수십 건을 지우게 된다.
@@ -139,6 +150,9 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     mmr: m.mmr,
     tier: m.tier,
     riotId: m.riotId,
+    wins: record.wins,
+    losses: record.losses,
+    playedCount: record.wins + record.losses,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: isHalfMember(m),
@@ -148,6 +162,41 @@ function toRow(m: MemberWithCounts, now: Date): MemberRow {
     gameCount,
     aliasCount: m.absorbed.length,
   };
+}
+
+/**
+ * 회원별 승/패. 흡수한 회원의 참가 기록은 묘비 쪽에 남으므로(absorbMember가 기록을
+ * 옮기지 않는다) 묘비의 경기도 생존자에게 더한다.
+ *
+ * 되돌린 경기와 마지막 리셋 이전 경기는 제외한다 — MMR은 움직였는데 전적만 남으면 같은
+ * 화면 안에서 두 숫자가 어긋난다. getCountedGameFilter가 그 규칙이고,
+ * queries/linked-members.ts와 apps/discord-bot도 같은 것을 쓴다.
+ */
+async function tallyRecords(members: MemberWithCounts[]): Promise<Map<string, MemberRecord>> {
+  // 묘비 id → 생존자 id. 조회는 둘을 한꺼번에 하고, 집계할 때 생존자 쪽으로 몰아준다.
+  const ownerOf = new Map<string, string>();
+  for (const m of members) {
+    ownerOf.set(m.id, m.id);
+    for (const tombstone of m.absorbed) ownerOf.set(tombstone.id, m.id);
+  }
+
+  const record = new Map<string, MemberRecord>(members.map((m) => [m.id, { wins: 0, losses: 0 }]));
+  if (ownerOf.size === 0) return record;
+
+  const countedGame = await getCountedGameFilter(prisma);
+  const participations = await prisma.gameParticipant.findMany({
+    where: { memberId: { in: [...ownerOf.keys()] }, gameResult: countedGame },
+    select: { memberId: true, team: true, gameResult: { select: { winner: true } } },
+  });
+
+  for (const p of participations) {
+    const tally = record.get(ownerOf.get(p.memberId)!);
+    if (!tally) continue;
+    if (p.team === p.gameResult.winner) tally.wins += 1;
+    else tally.losses += 1;
+  }
+
+  return record;
 }
 
 export async function getMemberListData(
@@ -165,12 +214,14 @@ export async function getMemberListData(
       // 삭제 확인창 숫자용. 묘비의 활동 기록도 함께 지워지므로 같이 세어 온다.
       // kakaoNickname은 반쪽 회원 판정용 — 흡수한 회원의 닉네임은 묘비에 남는다.
       absorbed: {
-        select: { kakaoNickname: true, _count: { select: { mentionLogs: true, participants: true } } },
+        select: { id: true, kakaoNickname: true, _count: { select: { mentionLogs: true, participants: true } } },
         // 최신순 — displayKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
         orderBy: { createdAt: "desc" },
       },
     },
   });
+
+  const record = await tallyRecords(allMembers);
 
   const totalCount = allMembers.length;
   const halfCount = allMembers.filter(isHalfMember).length;
@@ -196,7 +247,7 @@ export async function getMemberListData(
   }
 
   const rows = allMembers
-    .map((m) => ({ m, row: toRow(m, now) }))
+    .map((m) => ({ m, row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }) }))
     .filter(({ m, row }) => {
       if (filter === "linked" && !(row.hasDiscord && row.hasKakao)) return false;
       if (filter === "kakaoOnly" && (row.hasDiscord || !row.hasKakao)) return false;

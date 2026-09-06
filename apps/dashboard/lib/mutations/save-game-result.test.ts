@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { absorbMember } from "./absorb-member";
+import { MMR_SETTING_ID } from "../queries/mmr-config";
 import { saveGameResult } from "./save-game-result";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
@@ -158,5 +159,24 @@ describe("saveGameResult", () => {
         redMemberIds: [other.id],
       })
     ).rejects.toThrow();
+  });
+
+  // 저장된 설정이 있으면 상수 대신 그것으로 계산해야 한다 — 어드민이 바꿔 둔 K값이
+  // 프리뷰에만 반영되고 실제 저장은 40으로 되면 화면과 기록이 어긋난다.
+  it("uses the saved MMR config instead of the built-in constants", async () => {
+    await prisma.mmrSetting.create({ data: { id: MMR_SETTING_ID, k: 20, winPoint: 10, lossPoint: 0 } });
+    const blue = await createLinkedMember(1500);
+    const red = await createLinkedMember(1500);
+
+    const result = await saveGameResult(prisma, {
+      playedAt: new Date("2026-08-23T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+    });
+
+    // round(20 * 0.5) + 10 = 20, round(20 * -0.5) + 0 = -10
+    expect(result.updates.find((u) => u.memberId === blue.id)).toMatchObject({ mmrBefore: 1500, mmrAfter: 1520 });
+    expect(result.updates.find((u) => u.memberId === red.id)).toMatchObject({ mmrBefore: 1500, mmrAfter: 1490 });
   });
 });

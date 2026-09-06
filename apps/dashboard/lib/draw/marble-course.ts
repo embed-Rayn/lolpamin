@@ -80,11 +80,20 @@ export function buildCourse(engine: Engine): Mover[] {
 
   // 3. Two spinning crosses, far enough apart that a marble is never caught
   // between them. This is where the lead usually changes hands.
+  //
+  // They are offset to opposite sides of centre rather than stacked on the
+  // middle line. Both on centre and the first one throws the pack out to the
+  // walls, so the second sat in an empty column and never touched anything —
+  // staggering them puts the second one under where the first actually sends
+  // marbles. The offset stays under the arm radius so the two sweeps still
+  // overlap in the middle and nothing can fall straight down between them.
+  const SPINNER_OFFSET = 40;
   for (const [i, y] of [560, 800].entries()) {
+    const x = WIDTH_UNITS / 2 + (i === 0 ? -SPINNER_OFFSET : SPINNER_OFFSET);
     const spinner = Body.create({
       parts: [
-        Bodies.rectangle(WIDTH_UNITS / 2, y, 180, 11, staticOptions),
-        Bodies.rectangle(WIDTH_UNITS / 2, y, 11, 180, staticOptions),
+        Bodies.rectangle(x, y, 180, 11, staticOptions),
+        Bodies.rectangle(x, y, 11, 180, staticOptions),
       ],
       isStatic: true,
     });
@@ -92,7 +101,7 @@ export function buildCourse(engine: Engine): Mover[] {
       body: spinner,
       kind: "spin",
       speed: i % 2 === 0 ? 0.02 : -0.028,
-      origin: { x: WIDTH_UNITS / 2, y },
+      origin: { x, y },
       amplitude: 0,
       phase: 0,
     });
@@ -223,7 +232,10 @@ export function buildCourse(engine: Engine): Mover[] {
     // bumper — at the old width the bumper simply corked the funnel.
     Bodies.rectangle(48, 2615, 200, 12, { ...staticOptions, angle: 0.55 }),
     Bodies.rectangle(WIDTH_UNITS - 48, 2615, 200, 12, { ...staticOptions, angle: -0.55 }),
-    Bodies.circle(WIDTH_UNITS / 2, 2660, 32, { ...staticOptions, label: "bumper", restitution: 1 })
+    // 20% wider than the rest of the bumpers: this is the last thing between the
+    // pack and the goal, so it should be hard to sail past. The mouth above is
+    // wide enough that the side lanes stay well clear of a marble's diameter.
+    Bodies.circle(WIDTH_UNITS / 2, 2660, 38.4, { ...staticOptions, label: "bumper", restitution: 1 })
   );
 
   Composite.add(engine.world, parts);
