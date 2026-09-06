@@ -42,6 +42,33 @@ describe("kakaoMatchKey", () => {
     expect(kakaoMatchKey("박병준/94/늑구#KR1")).not.toBe(kakaoMatchKey("박병준/95/늑구#KR1"));
   });
 
+  // 실제 명단에 있는 표기. 첫 슬래시가 공백이라 관례 검사를 통과하지 못했고, 그대로
+  // 두면 이 사람만 롤 닉을 바꿀 때 새 회원이 된다.
+  it("accepts a missing first slash between the name and the year", () => {
+    expect(kakaoMatchKey("선동엽 95/glenone#5022")).toBe("선동엽/95");
+    expect(kakaoMatchKey("선동엽 95/새로운롤닉#1")).toBe("선동엽/95");
+    expect(kakaoMatchKey("선동엽 95/glenone#5022 (5시)")).toBe("선동엽/95");
+  });
+
+  it("reads the same person whether the separator is a slash or a space", () => {
+    expect(kakaoMatchKey("선동엽 95/glenone#5022")).toBe(kakaoMatchKey("선동엽/95/glenone#5022"));
+  });
+
+  it("takes a four digit birth year too", () => {
+    expect(kakaoMatchKey("선동엽 1995/glenone#5022")).toBe("선동엽/1995");
+  });
+
+  // 슬래시가 아예 없으면 이름 칸이라고 볼 근거가 없다. 쪼개면 "올빼미"와 "올빼미 2"가
+  // 다른 사람이 되는 대신 엉뚱한 키가 생긴다.
+  it("does not split a slashless nickname that happens to end in digits", () => {
+    expect(kakaoMatchKey("올빼미 2")).toBe("올빼미2");
+  });
+
+  // 게임닉 뒤 숫자를 연도로 읽으면 안 된다.
+  it("does not read a long trailing number as a birth year", () => {
+    expect(kakaoMatchKey("늑구 5022/glenone#1")).toBe("늑구5022/glenone1");
+  });
+
   // 관례를 안 지킨 닉네임은 쪼갤 조각이 없으므로 전체를 정규화해 쓴다.
   it("falls back to the whole string when the convention is not followed", () => {
     expect(kakaoMatchKey("올빼미")).toBe("올빼미");
