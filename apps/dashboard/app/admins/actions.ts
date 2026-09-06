@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
-import { softResetAllMmr } from "@/lib/mutations/soft-reset-mmr";
+import { resetAllRatings } from "@/lib/mutations/reset-ratings";
+import type { RatingResetKind } from "@lolpamin/db";
 
 interface AdminActionResult {
   error: string | null;
@@ -52,24 +53,33 @@ export async function deleteAdminAction(targetId: string): Promise<AdminActionRe
   return { error: null };
 }
 
-export interface SoftResetActionResult {
+export interface ResetRatingsActionResult {
   error: string | null;
   count: number;
 }
 
-export async function softResetMmrAction(): Promise<SoftResetActionResult> {
-  await requireAdmin();
+// 서버 액션의 인자는 브라우저가 보내는 값이라 타입만으로는 막히지 않는다. 모르는
+// 값이 SOFT로 새어 들어가지 않게 여기서 끊는다.
+const RESET_KINDS: RatingResetKind[] = ["SOFT", "HARD"];
+
+export async function resetRatingsAction(kind: RatingResetKind): Promise<ResetRatingsActionResult> {
+  const acting = await requireAdmin();
+  if (!RESET_KINDS.includes(kind)) return { error: "알 수 없는 리셋 종류입니다", count: 0 };
 
   let count = 0;
   try {
-    ({ count } = await softResetAllMmr(prisma));
+    ({ count } = await resetAllRatings(prisma, { kind, adminId: acting.id }));
   } catch {
-    return { error: "MMR을 리셋하지 못했습니다", count: 0 };
+    return { error: "리셋하지 못했습니다", count: 0 };
   }
 
-  // 순위 배지와 회원 목록이 모두 옛 mmr을 들고 있으므로 대시보드까지 함께 무효화한다.
+  // 순위 배지와 회원 목록이 모두 옛 mmr을 들고 있고, 전적을 세는 화면들은 옛 기준선을
+  // 들고 있으므로 대시보드까지 함께 무효화한다.
   revalidatePath("/admins");
   revalidatePath("/members");
+  revalidatePath("/inactive");
+  revalidatePath("/matches");
+  revalidatePath("/team-builder");
   revalidatePath("/");
   return { error: null, count };
 }

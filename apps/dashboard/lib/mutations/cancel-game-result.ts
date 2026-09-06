@@ -6,6 +6,7 @@ export const CANCEL_GAME_RESULT_ERRORS = {
   notFound: "경기를 찾을 수 없습니다.",
   alreadyCancelled: "이미 취소된 경기입니다.",
   notLatest: "가장 최근 경기만 되돌릴 수 있습니다. 뒤에 입력된 경기를 먼저 되돌리세요.",
+  beforeReset: "리셋 이후에 입력된 경기만 되돌릴 수 있습니다.",
 } as const;
 
 /**
@@ -20,6 +21,10 @@ export const CANCEL_GAME_RESULT_ERRORS = {
  * 경기 날짜를 과거로 적어 나중에 입력한 판이 있어도 되돌리기는 입력 역순이어야 맞는다.
  *
  * 취소는 되살릴 수 없다. 되살리기를 허용하면 취소가 LIFO가 아니게 되어 위 근거가 무너진다.
+ *
+ * 마지막 리셋보다 먼저 입력된 경기는 되돌릴 수 없다. 그 판의 mmrBefore는 리셋 전 값이라
+ * 되돌리면 참가자만 옛 점수로 되살아난다(resetAllRatings 참고). 리셋이 「가장 최근 판」의
+ * 앞을 끊으므로, 리셋 직후에는 되돌릴 수 있는 경기가 하나도 없는 것이 맞다.
  */
 export async function cancelGameResult(
   prisma: PrismaClient,
@@ -41,6 +46,14 @@ export async function cancelGameResult(
       select: { id: true },
     });
     if (latest?.id !== game.id) throw new Error(CANCEL_GAME_RESULT_ERRORS.notLatest);
+
+    const latestReset = await tx.ratingReset.findFirst({
+      orderBy: { resetAt: "desc" },
+      select: { resetAt: true },
+    });
+    if (latestReset && game.createdAt <= latestReset.resetAt) {
+      throw new Error(CANCEL_GAME_RESULT_ERRORS.beforeReset);
+    }
 
     for (const participant of game.participants) {
       await tx.member.update({

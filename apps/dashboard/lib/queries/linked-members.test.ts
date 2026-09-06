@@ -145,4 +145,97 @@ describe("getLinkedMembers", () => {
     expect(byName.get("승자")).toMatchObject({ wins: 0, losses: 0 });
     expect(byName.get("패자")).toMatchObject({ wins: 0, losses: 0 });
   });
+
+  it("carries the tier and the riot id", async () => {
+    await prisma.member.create({
+      data: {
+        realName: "유대혁",
+        discordUserId: "d-tier",
+        discordHandle: "daehyeok_",
+        kakaoNickname: "유대혁/95/유대혁#KR1",
+        tier: "EMERALD_2",
+        riotId: "늑 구#1003",
+      },
+    });
+
+    const pool = await getLinkedMembers();
+
+    const row = pool.find((p) => p.name === "유대혁");
+    expect(row?.tier).toBe("EMERALD_2");
+    expect(row?.riotId).toBe("늑 구#1003");
+  });
+
+  it("defaults an untouched member to unranked with no riot id", async () => {
+    await prisma.member.create({
+      data: {
+        realName: "박시형",
+        discordUserId: "d-plain",
+        discordHandle: "sihyeong",
+        kakaoNickname: "박시형/97/시형#KR1",
+      },
+    });
+
+    const pool = await getLinkedMembers();
+
+    const row = pool.find((p) => p.name === "박시형");
+    expect(row?.tier).toBe("UNRANKED");
+    expect(row?.riotId).toBeNull();
+  });
+
+  // 리셋은 전적을 0/0/0으로 되돌린다. 경기는 지우지 않으므로 세는 쪽이 기준선을 봐야 한다.
+  it("drops a game played before the last reset out of the record", async () => {
+    const blue = await prisma.member.create({
+      data: { realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoUserId: "k-1" },
+    });
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "BLUE" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
+    });
+
+    const { resetAllRatings } = await import("@/lib/mutations/reset-ratings");
+    await resetAllRatings(prisma, { kind: "SOFT", adminId: null });
+
+    const [option] = await getLinkedMembers();
+    expect(option).toMatchObject({ wins: 0, losses: 0 });
+    // 경기 자체는 기록으로 남는다.
+    expect(await prisma.gameResult.count()).toBe(1);
+  });
+
+  it("counts a game entered after the reset", async () => {
+    const blue = await prisma.member.create({
+      data: { realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoUserId: "k-1" },
+    });
+
+    const { resetAllRatings } = await import("@/lib/mutations/reset-ratings");
+    await resetAllRatings(prisma, { kind: "HARD", adminId: null });
+
+    const game = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "RED" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 981 },
+    });
+
+    const [option] = await getLinkedMembers();
+    expect(option).toMatchObject({ wins: 0, losses: 1 });
+  });
+
+  // 경기 날짜는 과거로 적을 수 있다. 기준선은 입력 시각(createdAt)으로 잘라야 리셋 뒤에
+  // 입력한 판이 날짜 때문에 사라지지 않는다.
+  it("counts a game entered after the reset even when its play date is backdated", async () => {
+    const blue = await prisma.member.create({
+      data: { realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoUserId: "k-1" },
+    });
+
+    const { resetAllRatings } = await import("@/lib/mutations/reset-ratings");
+    await resetAllRatings(prisma, { kind: "SOFT", adminId: null });
+
+    const game = await prisma.gameResult.create({
+      data: { playedAt: new Date("2026-01-01T12:00:00Z"), winner: "BLUE" },
+    });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
+    });
+
+    const [option] = await getLinkedMembers();
+    expect(option).toMatchObject({ wins: 1, losses: 0 });
+  });
 });

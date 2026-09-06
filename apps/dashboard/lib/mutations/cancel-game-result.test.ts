@@ -159,4 +159,34 @@ describe("cancelGameResult", () => {
     expect(row.cancelledById).toBe("admin-7");
     expect(row.cancelledAt).toBeInstanceOf(Date);
   });
+
+  // 리셋 이전 판의 mmrBefore는 리셋 전 값이다. 되돌리면 참가자만 옛 점수로 되살아난다.
+  it("refuses a game entered before the last reset", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const game = await playGame([blue], [red], "BLUE");
+
+    const { resetAllRatings } = await import("./reset-ratings");
+    await resetAllRatings(prisma, { kind: "HARD", adminId: null });
+
+    await expect(cancelGameResult(prisma, game.gameResultId, null)).rejects.toThrow(
+      CANCEL_GAME_RESULT_ERRORS.beforeReset,
+    );
+    expect(await mmrOf(blue.id)).toBe(1000);
+  });
+
+  it("still allows a game entered after the last reset", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+
+    const { resetAllRatings } = await import("./reset-ratings");
+    await resetAllRatings(prisma, { kind: "HARD", adminId: null });
+
+    const game = await playGame([blue], [red], "BLUE");
+    await cancelGameResult(prisma, game.gameResultId, null);
+
+    expect(await mmrOf(blue.id)).toBe(1000);
+    const row = await prisma.gameResult.findUniqueOrThrow({ where: { id: game.gameResultId } });
+    expect(row.cancelledAt).toBeInstanceOf(Date);
+  });
 });

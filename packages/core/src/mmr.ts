@@ -58,3 +58,9 @@ export const SOFT_RESET_RATIO = 0.5;
 export function applySoftReset(mmr: number): number {
   return Math.round(SOFT_RESET_BASE + (mmr - SOFT_RESET_BASE) * SOFT_RESET_RATIO);
 }
+
+// Hard reset: the ordering is thrown away too, not just compressed. Everyone
+// starts the quarter from the same rating a brand new member gets.
+export function applyHardReset(): number {
+  return SOFT_RESET_BASE;
+}

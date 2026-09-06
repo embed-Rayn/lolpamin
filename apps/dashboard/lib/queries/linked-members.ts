@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { getCountedGameFilter } from "./counted-games";
 import { getDisplayName } from "@lolpamin/core";
+import type { MemberTier } from "@lolpamin/db";
 
 export interface LinkedMemberOption {
   id: string;
@@ -11,6 +13,9 @@ export interface LinkedMemberOption {
   mmr: number;
   wins: number;
   losses: number;
+  // 팀짜기 화면이 쓰는 값. 점수는 저장하지 않고 tierScore로 계산한다.
+  tier: MemberTier;
+  riotId: string | null;
 }
 
 export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
@@ -30,11 +35,11 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
     orderBy: { mmr: "desc" },
   });
 
-  // 되돌린 경기는 승/패에 넣지 않는다. 참가 기록은 경기 기록에 남아야 해서 지우지
-  // 않으므로(cancelGameResult 참고) 세는 쪽에서 걸러야 한다. 빼지 않으면 MMR만
-  // 되돌아가고 전적은 그대로여서 같은 화면 안에서 두 숫자가 어긋난다.
+  // 되돌린 판과 리셋 이전 판은 승/패에 넣지 않는다(getCountedGameFilter 참고). 빼지
+  // 않으면 MMR만 움직이고 전적은 그대로여서 같은 화면 안에서 두 숫자가 어긋난다.
+  const countedGame = await getCountedGameFilter(prisma);
   const participations = await prisma.gameParticipant.findMany({
-    where: { memberId: { in: members.map((m) => m.id) }, gameResult: { cancelledAt: null } },
+    where: { memberId: { in: members.map((m) => m.id) }, gameResult: countedGame },
     select: { memberId: true, team: true, gameResult: { select: { winner: true } } },
   });
 
@@ -51,6 +56,8 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
     name: getDisplayName(m),
     discordName: m.discordDisplayName ?? m.discordHandle ?? m.discordUserId!,
     mmr: m.mmr,
+    tier: m.tier,
+    riotId: m.riotId,
     ...record.get(m.id)!,
   }));
 }

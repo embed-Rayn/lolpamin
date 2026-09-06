@@ -70,6 +70,8 @@ export async function absorbMember(
           realName: survivor.realName ?? loser.realName,
           age: survivor.age ?? loser.age,
           riotId: survivor.riotId ?? loser.riotId,
+          // tier는 not-null이라 ??가 통하지 않는다 — UNRANKED를 "값 없음"으로 취급한다.
+          tier: survivor.tier === "UNRANKED" ? loser.tier : survivor.tier,
           // kakaoNickname은 생존자에게 복사하지 않는다. 과거 닉네임을 한 행만 들고 있어야
           // processKakaoExport의 닉네임 조회가 묘비를 정확히 집어 멘션 로그를 거기 남기고,
           // 그래야 해제가 mergedIntoId 한 컬럼으로 끝난다. "연결 완료" 판정은 묘비까지

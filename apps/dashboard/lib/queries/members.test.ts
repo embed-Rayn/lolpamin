@@ -252,3 +252,44 @@ describe("닉네임을 바꾼 회원의 카톡 칸", () => {
     expect(found.rows).toHaveLength(1);
   });
 });
+
+describe("tier and riot id", () => {
+  it("carries both onto the row", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({
+      data: { realName: "유대혁", kakaoNickname: "유대혁/95/유대혁#KR1", tier: "EMERALD_2", riotId: "늑 구#1003" },
+    });
+
+    const { rows } = await getMemberListData("all", "");
+
+    expect(rows[0].tier).toBe("EMERALD_2");
+    expect(rows[0].riotId).toBe("늑 구#1003");
+  });
+
+  it("defaults to unranked with no riot id", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({ data: { realName: "박시형", kakaoNickname: "박시형/97/시형#KR1" } });
+
+    const { rows } = await getMemberListData("all", "");
+
+    expect(rows[0].tier).toBe("UNRANKED");
+    expect(rows[0].riotId).toBeNull();
+  });
+
+  it("sorts by score, not by the order the enum happens to be declared in", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({ data: { realName: "골드", kakaoNickname: "골드/95/g#1", tier: "GOLD_3" } });
+    await prisma.member.create({ data: { realName: "마스터", kakaoNickname: "마스터/95/m#1", tier: "MASTER_400_600" } });
+    await prisma.member.create({ data: { realName: "언랭", kakaoNickname: "언랭/95/u#1" } });
+
+    const desc = await getMemberListData("all", "", "tier", "desc");
+    expect(desc.rows.map((r) => r.realName)).toEqual(["마스터", "골드", "언랭"]);
+
+    const asc = await getMemberListData("all", "", "tier", "asc");
+    expect(asc.rows.map((r) => r.realName)).toEqual(["언랭", "골드", "마스터"]);
+  });
+
+  it("accepts tier as a sort key", () => {
+    expect(parseMemberSort("tier")).toBe("tier");
+  });
+});

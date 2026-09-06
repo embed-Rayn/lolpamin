@@ -74,6 +74,49 @@ describe("normalizeKakaoNicknames", () => {
     ]);
   });
 
+  it("carries the loser's tier onto an UNRANKED survivor when merging", async () => {
+    const older = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98",
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+      },
+    });
+    const newer = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+        tier: "DIAMOND_2",
+      },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.tier).toBe("DIAMOND_2");
+  });
+
+  it("keeps the survivor's own tier when merging, instead of taking the loser's", async () => {
+    const older = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98",
+        createdAt: new Date("2026-08-01T00:00:00Z"),
+        tier: "GOLD_1",
+      },
+    });
+    const newer = await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+        tier: "DIAMOND_2",
+      },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect(survivor.tier).toBe("GOLD_1");
+  });
+
   it("keeps the linked member as the survivor even when it was created later", async () => {
     const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-01T00:00:00Z") },
@@ -305,10 +348,56 @@ describe("normalizeKakaoNicknames", () => {
     expect(result.merged).toBe(0);
     expect(result.mergedPairs).toEqual([]);
     expect(result.skippedGroups).toHaveLength(1);
-    expect(result.skippedGroups[0].nickname).toBe("유대혁/95/유대혁#KR1");
+    expect(result.skippedGroups[0].matchKey).toBe("유대혁/95");
     expect(result.skippedGroups[0].memberIds).toEqual([discordSide.id, kakaoSide.id]);
     // 두 회원 모두 활성인 채로 남아야 한다 — 불변식 1을 깨느니 사람이 정리하게 둔다.
     expect((await prisma.member.findUniqueOrThrow({ where: { id: discordSide.id } })).mergedIntoId).toBeNull();
     expect((await prisma.member.findUniqueOrThrow({ where: { id: kakaoSide.id } })).mergedIntoId).toBeNull();
+  });
+
+  // 그룹 기준을 매칭 키로 옮긴 뒤 생긴 능력: 문자열로는 넷이지만 한 사람인 행들.
+  it("merges every spelling of one person into a single survivor", async () => {
+    const spellings = [
+      "박병준/94/늑 구#kr1",
+      "박병준/94/늑 구#KR1",
+      "박병준/94/늑구#KR1",
+      "박병준/94/완전다른롤닉#KR2",
+    ];
+    for (const kakaoNickname of spellings) {
+      await prisma.member.create({ data: { kakaoNickname } });
+    }
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(3);
+    const active = await prisma.member.findMany({ where: { mergedIntoId: null } });
+    expect(active).toHaveLength(1);
+    // 생존자는 자기 닉네임을 그대로 들고 간다 — 매칭 키가 화면에 새어 나오면 안 된다.
+    expect(active[0].kakaoNickname).toBe("박병준/94/늑 구#kr1");
+    expect(active[0].realName).toBe("박병준");
+  });
+
+  it("leaves two people who share a birth year apart", async () => {
+    await prisma.member.create({ data: { kakaoNickname: "박병준/94/늑구#KR1" } });
+    await prisma.member.create({ data: { kakaoNickname: "유성진/94/주유#비매너차단" } });
+
+    const result = await normalizeKakaoNicknames(prisma);
+
+    expect(result.merged).toBe(0);
+    expect(await prisma.member.count({ where: { mergedIntoId: null } })).toBe(2);
+  });
+
+  // 동명이인·동갑은 매칭 키로 구별할 수 없다. 둘 다 디스코드를 붙여 뒀다면 자동 병합이
+  // 계정 연결 하나를 조용히 지우게 되므로, 합치지 않고 통째로 롤백하고 사람에게 넘긴다.
+  it("refuses to merge two same-name same-year members who both linked discord", async () => {
+    await prisma.member.create({
+      data: { kakaoNickname: "박병준/94/늑구#KR1", discordUserId: "d-1" },
+    });
+    await prisma.member.create({
+      data: { kakaoNickname: "박병준/94/다른사람#KR9", discordUserId: "d-2" },
+    });
+
+    await expect(normalizeKakaoNicknames(prisma)).rejects.toThrow("디스코드 연동이 2명 이상입니다");
+    expect(await prisma.member.count({ where: { mergedIntoId: null } })).toBe(2);
   });
 });

@@ -60,13 +60,63 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 MMR is team-average Elo, K=40, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant gains a flat bonus — `WIN_POINT` (3) for the winning team, `LOSS_POINT` (1) for the losing one — so a game is worth +23/-19 between even teams and the rating pool inflates. That is deliberate: showing up is always worth something, winning a little more.
 
-A quarterly **soft reset** (`applySoftReset`, the button at the bottom of `/admins`) pulls every active member's rating halfway back to 1000, so the ordering survives while the gaps compress. It is a manual admin action with a two-step confirm, keeps no history and cannot be undone; tombstones and recorded `GameParticipant` deltas are left alone.
+Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
+behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**
+reset (`applySoftReset`) pulls every active member's rating halfway back to 1000, so
+the ordering survives while the gaps compress; the **hard** reset (`applyHardReset`)
+puts everyone on 1000 and throws the ordering away. Tombstones and recorded
+`GameParticipant` deltas are left alone by both.
+
+Both also zero 판/승/패. Those are not stored columns — they are counted from
+`GameParticipant`, so the reset writes a `RatingReset` row instead of deleting
+anything, and its `resetAt` becomes the **baseline**: only games whose
+`GameResult.createdAt` is strictly newer than the newest `resetAt` are counted.
+`createdAt`, not `playedAt`, because a play date can be backdated below the
+baseline. Games stay in the history screen untouched. The rule lives in
+`apps/dashboard/lib/queries/counted-games.ts` (used by `linked-members` and
+`inactive`) and is restated in `apps/discord-bot/src/lib/get-game-count.ts`, which
+cannot import the dashboard's lib. Deliberately **not** watermarked:
+`queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
+about to destroy, not a record.
+
+A consequence: `cancelGameResult` refuses a game entered at or before the newest
+`resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
+member's old score. Right after a reset nothing is cancellable, which is correct.
+
+Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
+`UNRANKED`) that an admin sets by hand. Its score comes from a reference table in
+`packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
+that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
+moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
+teams by hand and watches the two totals; that arrangement is browser state and is
+never saved. `packages/core` imports the `MemberTier` type from `@lolpamin/db` — the
+one place it depends on another workspace, and a type-only import.
 
 The rating was called ELO until the rename; the DB columns are `Member.mmr` and `GameParticipant.mmrBefore/mmrAfter`.
 
 Inactivity: >= 7 days since `lastActiveAt` (falling back to `createdAt`); 14+ days is flagged more severely. Only members with a KakaoTalk side are eligible — someone with no chatroom presence cannot be "inactive".
 
-KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` export: `--------------- YYYY년 M월 D일 요일 ---------------` date separators plus `[이름] [오전 H:MM] 본문` headers, with continuation lines folded into the preceding message. A mention is `@` anywhere in a line to end of line (recruitment posts write `1. @닉네임`). Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
+A member is identified across uploads by a **match key**, not by the nickname
+string (`packages/core/src/kakao-match-key.ts`). The group's convention is
+`실명/출생연도/게임닉#태그`, and the key keeps only the first two segments — the tail
+changes every time someone renames in game or appends a memo, the first two do not.
+So `박병준/94/늑 구#kr1 (5시)`, `박병준/94/늑구#KR1` and `박병준/94/늑 구#KR1 밥먹고옴`
+are one person; before this they were three. Off-convention nicknames (no digits in
+the second segment) fall back to the whole string with case, whitespace and `#._-`
+folded away — the same `normalizeForMatch` that `score-account-match.ts` uses. The
+key is computed, never stored: at ~40 members `processKakaoExport` loads every row
+once and builds a key→member map, which is cheaper than a column that four write
+paths would have to keep in sync.
+
+The key cannot tell two 동명이인 of the same birth year apart. `normalizeKakaoNicknames`
+catches the visible case — it aborts the whole batch when one group holds two
+different `discordUserId`s rather than silently discarding a hand-made link.
+
+KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` export: `--------------- YYYY년 M월 D일 요일 ---------------` date separators plus `[이름] [오전 H:MM] 본문` headers, with continuation lines folded into the preceding message. A mention is `@` anywhere in a line to end of line (recruitment posts write `1. @닉네임`).
+Nothing filters what follows: the 대기 (waitlist) section is not recognised and its
+entries count as activity like any other mention — deliberately, since writing your
+name in the chatroom is what inactivity measures. The flip side is that an `@` in a
+header line (`@태그해서 작성해주세요`) becomes a member too. Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
 
 ## Deployment
 

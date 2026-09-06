@@ -1529,3 +1529,8 @@ git commit -m "docs: record the tier score table and the manual team builder"
 
 배포 뒤 회원 41명의 티어는 전부 「언랭」이다. 운영진이 `/members`에서 손으로 채워야
 팀짜기가 쓸모 있어진다.
+
+discord-bot 이미지도 새 스키마로 Prisma client를 생성하므로, `docker compose up -d`
+이후 대시보드 컨테이너가 `prisma migrate deploy`를 끝내기 전 짧은 틈에는 봇 명령이
+컬럼 없음 오류로 실패할 수 있다. 이번 작업만의 문제가 아니라 컬럼이 늘 때마다 생기는
+성질이고, 몇 초 안에 저절로 해소된다.

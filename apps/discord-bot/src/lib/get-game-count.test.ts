@@ -63,4 +63,35 @@ describe("getGameCount", () => {
 
     expect(await getGameCount(prisma, member.id)).toBe(0);
   });
+
+  // 대시보드의 전적 집계와 같은 기준선을 봐야 두 화면이 같은 숫자를 말한다.
+  it("leaves a game entered before the last reset out of the count", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    await playedIn(member.id, false);
+
+    await prisma.ratingReset.create({ data: { kind: "SOFT", memberCount: 1 } });
+
+    expect(await getGameCount(prisma, member.id)).toBe(0);
+  });
+
+  it("counts a game entered after the last reset", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    await playedIn(member.id, false);
+
+    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1 } });
+    await playedIn(member.id, false);
+
+    expect(await getGameCount(prisma, member.id)).toBe(1);
+  });
+
+  it("reads the newest reset when there is more than one", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    await prisma.ratingReset.create({
+      data: { kind: "SOFT", memberCount: 1, resetAt: new Date("2026-01-01T00:00:00Z") },
+    });
+    await playedIn(member.id, false);
+    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1 } });
+
+    expect(await getGameCount(prisma, member.id)).toBe(0);
+  });
 });

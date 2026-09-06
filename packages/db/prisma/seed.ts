@@ -11,11 +11,11 @@ async function main() {
 
   const fullMembers = await Promise.all(
     [
-      { realName: "김도현", riotId: "칼바람장인#KR1", discordUserId: "d-dohyun", discordHandle: "dohyun_kr", kakaoUserId: "k-dohyun", kakaoNickname: "도현", mmr: 1482, days: 0 },
-      { realName: "박서준", riotId: "미드갱킹#KR1", discordUserId: "d-seojun", discordHandle: "seojun.p", kakaoUserId: "k-seojun", kakaoNickname: "서준찡", mmr: 1618, days: 1 },
-      { realName: "정우성", riotId: "정글의왕#KR1", discordUserId: "d-woosung", discordHandle: "woosung", kakaoUserId: "k-woosung", kakaoNickname: "우성", mmr: 1701, days: 1 },
-      { realName: "신유진", riotId: "유진미드#KR1", discordUserId: "d-yujin", discordHandle: "yujin.s", kakaoUserId: "k-yujin", kakaoNickname: "유진", mmr: 1573, days: 17 },
-      { realName: "배성민", riotId: "성민탑#KR1", discordUserId: "d-sungmin", discordHandle: "sungmin.b", kakaoUserId: "k-sungmin", kakaoNickname: "성민", mmr: 1489, days: 33 },
+      { realName: "김도현", riotId: "칼바람장인#KR1", discordUserId: "d-dohyun", discordHandle: "dohyun_kr", kakaoUserId: "k-dohyun", kakaoNickname: "도현", mmr: 1482, days: 0, tier: "MASTER_400_600" as const },
+      { realName: "박서준", riotId: "미드갱킹#KR1", discordUserId: "d-seojun", discordHandle: "seojun.p", kakaoUserId: "k-seojun", kakaoNickname: "서준찡", mmr: 1618, days: 1, tier: "DIAMOND_2" as const },
+      { realName: "정우성", riotId: "정글의왕#KR1", discordUserId: "d-woosung", discordHandle: "woosung", kakaoUserId: "k-woosung", kakaoNickname: "우성", mmr: 1701, days: 1, tier: "EMERALD_1" as const },
+      { realName: "신유진", riotId: "유진미드#KR1", discordUserId: "d-yujin", discordHandle: "yujin.s", kakaoUserId: "k-yujin", kakaoNickname: "유진", mmr: 1573, days: 17, tier: "GOLD_3" as const },
+      { realName: "배성민", riotId: "성민탑#KR1", discordUserId: "d-sungmin", discordHandle: "sungmin.b", kakaoUserId: "k-sungmin", kakaoNickname: "성민", mmr: 1489, days: 33, tier: "UNRANKED" as const },
     ].map((m) =>
       prisma.member.create({
         data: {
@@ -26,6 +26,7 @@ async function main() {
           kakaoUserId: m.kakaoUserId,
           kakaoNickname: m.kakaoNickname,
           mmr: m.mmr,
+          tier: m.tier,
           lastActiveAt: daysAgo(m.days),
         },
       })
