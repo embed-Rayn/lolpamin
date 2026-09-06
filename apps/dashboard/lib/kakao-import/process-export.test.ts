@@ -268,4 +268,62 @@ describe("processKakaoExport", () => {
     expect(await prisma.mentionLog.count({ where: { memberId: survivor.id } })).toBe(0);
     expect(await prisma.member.count()).toBe(2);
   });
+
+  // 실제 모집글에서 같은 사람이 날마다 다르게 적은 표기들. 문자열 exact match였을 때는
+  // 네 명으로 갈라졌다.
+  it("keeps every spelling of one person on a single member", async () => {
+    const upload = [
+      "게임구인방 님과 카카오톡 대화",
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[방장] [오전 9:00] 4. @박병준/94/늑 구#kr1 (5시)",
+      "--------------- 2026년 8월 30일 일요일 ---------------",
+      "[방장] [오전 9:00] 4. @박병준/94/늑 구#KR1",
+      "--------------- 2026년 8월 31일 월요일 ---------------",
+      "[방장] [오전 9:00] 4. @박병준/94/늑구#KR1",
+      "--------------- 2026년 9월 1일 화요일 ---------------",
+      "[방장] [오전 9:00] 4. @박병준/94/늑 구#KR1 밥먹고옴",
+      "--------------- 2026년 9월 2일 수요일 ---------------",
+      "[방장] [오전 9:00] 4. @박병준/94/완전다른롤닉#KR2",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result.newMembers).toBe(1);
+    expect(result.activityUpdates).toBe(4);
+    const members = await prisma.member.findMany();
+    expect(members).toHaveLength(1);
+    // 처음 본 표기를 그대로 들고 있는다 — 나중 표기로 덮어쓰지 않는다.
+    expect(members[0].kakaoNickname).toBe("박병준/94/늑 구#kr1");
+    expect(members[0].realName).toBe("박병준");
+    expect(await prisma.mentionLog.count()).toBe(5);
+  });
+
+  it("still separates two people who share a birth year", async () => {
+    const upload = [
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[방장] [오전 9:00] 3. @유기훈/92/람스터#람스터",
+      "[방장] [오전 9:01] 4. @박병준/94/늑 구#KR1",
+      "[방장] [오전 9:02] 7. @유성진/94/즐겜유저 주유#비매너차단",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result.newMembers).toBe(3);
+  });
+
+  // 대기 명단도 채팅방 활동이라 그대로 센다. 참가자와 구분하지 않는 것이 의도다.
+  it("counts a waitlist entry as activity like any other mention", async () => {
+    const upload = [
+      "--------------- 2026년 8월 29일 토요일 ---------------",
+      "[방장] [오전 9:00] 1. @윤찬/85/드랍더비추kr3",
+      "[방장] [오전 9:00] 대기",
+      "[방장] [오전 9:00] 1.@유대혁/95/유대혁#kr1",
+    ].join("\n");
+
+    const result = await processKakaoExport(prisma, upload);
+
+    expect(result.newMembers).toBe(2);
+    const nicknames = (await prisma.member.findMany()).map((m) => m.kakaoNickname);
+    expect(nicknames).toContain("유대혁/95/유대혁#kr1");
+  });
 });

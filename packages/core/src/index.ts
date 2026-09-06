@@ -3,6 +3,7 @@ export * from "./inactivity";
 export * from "./get-display-name";
 export * from "./parse-kakao-nickname";
 export * from "./normalize-kakao-nickname";
+export * from "./kakao-match-key";
 export * from "./score-account-match";
 export * from "./draw";
 export * from "./tier";

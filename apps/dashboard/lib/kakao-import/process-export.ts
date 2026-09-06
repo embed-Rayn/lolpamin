@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@lolpamin/db";
-import { normalizeKakaoNickname, realNameFromKakaoNickname } from "@lolpamin/core";
+import { kakaoMatchKey, normalizeKakaoNickname, realNameFromKakaoNickname } from "@lolpamin/core";
 import { parseKakaoExport } from "./parse-export";
 
 export interface ProcessKakaoExportResult {
@@ -24,22 +24,35 @@ export async function processKakaoExport(
     let newMembers = 0;
     let activityUpdates = 0;
 
+    // 닉네임 문자열이 아니라 매칭 키로 사람을 찾는다(kakaoMatchKey 참고). 같은 사람이
+    // "늑 구#kr1 (5시)"와 "늑구#KR1"을 번갈아 써도, 롤 닉을 바꿔도 한 회원에 붙는다.
+    //
+    // 회원 수가 수십 명이라 전부 한 번에 읽어 키 → 회원 맵을 만든다. 멘션마다 조회하지
+    // 않으므로 키 계산 규칙이 SQL로 표현될 필요가 없고, 저장해 둘 컬럼도 필요 없다.
+    // 정렬은 예전 findFirst의 orderBy를 그대로 옮긴 것이다 — 같은 키에 여러 행이 걸릴 때
+    // 묘비(mergedIntoId != null)가 먼저 와야 아래 "히트한 행에 로그를 단다"가 되돌리기
+    // 가능한 쪽에 붙고, createdAt·id가 동률을 끊어 결과가 실행마다 달라지지 않는다.
+    const known = await tx.member.findMany({
+      where: { kakaoNickname: { not: null } },
+      orderBy: [{ mergedIntoId: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, kakaoNickname: true, mergedIntoId: true },
+    });
+
+    const byMatchKey = new Map<string, { id: string; mergedIntoId: string | null }>();
+    for (const member of known) {
+      const key = kakaoMatchKey(member.kakaoNickname!);
+      if (key.length === 0 || byMatchKey.has(key)) continue;
+      byMatchKey.set(key, { id: member.id, mergedIntoId: member.mergedIntoId });
+    }
+
     for (const mention of toProcess) {
       // 닉네임 뒤에 붙은 "(7시30분 도착)" 같은 메모를 떼고 매칭한다. 메모까지 포함해
       // 매칭하면 같은 사람이 여러 회원으로 갈라진다.
       const nickname = normalizeKakaoNickname(mention.mentionedNickname);
       if (nickname.length === 0) continue;
 
-      // 같은 kakaoNickname을 가진 행이 둘 이상일 수 있다 — 정규화 배치(normalize-kakao-nicknames.ts)가
-      // 생존자에게 정규화된 닉네임을 남기면서, 원래부터 그 형태였던 묘비도 같은 값을 그대로
-      // 가지고 있을 수 있기 때문이다. 이때 묘비가 먼저 걸려야 아래 주석의 "히트한 행에 로그를
-      // 단다"가 실제로 되돌리기 가능한 쪽(묘비)에 붙는다. mergedIntoId가 있는 행(묘비)을
-      // 없는 행(생존자)보다 앞세우고, 묘비가 여럿이어도 결과가 항상 같도록 createdAt·id로
-      // 동률을 끊는다 — orderBy 없이는 Postgres 쿼리 플래너가 임의로 하나를 고른다.
-      const existing = await tx.member.findFirst({
-        where: { kakaoNickname: nickname },
-        orderBy: [{ mergedIntoId: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }, { id: "asc" }],
-      });
+      const matchKey = kakaoMatchKey(nickname);
+      const existing = byMatchKey.get(matchKey) ?? null;
 
       let memberId: string;
       if (existing) {
@@ -61,6 +74,9 @@ export async function processKakaoExport(
         });
         memberId = created.id;
         newMembers++;
+        // 같은 사람이 한 파일 안에서 여러 번 언급되면 두 번째부터는 방금 만든 행에 붙어야
+        // 한다. 조회를 맵으로 바꾼 뒤로는 새로 만든 회원을 여기서 직접 넣어 줘야 한다.
+        if (matchKey.length > 0) byMatchKey.set(matchKey, { id: created.id, mergedIntoId: null });
       }
 
       await tx.mentionLog.create({

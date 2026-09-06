@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 
   console.log("skippedGroups:");
   for (const group of result.skippedGroups) {
-    console.log(`  ${JSON.stringify(group.nickname)} [${group.memberIds.join(", ")}] — ${group.reason}`);
+    console.log(`  ${JSON.stringify(group.matchKey)} [${group.memberIds.join(", ")}] — ${group.reason}`);
   }
 
   console.log("after:", {

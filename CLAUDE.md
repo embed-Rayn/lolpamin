@@ -96,7 +96,27 @@ The rating was called ELO until the rename; the DB columns are `Member.mmr` and 
 
 Inactivity: >= 7 days since `lastActiveAt` (falling back to `createdAt`); 14+ days is flagged more severely. Only members with a KakaoTalk side are eligible — someone with no chatroom presence cannot be "inactive".
 
-KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` export: `--------------- YYYY년 M월 D일 요일 ---------------` date separators plus `[이름] [오전 H:MM] 본문` headers, with continuation lines folded into the preceding message. A mention is `@` anywhere in a line to end of line (recruitment posts write `1. @닉네임`). Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
+A member is identified across uploads by a **match key**, not by the nickname
+string (`packages/core/src/kakao-match-key.ts`). The group's convention is
+`실명/출생연도/게임닉#태그`, and the key keeps only the first two segments — the tail
+changes every time someone renames in game or appends a memo, the first two do not.
+So `박병준/94/늑 구#kr1 (5시)`, `박병준/94/늑구#KR1` and `박병준/94/늑 구#KR1 밥먹고옴`
+are one person; before this they were three. Off-convention nicknames (no digits in
+the second segment) fall back to the whole string with case, whitespace and `#._-`
+folded away — the same `normalizeForMatch` that `score-account-match.ts` uses. The
+key is computed, never stored: at ~40 members `processKakaoExport` loads every row
+once and builds a key→member map, which is cheaper than a column that four write
+paths would have to keep in sync.
+
+The key cannot tell two 동명이인 of the same birth year apart. `normalizeKakaoNicknames`
+catches the visible case — it aborts the whole batch when one group holds two
+different `discordUserId`s rather than silently discarding a hand-made link.
+
+KakaoTalk import (`apps/dashboard/lib/kakao-import/`) parses a Korean `.txt` export: `--------------- YYYY년 M월 D일 요일 ---------------` date separators plus `[이름] [오전 H:MM] 본문` headers, with continuation lines folded into the preceding message. A mention is `@` anywhere in a line to end of line (recruitment posts write `1. @닉네임`).
+Nothing filters what follows: the 대기 (waitlist) section is not recognised and its
+entries count as activity like any other mention — deliberately, since writing your
+name in the chatroom is what inactivity measures. The flip side is that an `@` in a
+header line (`@태그해서 작성해주세요`) becomes a member too. Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
 
 ## Deployment
 

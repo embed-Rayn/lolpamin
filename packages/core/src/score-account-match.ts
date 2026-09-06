@@ -1,3 +1,5 @@
+import { normalizeForMatch as normalize } from "./kakao-match-key";
+
 export interface AccountMatchScore {
   score: number;
   reasons: string[];
@@ -14,10 +16,6 @@ export const SOLE_CANDIDATE_GAP = 60;
 
 /** 게임닉 신호로 쓰기에 충분히 긴 조각의 최소 길이. 짧으면 우연히 겹친다. */
 const MIN_SIGNAL_LENGTH = 3;
-
-function normalize(value: string): string {
-  return value.toLowerCase().replace(/[\s#._-]/g, "");
-}
 
 // "실명/95/게임닉#태그/포지션" 같은 문자열을 조각으로 쪼갠다. 나이처럼 숫자만인
 // 조각은 버린다 — 같은 나이라는 이유로 점수가 붙으면 안 된다.

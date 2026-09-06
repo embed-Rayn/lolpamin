@@ -1,5 +1,5 @@
 import type { Member, PrismaClient } from "@lolpamin/db";
-import { normalizeKakaoNickname, realNameFromKakaoNickname } from "@lolpamin/core";
+import { kakaoMatchKey, normalizeKakaoNickname, realNameFromKakaoNickname } from "@lolpamin/core";
 
 export interface MergedPair {
   survivorId: string;
@@ -11,7 +11,7 @@ export interface MergedPair {
 }
 
 export interface SkippedGroup {
-  nickname: string;
+  matchKey: string;
   memberIds: string[];
   reason: string;
 }
@@ -66,30 +66,34 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         orderBy: { createdAt: "asc" },
       });
 
+      // 그룹은 닉네임 문자열이 아니라 매칭 키로 묶는다(kakaoMatchKey 참고). "늑 구#kr1"과
+      // "늑구#KR1"과 "늑 구#KR1 밥먹고옴"은 문자열로는 셋이지만 같은 사람이다.
       const groups = new Map<string, Member[]>();
       let normalized = 0;
       for (const member of members) {
         const normalizedNickname = normalizeKakaoNickname(member.kakaoNickname!);
         if (normalizedNickname.length === 0) continue;
         if (normalizedNickname !== member.kakaoNickname) normalized++;
-        const group = groups.get(normalizedNickname);
+        const key = kakaoMatchKey(member.kakaoNickname!);
+        const group = groups.get(key);
         if (group) group.push(member);
-        else groups.set(normalizedNickname, [member]);
+        else groups.set(key, [member]);
       }
 
       let merged = 0;
       const mergedPairs: MergedPair[] = [];
       const skippedGroups: SkippedGroup[] = [];
 
-      for (const [nickname, group] of groups) {
-        // 정규화 후 닉네임이 같아지는 회원 중 디스코드가 연결된 게 둘 이상이면, 그중
-        // 하나를 자동으로 버리는 건 관리자가 손으로 한 계정 연결을 조용히 지우는
-        // 것과 같다. 스펙에 없는 상황이므로 사람이 판단하도록 트랜잭션을 통째로
-        // 롤백시킨다.
+      for (const [matchKey, group] of groups) {
+        // 같은 사람으로 묶인 회원 중 디스코드가 연결된 게 둘 이상이면, 그중 하나를
+        // 자동으로 버리는 건 관리자가 손으로 한 계정 연결을 조용히 지우는 것과 같다.
+        // 매칭 키를 "실명/출생연도"로 좁힌 뒤로는 동명이인·동갑이 여기에 걸린다 —
+        // 서로 다른 디스코드 계정을 가진 두 사람이 한 그룹에 들어오기 때문이다.
+        // 스펙에 없는 상황이므로 사람이 판단하도록 트랜잭션을 통째로 롤백시킨다.
         const linkedMembers = group.filter((m) => m.discordUserId !== null);
         if (linkedMembers.length > 1) {
           throw new Error(
-            `카톡 닉네임 정규화 결과 "${nickname}"로 합쳐지는 회원 중 디스코드 연동이 2명 이상입니다: ` +
+            `카톡 닉네임 "${matchKey}"로 같은 사람이 되는 회원 중 디스코드 연동이 2명 이상입니다: ` +
               linkedMembers.map((m) => `id=${m.id}(discordUserId=${m.discordUserId})`).join(", ") +
               " — 자동 병합을 중단합니다. 어느 쪽을 남길지 수동으로 정리한 뒤 다시 실행하세요.",
           );
@@ -105,7 +109,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         const blocked = losers.filter((l) => l.discordUserId !== null || l.kakaoUserId !== null);
         if (blocked.length > 0) {
           skippedGroups.push({
-            nickname,
+            matchKey,
             memberIds: group.map((m) => m.id),
             reason:
               `플랫폼 계정 ID를 가진 회원이 묘비가 되어야 하는 조합입니다: ` +
@@ -117,6 +121,10 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
           continue;
         }
 
+        // 그룹 키는 매칭용이라 화면에 띄울 값이 아니다. 생존자는 자기 닉네임의 정규화된
+        // 형태(괄호 메모를 뗀 것)를 그대로 들고 간다.
+        const survivorNickname = normalizeKakaoNickname(survivor.kakaoNickname!);
+
         for (const loser of losers) {
           // 활동기록을 옮기지 않고 묘비에 남긴다 — 연결을 끊으면 기록도 함께
           // 돌아가야 하고, 그래야 되돌리기가 mergedIntoId 한 줄로 끝난다.
@@ -126,7 +134,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
           merged++;
           mergedPairs.push({
             survivorId: survivor.id,
-            survivorNickname: nickname,
+            survivorNickname,
             loserId: loser.id,
             loserNickname: loser.kakaoNickname!,
             loserMentionLogs,
@@ -149,7 +157,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
         // 재실행이 진짜 아무것도 안 건드리도록, 실제로 달라지는 그룹에서만 UPDATE를 낸다.
         const survivorChanged =
           losers.length > 0 ||
-          nickname !== survivor.kakaoNickname ||
+          survivorNickname !== survivor.kakaoNickname ||
           datesDiffer(nextLastActiveAt, survivor.lastActiveAt) ||
           nextRealName !== survivor.realName ||
           nextAge !== survivor.age ||
@@ -160,7 +168,7 @@ export async function normalizeKakaoNicknames(prisma: PrismaClient): Promise<Nor
           await tx.member.update({
             where: { id: survivor.id },
             data: {
-              kakaoNickname: nickname,
+              kakaoNickname: survivorNickname,
               lastActiveAt: nextLastActiveAt,
               realName: nextRealName,
               age: nextAge,
