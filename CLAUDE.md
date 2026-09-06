@@ -60,7 +60,28 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 MMR is team-average Elo, K=40, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant gains a flat bonus — `WIN_POINT` (3) for the winning team, `LOSS_POINT` (1) for the losing one — so a game is worth +23/-19 between even teams and the rating pool inflates. That is deliberate: showing up is always worth something, winning a little more.
 
-A quarterly **soft reset** (`applySoftReset`, the button at the bottom of `/admins`) pulls every active member's rating halfway back to 1000, so the ordering survives while the gaps compress. It is a manual admin action with a two-step confirm, keeps no history and cannot be undone; tombstones and recorded `GameParticipant` deltas are left alone.
+Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
+behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**
+reset (`applySoftReset`) pulls every active member's rating halfway back to 1000, so
+the ordering survives while the gaps compress; the **hard** reset (`applyHardReset`)
+puts everyone on 1000 and throws the ordering away. Tombstones and recorded
+`GameParticipant` deltas are left alone by both.
+
+Both also zero 판/승/패. Those are not stored columns — they are counted from
+`GameParticipant`, so the reset writes a `RatingReset` row instead of deleting
+anything, and its `resetAt` becomes the **baseline**: only games whose
+`GameResult.createdAt` is strictly newer than the newest `resetAt` are counted.
+`createdAt`, not `playedAt`, because a play date can be backdated below the
+baseline. Games stay in the history screen untouched. The rule lives in
+`apps/dashboard/lib/queries/counted-games.ts` (used by `linked-members` and
+`inactive`) and is restated in `apps/discord-bot/src/lib/get-game-count.ts`, which
+cannot import the dashboard's lib. Deliberately **not** watermarked:
+`queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
+about to destroy, not a record.
+
+A consequence: `cancelGameResult` refuses a game entered at or before the newest
+`resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
+member's old score. Right after a reset nothing is cancellable, which is correct.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`) that an admin sets by hand. Its score comes from a reference table in

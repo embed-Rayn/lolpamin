@@ -51,6 +51,12 @@ enum MemberTier {
   UNRANKED
 }
 
+// 분기 리셋의 종류. SOFT는 기준값 쪽으로 절반 수축, HARD는 전원 기준값으로.
+enum RatingResetKind {
+  SOFT
+  HARD
+}
+
 model Member {
   id                 String   @id @default(uuid())
   realName           String?
@@ -140,4 +146,20 @@ model AdminSession {
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// 실행된 리셋 한 번. 가장 최근 행의 resetAt이 전적 집계의 기준선이 된다 — 판/승/패는
+// 저장된 값이 아니라 GameParticipant를 세어 만드므로, 「전적 0/0/0」은 참가 기록을
+// 지우는 대신 이 기준선 이후에 입력된 경기만 세는 것으로 만든다. 경기 기록은 그대로 남는다.
+model RatingReset {
+  id          String          @id @default(uuid())
+  kind        RatingResetKind
+  resetAt     DateTime        @default(now())
+  // 리셋이 건드린 활성 회원 수. 실행 결과를 나중에 확인할 수 있게 남긴다.
+  memberCount Int
+
+  // 실행한 관리자. Admin.createdById와 같은 이유로 외래키를 걸지 않는다.
+  createdById String?
+
+  @@index([resetAt])
 }

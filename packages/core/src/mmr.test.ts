@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyHardReset,
   applySoftReset,
   calculateTeamMmrChange,
   LOSS_POINT,
@@ -94,5 +95,17 @@ describe("applySoftReset", () => {
   it("pulls halfway back", () => {
     expect(SOFT_RESET_RATIO).toBe(0.5);
     expect(SOFT_RESET_BASE).toBe(1000);
+  });
+});
+
+describe("applyHardReset", () => {
+  it("drops every rating to the base, however far it was", () => {
+    expect(applyHardReset()).toBe(SOFT_RESET_BASE);
+  });
+
+  it("erases the ordering a soft reset would have kept", () => {
+    const before = [1400, 1210, 940];
+    expect(before.map(applyHardReset)).toEqual([1000, 1000, 1000]);
+    expect(before.map(applySoftReset)).not.toEqual([1000, 1000, 1000]);
   });
 });

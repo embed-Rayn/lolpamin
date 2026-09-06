@@ -108,6 +108,17 @@ describe("getInactiveReportData의 내전 횟수", () => {
 
     expect(data.rows.find((r) => r.id === blue.id)?.gameCount).toBe(0);
   });
+
+  // 리셋 이전 판도 같은 이유로 빠진다 — 전적이 0/0/0인데 「내전 N회」만 남으면 어긋난다.
+  it("leaves a game entered before the last reset out of the count", async () => {
+    const blue = await playAndCancel(false);
+    const { resetAllRatings } = await import("@/lib/mutations/reset-ratings");
+    await resetAllRatings(prisma, { kind: "SOFT", adminId: null });
+
+    const data = await getInactiveReportData();
+
+    expect(data.rows.find((r) => r.id === blue.id)?.gameCount).toBe(0);
+  });
 });
 
 describe("미활동 리포트의 카톡 닉네임", () => {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers, LONG_INACTIVITY_THRESHOLD_DAYS } from "@lolpamin/core";
+import { getCountedGameFilter } from "./counted-games";
 
 export interface InactiveRow {
   id: string;
@@ -32,12 +33,12 @@ export function effectiveKakaoNickname(m: {
 
 export async function getInactiveReportData(): Promise<InactiveReportData> {
   const now = new Date();
+  // 「내전 N회」에 취소한 판과 리셋 이전 판은 넣지 않는다(getCountedGameFilter 참고).
+  const countedGame = await getCountedGameFilter(prisma);
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
     include: {
-      // 「내전 N회」에 취소한 경기는 넣지 않는다 — 되돌린 판은 없던 일이다. 참가 기록은
-      // 지우지 않으므로(경기 기록에 남아야 한다) 세는 쪽에서 걸러야 한다.
-      _count: { select: { participants: { where: { gameResult: { cancelledAt: null } } } } },
+      _count: { select: { participants: { where: { gameResult: countedGame } } } },
       // 최신순 — effectiveKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
       absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "desc" } },
     },
