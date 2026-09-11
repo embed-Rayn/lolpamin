@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { prepareReplayImportAction, saveReplayImportAction } from "@/app/replay-import/actions";
+import { isMemberOfferable } from "@/lib/replay-import/offerable";
 import type { ImportSlot, PreparedReplayImport } from "@/lib/replay-import/prepare-import";
 
 // 화면이 관리하는 상태. manual은 관리자가 직접 고른 것이라 확정(녹색)으로 친다.
@@ -140,7 +141,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     // 칩과 선택 목록이 같은 판정을 쓰게 한다. 서버가 준 후보 목록은 정적이라, 관리자가
     // 다른 슬롯에 앉힌 회원이 여기 남아 있을 수 있다 — 그대로 두면 두 슬롯이 같은 회원을
     // 들고 초록으로 바뀌고, 저장이 서버에서 거부된 뒤에야 알게 된다.
-    const isOfferable = (memberId: string) => !takenMemberIds.has(memberId) || memberId === current.memberId;
+    const isOfferable = (memberId: string) => isMemberOfferable(memberId, takenMemberIds, current.memberId);
     const candidates = slot.candidates.filter((c) => isOfferable(c.memberId));
     const others = prepared!.members.filter((m) => isOfferable(m.id));
 

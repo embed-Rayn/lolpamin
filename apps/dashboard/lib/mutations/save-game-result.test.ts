@@ -181,7 +181,7 @@ describe("saveGameResult", () => {
   });
 
   async function createRiotOnlyMember(mmr: number) {
-    const member = await prisma.member.create({ data: { kakaoNickname: `k-${mmr}-${Math.random()}`, mmr } });
+    const member = await prisma.member.create({ data: { mmr } });
     await prisma.riotAccount.create({
       data: { memberId: member.id, puuid: `p-${Math.random()}`, gameName: "ZAMSU", tagLine: "KR1", lastSeenAt: new Date() },
     });
