@@ -179,4 +179,61 @@ describe("saveGameResult", () => {
     expect(result.updates.find((u) => u.memberId === blue.id)).toMatchObject({ mmrBefore: 1500, mmrAfter: 1520 });
     expect(result.updates.find((u) => u.memberId === red.id)).toMatchObject({ mmrBefore: 1500, mmrAfter: 1490 });
   });
+
+  async function createRiotOnlyMember(mmr: number) {
+    const member = await prisma.member.create({ data: { kakaoNickname: `k-${mmr}-${Math.random()}`, mmr } });
+    await prisma.riotAccount.create({
+      data: { memberId: member.id, puuid: `p-${Math.random()}`, gameName: "ZAMSU", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    return member;
+  }
+
+  it("lets a half-linked member play when a replay confirmed their riot account", async () => {
+    // RiotAccount는 손으로 만들 수 없다. 리플레이가 그 사람이 그 경기를 뛰었다는 1차
+    // 증거이므로, 원래 규칙이 묻던 "확실히 정착한 한 사람인가"를 이미 충족한다.
+    const blue = await createRiotOnlyMember(1000);
+    const red = await createLinkedMember(1000);
+
+    const result = await saveGameResult(prisma, {
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+    });
+
+    expect(result.updates).toHaveLength(2);
+  });
+
+  it("still refuses a half-linked member with no riot account", async () => {
+    const blue = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1", mmr: 1000 } });
+    const red = await createLinkedMember(1000);
+
+    await expect(
+      saveGameResult(prisma, {
+        playedAt: new Date("2026-09-05T12:00:00Z"),
+        blueMemberIds: [blue.id],
+        redMemberIds: [red.id],
+        winner: "BLUE",
+      }),
+    ).rejects.toThrow(/must be fully linked/);
+  });
+
+  it("stores the replay key and refuses the same replay twice", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const input = {
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE" as const,
+      replayKey: "abc123",
+    };
+
+    const saved = await saveGameResult(prisma, input);
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: saved.gameResultId } });
+    expect(game.replayKey).toBe("abc123");
+
+    // 유니크 제약이 최후의 방어선이다. 화면에서 거르는 것과 별개로 DB가 막아야 한다.
+    await expect(saveGameResult(prisma, input)).rejects.toThrow();
+  });
 });

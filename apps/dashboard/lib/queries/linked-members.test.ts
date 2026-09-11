@@ -238,4 +238,26 @@ describe("getLinkedMembers", () => {
     const [option] = await getLinkedMembers();
     expect(option).toMatchObject({ wins: 1, losses: 0 });
   });
+
+  it("includes a member whose only link is a replay-confirmed riot account", async () => {
+    // 리플레이로 확인된 사람이 수동 입력 화면에서는 못 뜨는 것이 더 놀랍다.
+    const member = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1" } });
+    await prisma.riotAccount.create({
+      data: { memberId: member.id, puuid: "p-linked", gameName: "ZAMSU", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+
+    const pool = await getLinkedMembers();
+
+    const found = pool.find((m) => m.id === member.id);
+    expect(found).toBeDefined();
+    expect(found!.discordName).toBe("(디코 없음)");
+  });
+
+  it("still leaves out a member with neither a discord side nor a riot account", async () => {
+    const member = await prisma.member.create({ data: { kakaoNickname: "박병준/94/늑구#KR1" } });
+
+    const pool = await getLinkedMembers();
+
+    expect(pool.some((m) => m.id === member.id)).toBe(false);
+  });
 });

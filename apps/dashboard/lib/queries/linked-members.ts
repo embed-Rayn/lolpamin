@@ -7,8 +7,8 @@ export interface LinkedMemberOption {
   id: string;
   name: string;
   // 서버 별명. 핸들("dohyun_kr")은 디코 아이디라 사람을 알아볼 수 없으므로 별명을 먼저
-  // 본다 — queries/members.ts의 displayDiscordName과 같은 규칙이다. 이 명단은 디코가
-  // 붙은 회원만 들어오므로 셋 중 하나는 반드시 있다.
+  // 본다 — queries/members.ts의 displayDiscordName과 같은 규칙이다. 리플레이로만 확인된
+  // 회원은 디코가 아예 없어 "(디코 없음)"이 된다.
   discordName: string;
   mmr: number;
   wins: number;
@@ -22,14 +22,21 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   const members = await prisma.member.findMany({
     where: {
       mergedIntoId: null,
-      discordUserId: { not: null },
-      // 카톡 닉네임은 흡수해도 생존자에게 복사하지 않고 묘비에 남는다(활동 기록을
-      // 옮기지 않으려고). 그러니 아직 붙어 있는 묘비가 닉네임을 들고 있으면 그 회원도
-      // 연결이 끝난 것으로 본다.
       OR: [
-        { kakaoUserId: { not: null } },
-        { kakaoNickname: { not: null } },
-        { absorbed: { some: { kakaoNickname: { not: null } } } },
+        {
+          discordUserId: { not: null },
+          // 카톡 닉네임은 흡수해도 생존자에게 복사하지 않고 묘비에 남는다(활동 기록을
+          // 옮기지 않으려고). 그러니 아직 붙어 있는 묘비가 닉네임을 들고 있으면 그 회원도
+          // 연결이 끝난 것으로 본다.
+          OR: [
+            { kakaoUserId: { not: null } },
+            { kakaoNickname: { not: null } },
+            { absorbed: { some: { kakaoNickname: { not: null } } } },
+          ],
+        },
+        // saveGameResult와 같은 완화다. 리플레이로 확인된 사람이 수동 입력 화면에서만
+        // 안 보이면 두 화면이 서로 다른 회원 목록을 말하게 된다.
+        { riotAccounts: { some: {} } },
       ],
     },
     orderBy: { mmr: "desc" },
@@ -54,7 +61,7 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   return members.map((m) => ({
     id: m.id,
     name: getDisplayName(m),
-    discordName: m.discordDisplayName ?? m.discordHandle ?? m.discordUserId!,
+    discordName: m.discordDisplayName ?? m.discordHandle ?? m.discordUserId ?? "(디코 없음)",
     mmr: m.mmr,
     tier: m.tier,
     riotId: m.riotId,
