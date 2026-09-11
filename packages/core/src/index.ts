@@ -9,3 +9,4 @@ export * from "./draw";
 export * from "./tier";
 export * from "./parse-rofl";
 export * from "./riot-hint";
+export * from "./score-riot-account-match";
