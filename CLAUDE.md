@@ -127,8 +127,14 @@ header line (`@태그해서 작성해주세요`) becomes a member too. Idempoten
 `RiotAccount`는 **리플레이에서 관측된 계정으로만** 만든다. 카톡·디코 닉네임에 적힌 Riot
 ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누락이 흔하고, 그대로 저장하면
 한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **매칭 힌트**이며
-`scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 포지션은 가산점 전용이라 다른
-신호가 0이면 후보가 되지 않는다. 자동 배정은 `점수 >= 100 && 1위−2위 >= 40`일 때만 한다.
+`scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 그 위에 실명 조각 신호가 따로
+더해진다 — 인게임 닉에 "우성정글"처럼 실명 조각이 남는 경우를 잡으려고, 회원 실명(없으면
+카톡 닉네임 첫 조각)의 전체와 첫 글자를 뗀 조각 둘 다로 게임 닉을 검사해 하나라도 포함되면
+`REAL_NAME_FRAGMENT`(45점)를 더한다 — 성을 빼고 짓는 게임 닉이 흔해서다. 포지션은 가산점
+전용이라 ID 힌트와 실명 조각이 둘 다 0이면 후보가 되지 않는다. 자동 배정은
+`점수 >= 100 && 1위−2위 >= 40`일 때만 한다 — 100점은 손으로 적은 Riot ID가 정확히
+맞아떨어진 경우에만 단독으로 나오고, 실명 조각(45)과 포지션(25)은 그 문턱에 못 미쳐
+후보 화면에서 관리자 확인을 거치게 할 뿐 자동 배정을 트리거하지 않는다.
 
 `RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
 "연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.
@@ -137,8 +143,9 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 `MentionLog`와 같은 모양으로 해당 회원과 그 묘비들의 `RiotAccount`를 직접 지운다.
 
 멱등성은 `GameResult.replayKey`(정렬한 PUUID 10개 + gameLength의 SHA-256)로 잡는다 —
-리플레이에는 시간 축이 없어 카톡 임포트의 워터마크 방식을 쓸 수 없다. 따라서 **취소된
-경기의 리플레이는 다시 올릴 수 없다**: 유니크 제약이 취소 여부를 보지 않는다.
+리플레이에는 시간 축이 없어 카톡 임포트의 워터마크 방식을 쓸 수 없다. 유니크 제약 자체는
+취소 여부를 보지 않지만, `cancelGameResult`가 취소할 때 그 행의 `replayKey`를 함께
+지운다 — 그러지 않으면 매칭을 잘못 지정해 취소한 경기를 고쳐서 다시 올릴 방법이 없어진다.
 
 `saveGameResult`의 "디코 AND 카톡" 규칙에 "PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음"이
 더해져 있다(`getLinkedMembers`도 같다). `saveReplayImport`가 계정을 먼저 등록하고 경기를
@@ -152,11 +159,21 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 근거는 두 테이블의 `absorbedFromId`이고, 값은
 **비어 있을 때만** 채운다 — 이미 이관된 행의 원주인이 덮이면 되돌릴 길이 없어진다. 생존자와
 흡수 대상이 같은 경기에 둘 다 있으면 `@@unique([gameResultId, memberId])`에 막히므로 병합을
-거부한다.
+거부한다. 이 표식은 영구히 남지 않는다 — `saveReplayImport`가 이미 알고 있는 PUUID를 다른
+회원에게 재배정하면(관리자가 매칭을 고쳐 저장한 경우) 그 `RiotAccount`의 `absorbedFromId`를
+지운다. 옛 표식을 남겨 두면 나중에 그 묘비를 해제할 때 이제는 관계없는 계정이 엉뚱하게 그
+묘비로 돌아간다.
 
 경기 저장은 참가 회원의 `lastActiveAt`도 경기 날짜로 올린다(뒤로 당기지는 않는다). 그래서
 `release-member.ts`의 `recomputeLastActiveAt`은 멘션 로그뿐 아니라 취소되지 않은 경기의
 `playedAt`도 함께 본다.
+
+`queries/members.ts`의 `isHalfMember`는 `saveGameResult`·`getLinkedMembers`의 완화 조건
+("PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음")을 따르지 않는다 — 둘은 서로 다른 질문이다.
+`saveGameResult`는 "이 경기를 뛰어도 되는가"를 묻고 리플레이가 그 증거가 된다. `isHalfMember`는
+`/members` 화면의 반쪽 배지를 위해 "아직 연결할 일이 남았는가"를 묻고, 라이엇 계정은 디스코드
+연결의 필요를 없애지 않는다 — 그래서 라이엇 계정으로 경기를 뛰는 회원도 디코나 카톡 한쪽이
+비어 있으면 여전히 반쪽으로 집계된다. 의도적인 차이이고 버그가 아니다.
 
 ## Deployment
 
@@ -191,9 +208,6 @@ passwordless. Note `git archive` only overwrites: a file deleted in git stays on
 the server until someone removes it by hand.
 
 ## Known inconsistencies
-
-- 취소한 경기의 리플레이는 `GameResult.replayKey`의 유니크 제약 때문에 다시 올릴 수 없다.
-  되살리려면 그 행의 `replayKey`를 손으로 지워야 한다.
 
 ## Conventions
 
