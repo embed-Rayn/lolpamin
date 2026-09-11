@@ -137,7 +137,12 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
   function renderSlot(slot: ImportSlot) {
     const current = state[slot.puuid];
     const isOpen = current.resolution === "unresolved";
-    const others = prepared!.members.filter((m) => !takenMemberIds.has(m.id) || m.id === current.memberId);
+    // 칩과 선택 목록이 같은 판정을 쓰게 한다. 서버가 준 후보 목록은 정적이라, 관리자가
+    // 다른 슬롯에 앉힌 회원이 여기 남아 있을 수 있다 — 그대로 두면 두 슬롯이 같은 회원을
+    // 들고 초록으로 바뀌고, 저장이 서버에서 거부된 뒤에야 알게 된다.
+    const isOfferable = (memberId: string) => !takenMemberIds.has(memberId) || memberId === current.memberId;
+    const candidates = slot.candidates.filter((c) => isOfferable(c.memberId));
+    const others = prepared!.members.filter((m) => isOfferable(m.id));
 
     return (
       <div
@@ -182,7 +187,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
             <div className="flex flex-col gap-1.5">
               {/* 후보를 드롭다운에 숨기지 않는다. 근거와 점수가 보여야 관리자가 잘못된 매칭을 잡아낸다. */}
               <div className="flex flex-wrap gap-1.5">
-                {slot.candidates.map((c) => (
+                {candidates.map((c) => (
                   <button
                     key={c.memberId}
                     type="button"
@@ -194,7 +199,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
                     <span className="ml-1.5 text-[11px] text-[#6E7889]">{c.reasons.join(" · ")}</span>
                   </button>
                 ))}
-                {slot.candidates.length === 0 && (
+                {candidates.length === 0 && (
                   <span className="text-[11.5px] text-[#6E7889]">후보 없음 — 직접 고르거나 회원 아님으로 두세요</span>
                 )}
               </div>
