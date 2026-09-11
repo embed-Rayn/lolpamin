@@ -116,6 +116,76 @@ describe("prepareReplayImport", () => {
     expect(other.candidates).toHaveLength(0);
   });
 
+  it("lets the higher-scoring slot win a member two unresolved slots both rank first", async () => {
+    // 위 "never offers" 테스트와는 다르다 — 거기서는 RiotAccount로 이미 확정된 회원이
+    // confirmed 단계에서 taken에 들어가 채점을 아예 거치지 않는다. 여기서는 두 슬롯
+    // 모두 미확정 상태에서 채점을 거쳐 같은 회원을 1순위로 뽑는다 — byConfidence
+    // 정렬이 실제로 승자를 가르는 경우다. 두 슬롯 다 단독으로는 자동 배정 문턱을
+    // 넘는다(puuid-0: 145점, puuid-1: 100점) — 정렬이 뒤집히면 puuid-1이 회원을
+    // 가져가 아래 단언이 반대로 나온다.
+    const member = await prisma.member.create({
+      data: {
+        discordUserId: "d-m",
+        realName: "김우성",
+        kakaoNickname: "김우성/96/우성정글#KR1",
+        riotId: "탑솔러#KR2",
+      },
+    });
+
+    const prepared = await prepareReplayImport(
+      prisma,
+      buildRoflFixture(
+        tenPlayers([{ gameName: "우성정글", tagLine: "KR1" }, { gameName: "탑솔러", tagLine: "KR2" }]),
+      ),
+    );
+
+    const winner = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    expect(winner.status).toBe("auto");
+    expect(winner.memberId).toBe(member.id);
+
+    const loser = prepared.slots.find((s) => s.puuid === "puuid-1")!;
+    expect(loser.status).toBe("unresolved");
+    expect(loser.memberId).toBeNull();
+    expect(loser.candidates).toHaveLength(0);
+  });
+
+  it("promotes the losing slot's runner-up once the contested member is taken", async () => {
+    // puuid-0(170점)이 puuid-1(145점)보다 먼저 처리돼 공통 1순위 member를 가져간다.
+    // puuid-1은 taken을 반영해 available을 다시 걸러내고, 남은 후보 runnerUp(100점)이
+    // 단독으로 문턱을 넘어 자동 배정된다 — available의 재계산이 실제로 일어나는지 본다.
+    const member = await prisma.member.create({
+      data: {
+        discordUserId: "d-m2",
+        realName: "김우성",
+        kakaoNickname: "김우성/96/우성정글#KR1",
+        discordDisplayName: "김우성/우성정글#KR1/정글",
+        riotId: "우성탑#KR2",
+      },
+    });
+    const runnerUp = await prisma.member.create({
+      data: { discordUserId: "d-n", realName: "박병준", kakaoNickname: "박병준/94/우성탑#KR2" },
+    });
+
+    const prepared = await prepareReplayImport(
+      prisma,
+      buildRoflFixture(
+        tenPlayers([
+          { gameName: "우성정글", tagLine: "KR1", position: "JUNGLE" },
+          { gameName: "우성탑", tagLine: "KR2", position: "MIDDLE" },
+        ]),
+      ),
+    );
+
+    const winner = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    expect(winner.status).toBe("auto");
+    expect(winner.memberId).toBe(member.id);
+    expect(winner.candidates).toHaveLength(0);
+
+    const promoted = prepared.slots.find((s) => s.puuid === "puuid-1")!;
+    expect(promoted.status).toBe("auto");
+    expect(promoted.memberId).toBe(runnerUp.id);
+  });
+
   it("labels members with their birth year so 동명이인 can be told apart", async () => {
     await prisma.member.create({ data: { realName: "김민준", age: 95, kakaoNickname: "김민준/95/민준탑#KR1" } });
     await prisma.member.create({ data: { realName: "김민준", age: 1, kakaoNickname: "김민준/01/정민이#KR12" } });
