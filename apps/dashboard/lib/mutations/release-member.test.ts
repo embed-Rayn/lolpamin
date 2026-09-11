@@ -142,4 +142,66 @@ describe("releaseMember", () => {
     const afterTop = await prisma.member.findUniqueOrThrow({ where: { id: top.id } });
     expect(afterTop.lastActiveAt).toEqual(new Date(2026, 7, 5));
   });
+
+  // saveGameResult를 거치지 않는다 — 이관 자체를 보는 테스트라 MMR 경로를 끌어들이면
+  // 연결 조건 때문에 준비 코드가 커진다.
+  async function recordGame(playedAt: Date, memberIds: string[]) {
+    const game = await prisma.gameResult.create({ data: { playedAt, winner: "BLUE" } });
+    for (const memberId of memberIds) {
+      await prisma.gameParticipant.create({
+        data: { gameResultId: game.id, memberId, team: "BLUE", mmrBefore: 1000, mmrAfter: 1023 },
+      });
+    }
+    return game;
+  }
+
+  it("gives the game participations and riot accounts back to the tombstone", async () => {
+    const loser = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1" } });
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-6" } });
+    const game = await recordGame(new Date("2026-09-01T12:00:00Z"), [loser.id]);
+    await prisma.riotAccount.create({
+      data: { memberId: loser.id, puuid: "p-2", gameName: "ZAMSU", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    await releaseMember(prisma, loser.id);
+
+    const participant = await prisma.gameParticipant.findFirstOrThrow({ where: { gameResultId: game.id } });
+    expect(participant.memberId).toBe(loser.id);
+    expect(participant.absorbedFromId).toBeNull();
+
+    const account = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-2" } });
+    expect(account.memberId).toBe(loser.id);
+    expect(account.absorbedFromId).toBeNull();
+  });
+
+  it("leaves rows that belong to a different tombstone on the survivor", async () => {
+    const first = await prisma.member.create({ data: { kakaoNickname: "박병준/94/늑구#KR1" } });
+    const middle = await prisma.member.create({ data: { kakaoNickname: "박병준/94/늑 구#KR1" } });
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-7" } });
+    const game = await recordGame(new Date("2026-09-01T12:00:00Z"), [first.id]);
+    await absorbMember(prisma, first.id, middle.id);
+    await absorbMember(prisma, middle.id, survivor.id);
+
+    await releaseMember(prisma, middle.id);
+
+    // first는 여전히 survivor의 묘비다(absorbMember가 재지정했다). 그 경기도 survivor에 남아야 한다.
+    const participant = await prisma.gameParticipant.findFirstOrThrow({ where: { gameResultId: game.id } });
+    expect(participant.memberId).toBe(survivor.id);
+    expect(participant.absorbedFromId).toBe(first.id);
+  });
+
+  it("recomputes lastActiveAt from games as well as mentions", async () => {
+    const loser = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1" } });
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-8" } });
+    await recordGame(new Date("2026-09-05T12:00:00Z"), [loser.id]);
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    await releaseMember(prisma, loser.id);
+
+    const refreshedLoser = await prisma.member.findUniqueOrThrow({ where: { id: loser.id } });
+    const refreshedSurvivor = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect(refreshedLoser.lastActiveAt).toEqual(new Date("2026-09-05T12:00:00Z"));
+    expect(refreshedSurvivor.lastActiveAt).toBeNull();
+  });
 });

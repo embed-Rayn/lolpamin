@@ -6,17 +6,27 @@ function laterOf(a: Date | null, b: Date | null): Date | null {
   return a.getTime() >= b.getTime() ? a : b;
 }
 
+// 취소된 경기는 활동으로 세지 않는다 — 없던 일이 된 경기다.
+async function latestGameAt(tx: Prisma.TransactionClient, memberIds: string[]): Promise<Date | null> {
+  const latest = await tx.gameParticipant.findFirst({
+    where: { memberId: { in: memberIds }, gameResult: { cancelledAt: null } },
+    orderBy: { gameResult: { playedAt: "desc" } },
+    select: { gameResult: { select: { playedAt: true } } },
+  });
+  return latest?.gameResult.playedAt ?? null;
+}
+
 // mergedIntoId를 심기 전, 각 회원의 실제 마지막 활동을 구한다. lastActiveAt 필드는
 // 보통 카톡 임포트가 멘션 로그와 함께 갱신하지만, 필드가 갱신되지 않은 채 로그만 있는
-// 경우(예: 디스코드로만 연결돼 활동이 없던 회원)도 있으므로 필드와 자기 로그 중 더
-// 나중 값을 취한다.
+// 경우도 있으므로 필드와 자기 로그 중 더 나중 값을 취한다. 리플레이 임포트가 생긴 뒤로는
+// 멘션 없이 경기만 뛴 회원이 있을 수 있어 경기 날짜도 함께 본다.
 async function effectiveLastActiveAt(
   tx: Prisma.TransactionClient,
   memberId: string,
   fieldValue: Date | null,
 ): Promise<Date | null> {
   const latest = await tx.mentionLog.aggregate({ where: { memberId }, _max: { mentionedAt: true } });
-  return laterOf(fieldValue, latest._max.mentionedAt);
+  return laterOf(laterOf(fieldValue, latest._max.mentionedAt), await latestGameAt(tx, [memberId]));
 }
 
 // absorbMember가 의도적으로 던지는 안내 문구. 서버 액션은 이 목록에 있는 메시지만
@@ -25,6 +35,7 @@ export const ABSORB_MEMBER_ERRORS = {
   alreadyMerged: "이미 다른 회원에게 흡수된 계정입니다.",
   platformAccountId: "플랫폼 계정 ID를 가진 회원은 흡수할 수 없습니다. 카톡 닉네임만 있는 회원만 흡수됩니다.",
   selfAbsorb: "자기 자신에게 흡수시킬 수 없습니다.",
+  sharedGame: "같은 경기에 두 회원이 모두 참가해 있어 흡수할 수 없습니다. 경기 기록을 먼저 정리해 주세요.",
 } as const;
 
 /**
@@ -60,6 +71,19 @@ export async function absorbMember(
         throw new Error(ABSORB_MEMBER_ERRORS.selfAbsorb);
       }
 
+      // 두 행이 같은 경기에 들어 있으면 이관이 @@unique([gameResultId, memberId])에 막힌다.
+      // Prisma의 영어 예외를 노출하는 대신 여기서 막고 안내 문구를 던진다.
+      const loserGames = await tx.gameParticipant.findMany({
+        where: { memberId: loser.id },
+        select: { gameResultId: true },
+      });
+      if (loserGames.length > 0) {
+        const clash = await tx.gameParticipant.findFirst({
+          where: { memberId: survivor.id, gameResultId: { in: loserGames.map((g) => g.gameResultId) } },
+        });
+        if (clash) throw new Error(ABSORB_MEMBER_ERRORS.sharedGame);
+      }
+
       const survivorLastActiveAt = await effectiveLastActiveAt(tx, survivor.id, survivor.lastActiveAt);
       const loserLastActiveAt = await effectiveLastActiveAt(tx, loser.id, loser.lastActiveAt);
 
@@ -86,6 +110,32 @@ export async function absorbMember(
       await tx.member.updateMany({
         where: { mergedIntoId: loser.id },
         data: { mergedIntoId: survivor.id },
+      });
+
+      // 경기 기록과 라이엇 계정은 생존자에게 옮긴다. 카톡 닉네임과 달리 묘비에 남겨 두면
+      // 전적과 MMR이 이름만 바뀐 채 사라진 것처럼 보인다.
+      //
+      // absorbedFromId는 비어 있을 때만 채운다. loser가 이미 다른 묘비의 기록을 넘겨받았다면
+      // 그 행의 원주인은 loser가 아니라 더 앞의 묘비이고, 그 값을 덮으면 되돌릴 길이 없어진다.
+      // 그래서 두 번에 나눠 쓴다 — 먼저 표식이 없는 행만, 그다음 남은 행을 옮긴다.
+      //
+      // 두 모델을 배열로 돌리지 않는다. tx[model]은 두 델리게이트 타입의 유니언이 되어
+      // updateMany 호출이 타입 오류를 낸다("none of those signatures are compatible").
+      await tx.gameParticipant.updateMany({
+        where: { memberId: loser.id, absorbedFromId: null },
+        data: { memberId: survivor.id, absorbedFromId: loser.id },
+      });
+      await tx.gameParticipant.updateMany({
+        where: { memberId: loser.id },
+        data: { memberId: survivor.id },
+      });
+      await tx.riotAccount.updateMany({
+        where: { memberId: loser.id, absorbedFromId: null },
+        data: { memberId: survivor.id, absorbedFromId: loser.id },
+      });
+      await tx.riotAccount.updateMany({
+        where: { memberId: loser.id },
+        data: { memberId: survivor.id },
       });
 
       await tx.member.update({ where: { id: loser.id }, data: { mergedIntoId: survivor.id } });
