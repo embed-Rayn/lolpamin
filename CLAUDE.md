@@ -118,6 +118,46 @@ entries count as activity like any other mention — deliberately, since writing
 name in the chatroom is what inactivity measures. The flip side is that an `@` in a
 header line (`@태그해서 작성해주세요`) becomes a member too. Idempotency is a **watermark**: only mentions strictly newer than `max(MentionLog.mentionedAt)` are processed, so re-uploading the same file is a no-op. This means the import is append-only in time — a backfill of an older export will be skipped entirely.
 
+`.rofl` 리플레이 임포트(`apps/dashboard/lib/replay-import/`)는 파일 맨 뒤의 **평문 JSON**만
+읽는다(`parseRoflMetadata`). 마지막 4바이트가 그 JSON의 길이(u32 LE)이고, `statsJson`은
+문자열로 한 번 더 감싸여 있어 두 번 파싱해야 한다. 앞쪽 zstd 청크는 열지 않으므로 압축
+의존성도 패치 종속성도 없다. 참가자 값은 전부 문자열이고 `NAME`은 비어 있다 — 신원은
+`PUUID`와 `RIOT_ID_GAME_NAME`/`RIOT_ID_TAG_LINE`에서 온다.
+
+`RiotAccount`는 **리플레이에서 관측된 계정으로만** 만든다. 카톡·디코 닉네임에 적힌 Riot
+ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누락이 흔하고, 그대로 저장하면
+한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **매칭 힌트**이며
+`scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 포지션은 가산점 전용이라 다른
+신호가 0이면 후보가 되지 않는다. 자동 배정은 `점수 >= 100 && 1위−2위 >= 40`일 때만 한다.
+
+`RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
+"연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.
+Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다면, 회원을 지웠을 때 그 계정이
+조용히 "회원 아님"으로 뒤바뀐다. 그래서 FK는 막아 두고, `deleteMember`가 `GameParticipant`·
+`MentionLog`와 같은 모양으로 해당 회원과 그 묘비들의 `RiotAccount`를 직접 지운다.
+
+멱등성은 `GameResult.replayKey`(정렬한 PUUID 10개 + gameLength의 SHA-256)로 잡는다 —
+리플레이에는 시간 축이 없어 카톡 임포트의 워터마크 방식을 쓸 수 없다. 따라서 **취소된
+경기의 리플레이는 다시 올릴 수 없다**: 유니크 제약이 취소 여부를 보지 않는다.
+
+`saveGameResult`의 "디코 AND 카톡" 규칙에 "PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음"이
+더해져 있다(`getLinkedMembers`도 같다). `saveReplayImport`가 계정을 먼저 등록하고 경기를
+저장하므로, 리플레이에 배정된 회원은 그 순간 이 조건을 충족한다 — 리플레이가 그 사람이 그
+경기를 뛰었다는 1차 증거라는 설계를 그대로 옮긴 것이다. 계정을 먼저 쓰기 때문에, 존재하지
+않는 회원 id가 섞여 있으면 `RiotAccount` 쪽 FK 위반이 먼저 터져 알아보기 힘든 Postgres
+에러가 나온다 — `saveReplayImport`는 그래서 계정을 쓰기 전에 배정된 회원이 전부 실재하는지
+먼저 확인하고, 실패하면 `saveGameResultTx`가 내는 것과 같은
+`"One or more participants do not exist"`로 던진다. 짝으로 `absorbMember`가 흡수 대상의
+`GameParticipant`와 `RiotAccount`를 생존자로 옮기고 `releaseMember`가 되돌린다. 되돌리는
+근거는 두 테이블의 `absorbedFromId`이고, 값은
+**비어 있을 때만** 채운다 — 이미 이관된 행의 원주인이 덮이면 되돌릴 길이 없어진다. 생존자와
+흡수 대상이 같은 경기에 둘 다 있으면 `@@unique([gameResultId, memberId])`에 막히므로 병합을
+거부한다.
+
+경기 저장은 참가 회원의 `lastActiveAt`도 경기 날짜로 올린다(뒤로 당기지는 않는다). 그래서
+`release-member.ts`의 `recomputeLastActiveAt`은 멘션 로그뿐 아니라 취소되지 않은 경기의
+`playedAt`도 함께 본다.
+
 ## Deployment
 
 The OCI instance runs `docker-compose.prod.yml`: a Postgres container with no
@@ -151,6 +191,9 @@ passwordless. Note `git archive` only overwrites: a file deleted in git stays on
 the server until someone removes it by hand.
 
 ## Known inconsistencies
+
+- 취소한 경기의 리플레이는 `GameResult.replayKey`의 유니크 제약 때문에 다시 올릴 수 없다.
+  되살리려면 그 행의 `replayKey`를 손으로 지워야 한다.
 
 ## Conventions
 
