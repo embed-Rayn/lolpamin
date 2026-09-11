@@ -9,6 +9,7 @@ export interface AppShellProps {
   activeNav:
     | "members"
     | "matches"
+    | "replay-import"
     | "team-builder"
     | "match-history"
     | "inactive"
@@ -76,6 +77,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
       items: [
         { key: "match-history", href: "/match-history", label: "경기 기록" },
         { key: "matches", href: "/matches", label: "게임결과 입력" },
+        { key: "replay-import", href: "/replay-import", label: "리플레이 불러오기" },
         { key: "team-builder", href: "/team-builder", label: "수동 팀짜기" },
       ],
     },
