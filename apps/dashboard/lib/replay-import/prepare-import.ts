@@ -118,6 +118,11 @@ export async function prepareReplayImport(
         discordHandle: true,
         discordDisplayName: true,
         riotId: true,
+        // absorbMember는 카톡 닉네임을 생존자에게 복사하지 않고 묘비에 남긴다(그래야
+        // processKakaoExport가 묘비를 집어 멘션을 이어붙인다). 그래서 실제로 연결이 끝난
+        // 회원은 대부분 자기 행의 kakaoNickname이 비어 있고, 묘비까지 봐야 카톡 힌트가
+        // scoreRiotAccountMatch에 닿는다 — queries/members.ts의 displayKakaoNickname과 같은 규칙.
+        absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "desc" } },
       },
       orderBy: [{ realName: "asc" }, { createdAt: "asc" }],
     }),
@@ -150,9 +155,11 @@ export async function prepareReplayImport(
       slot.puuid,
       members
         .map((m) => {
+          // 자기 행이 비어 있으면 가장 최근 묘비의 카톡 닉네임을 쓴다 — displayKakaoNickname과 같은 규칙.
+          const kakaoNickname = m.kakaoNickname ?? m.absorbed.find((a) => a.kakaoNickname !== null)?.kakaoNickname ?? null;
           const { score, reasons } = scoreRiotAccountMatch(
             { gameName: slot.gameName, tagLine: slot.tagLine, position: slot.position },
-            m,
+            { ...m, kakaoNickname },
           );
           return { memberId: m.id, label: memberLabel(m), score, reasons };
         })
@@ -163,8 +170,12 @@ export async function prepareReplayImport(
 
   // 확신이 큰 슬롯부터 가져간다. 두 슬롯이 같은 회원을 1순위로 들고 있을 때 점수가 높은
   // 쪽이 먼저 배정돼야 낮은 쪽이 엉뚱하게 자동 확정되지 않는다.
+  //
+  // 점수가 같으면 puuid로 순서를 고정한다. 그러지 않으면 정렬이 안정적이어도 동점 처리
+  // 순서가 리플레이 파일 안의 참가자 나열 순서를 그대로 따르게 되어, 같은 파일을 다시
+  // 올려도 결과가 달라질 여지를 남긴다.
   const byConfidence = [...pending].sort(
-    (a, b) => (ranked.get(b.puuid)![0]?.score ?? 0) - (ranked.get(a.puuid)![0]?.score ?? 0),
+    (a, b) => (ranked.get(b.puuid)![0]?.score ?? 0) - (ranked.get(a.puuid)![0]?.score ?? 0) || a.puuid.localeCompare(b.puuid),
   );
   for (const slot of byConfidence) {
     const available = ranked.get(slot.puuid)!.filter((c) => !taken.has(c.memberId));

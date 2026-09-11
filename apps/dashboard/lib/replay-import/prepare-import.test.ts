@@ -75,6 +75,23 @@ describe("prepareReplayImport", () => {
     expect(slot.memberId).toBe(member.id);
   });
 
+  it("scores a fully-linked survivor's kakao hint through its tombstone", async () => {
+    // 모든 기존 픽스처는 discordUserId와 kakaoNickname을 한 행에 함께 둔다 — 실제 연결
+    // 흐름(absorbMember)이 만들어내는 모양이 아니다. absorbMember는 카톡 닉네임을 생존자에게
+    // 복사하지 않고 묘비에 남기므로, 실제로 연결이 끝난 회원은 자기 행의 kakaoNickname이
+    // null이다. 이 테스트가 그 모양을 재현한다 — 열 번의 리뷰를 통과한 구멍이 여기서 났다.
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-survivor" } });
+    await prisma.member.create({
+      data: { kakaoNickname: "이도현/98/챌린저가고싶나#JBD", mergedIntoId: survivor.id },
+    });
+
+    const prepared = await prepareReplayImport(prisma, replayWith({ gameName: "챌린저가고싶나", tagLine: "JBD" }));
+
+    const slot = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    expect(slot.status).toBe("auto");
+    expect(slot.memberId).toBe(survivor.id);
+  });
+
   it("offers ranked candidates with their reasons when nothing is certain", async () => {
     const member = await prisma.member.create({
       data: {
