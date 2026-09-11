@@ -3,6 +3,7 @@ import type { PrismaClient } from "@lolpamin/db";
 export interface DeleteMemberOutput {
   mentionLogs: number;
   gameParticipants: number;
+  riotAccounts: number;
 }
 
 export async function deleteMember(
@@ -16,13 +17,15 @@ export async function deleteMember(
     const tombstones = await tx.member.findMany({ where: { mergedIntoId: memberId }, select: { id: true } });
     const ids = [memberId, ...tombstones.map((t) => t.id)];
 
-    // Neither relation is ON DELETE CASCADE, so the children have to go first.
-    // The GameResult rows themselves stay: a past game keeps the participants
-    // it still has, and its recorded mmr deltas are never recalculated.
+    // None of the three relations is ON DELETE CASCADE, so the children have to
+    // go first. The GameResult rows themselves stay: a past game keeps the
+    // participants it still has, and its recorded mmr deltas are never
+    // recalculated.
     const gameParticipants = await tx.gameParticipant.deleteMany({ where: { memberId: { in: ids } } });
     const mentionLogs = await tx.mentionLog.deleteMany({ where: { memberId: { in: ids } } });
+    const riotAccounts = await tx.riotAccount.deleteMany({ where: { memberId: { in: ids } } });
     await tx.member.deleteMany({ where: { id: { in: ids } } });
 
-    return { mentionLogs: mentionLogs.count, gameParticipants: gameParticipants.count };
+    return { mentionLogs: mentionLogs.count, gameParticipants: gameParticipants.count, riotAccounts: riotAccounts.count };
   });
 }

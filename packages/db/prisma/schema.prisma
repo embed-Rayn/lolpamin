@@ -195,8 +195,10 @@ model RiotAccount {
   id String @id @default(uuid())
 
   // null이면 "회원 아님"으로 확정한 외부인 계정. 다음 업로드에서 다시 묻지 않으려고 남긴다.
+  // 회원을 지울 때 이 행을 조용히 memberId=null로 만들면 "외부인으로 확정"과 구별되지
+  // 않는다. 그래서 막고, deleteMember가 명시적으로 지운다.
   memberId String?
-  member   Member? @relation(fields: [memberId], references: [id])
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: Restrict)
 
   // 리플레이에서만 얻는다. 인게임 닉을 바꿔도 변하지 않는 유일한 값이라 이 테이블의 정체성이다.
   puuid String @unique

@@ -24,7 +24,7 @@ describe("deleteMember", () => {
 
     const result = await deleteMember(prisma, member.id);
 
-    expect(result).toEqual({ mentionLogs: 0, gameParticipants: 0 });
+    expect(result).toEqual({ mentionLogs: 0, gameParticipants: 0, riotAccounts: 0 });
     expect(await prisma.member.findUnique({ where: { id: member.id } })).toBeNull();
   });
 
@@ -89,6 +89,48 @@ describe("deleteMember", () => {
     const result = await deleteMember(prisma, survivor.id);
 
     expect(result.mentionLogs).toBe(1);
+    expect(await prisma.member.findUnique({ where: { id: tombstone.id } })).toBeNull();
+    expect(await prisma.member.findUnique({ where: { id: survivor.id } })).toBeNull();
+  });
+
+  it("deletes the member's riot account along with the member", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-1", kakaoUserId: "k-1" } });
+    await prisma.riotAccount.create({
+      data: {
+        memberId: member.id,
+        puuid: "puuid-1",
+        gameName: "올빼미",
+        tagLine: "KR1",
+        lastSeenAt: new Date(2026, 7, 29),
+      },
+    });
+
+    const result = await deleteMember(prisma, member.id);
+
+    expect(result.riotAccounts).toBe(1);
+    expect(await prisma.riotAccount.findUnique({ where: { puuid: "puuid-1" } })).toBeNull();
+    expect(await prisma.member.findUnique({ where: { id: member.id } })).toBeNull();
+  });
+
+  it("deletes a tombstone's riot account when the survivor it merged into is deleted", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "옛닉", mergedIntoId: survivor.id },
+    });
+    await prisma.riotAccount.create({
+      data: {
+        memberId: tombstone.id,
+        puuid: "puuid-2",
+        gameName: "옛닉",
+        tagLine: "KR1",
+        lastSeenAt: new Date(2026, 7, 1),
+      },
+    });
+
+    const result = await deleteMember(prisma, survivor.id);
+
+    expect(result.riotAccounts).toBe(1);
+    expect(await prisma.riotAccount.findUnique({ where: { puuid: "puuid-2" } })).toBeNull();
     expect(await prisma.member.findUnique({ where: { id: tombstone.id } })).toBeNull();
     expect(await prisma.member.findUnique({ where: { id: survivor.id } })).toBeNull();
   });
