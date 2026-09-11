@@ -121,8 +121,13 @@ describe("prepareReplayImport", () => {
     // confirmed 단계에서 taken에 들어가 채점을 아예 거치지 않는다. 여기서는 두 슬롯
     // 모두 미확정 상태에서 채점을 거쳐 같은 회원을 1순위로 뽑는다 — byConfidence
     // 정렬이 실제로 승자를 가르는 경우다. 두 슬롯 다 단독으로는 자동 배정 문턱을
-    // 넘는다(puuid-0: 145점, puuid-1: 100점) — 정렬이 뒤집히면 puuid-1이 회원을
-    // 가져가 아래 단언이 반대로 나온다.
+    // 넘는다(puuid-0: 100점, puuid-1: 145점).
+    //
+    // 점수가 낮은 슬롯(puuid-0, 100점)을 참가자 순서상 먼저 두고 높은 슬롯(puuid-1,
+    // 145점)을 뒤에 둔다. 정렬 순서와 자연 순서가 일치하면, 정렬을 통째로 지워도
+    // 이 테스트가 통과한다 — 참가자 순서대로만 훑어도 먼저 오는 슬롯이 먼저 회원을
+    // 가져가 아래 단언과 우연히 맞아떨어지기 때문이다. 순서를 뒤집어야 정렬이 실제로
+    // 일어나는지가 갈린다.
     const member = await prisma.member.create({
       data: {
         discordUserId: "d-m",
@@ -135,24 +140,30 @@ describe("prepareReplayImport", () => {
     const prepared = await prepareReplayImport(
       prisma,
       buildRoflFixture(
-        tenPlayers([{ gameName: "우성정글", tagLine: "KR1" }, { gameName: "탑솔러", tagLine: "KR2" }]),
+        tenPlayers([{ gameName: "탑솔러", tagLine: "KR2" }, { gameName: "우성정글", tagLine: "KR1" }]),
       ),
     );
 
-    const winner = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    const winner = prepared.slots.find((s) => s.puuid === "puuid-1")!;
     expect(winner.status).toBe("auto");
     expect(winner.memberId).toBe(member.id);
 
-    const loser = prepared.slots.find((s) => s.puuid === "puuid-1")!;
+    const loser = prepared.slots.find((s) => s.puuid === "puuid-0")!;
     expect(loser.status).toBe("unresolved");
     expect(loser.memberId).toBeNull();
     expect(loser.candidates).toHaveLength(0);
   });
 
   it("promotes the losing slot's runner-up once the contested member is taken", async () => {
-    // puuid-0(170점)이 puuid-1(145점)보다 먼저 처리돼 공통 1순위 member를 가져간다.
-    // puuid-1은 taken을 반영해 available을 다시 걸러내고, 남은 후보 runnerUp(100점)이
+    // puuid-1(170점)이 puuid-0(145점)보다 먼저 처리돼 공통 1순위 member를 가져간다.
+    // puuid-0은 taken을 반영해 available을 다시 걸러내고, 남은 후보 runnerUp(100점)이
     // 단독으로 문턱을 넘어 자동 배정된다 — available의 재계산이 실제로 일어나는지 본다.
+    //
+    // 여기서도 점수가 낮은 쪽(puuid-0, 145점)을 참가자 순서상 먼저 두고 높은 쪽
+    // (puuid-1, 170점)을 뒤에 둔다. 자연 순서와 정렬 순서가 어긋나야, 정렬이 사라지는
+    // 회귀를 이 테스트가 잡아낸다 — 정렬 없이 참가자 순서대로 처리하면 puuid-0(145점)이
+    // 먼저 member를 가져가 버려(단독으로도 문턱을 넘는다) runnerUp이 오히려 빈손이 되고
+    // puuid-1이 미확정으로 남아 아래 단언이 뒤집힌다.
     const member = await prisma.member.create({
       data: {
         discordUserId: "d-m2",
@@ -170,18 +181,18 @@ describe("prepareReplayImport", () => {
       prisma,
       buildRoflFixture(
         tenPlayers([
-          { gameName: "우성정글", tagLine: "KR1", position: "JUNGLE" },
           { gameName: "우성탑", tagLine: "KR2", position: "MIDDLE" },
+          { gameName: "우성정글", tagLine: "KR1", position: "JUNGLE" },
         ]),
       ),
     );
 
-    const winner = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    const winner = prepared.slots.find((s) => s.puuid === "puuid-1")!;
     expect(winner.status).toBe("auto");
     expect(winner.memberId).toBe(member.id);
     expect(winner.candidates).toHaveLength(0);
 
-    const promoted = prepared.slots.find((s) => s.puuid === "puuid-1")!;
+    const promoted = prepared.slots.find((s) => s.puuid === "puuid-0")!;
     expect(promoted.status).toBe("auto");
     expect(promoted.memberId).toBe(runnerUp.id);
   });
