@@ -1,4 +1,5 @@
 import { normalizeKakaoNickname } from "./normalize-kakao-nickname";
+import { readKakaoConvention } from "./kakao-match-key";
 
 /** 리플레이의 TEAM_POSITION 표기. 디코 닉네임의 한글 포지션을 여기로 옮긴다. */
 export const REPLAY_POSITIONS = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"] as const;
@@ -28,26 +29,13 @@ const ALL_POSITION_WORDS = ["올", "올포지션", "전체", "all"];
 
 /**
  * 카톡 닉네임 "실명/출생연도/게임닉#태그"의 세 번째 조각. 나이 자리가 숫자일 때만 관례로
- * 인정한다 — kakaoMatchKey와 같은 판정이라 두 함수가 같은 닉네임을 같게 본다.
+ * 인정한다 — readKakaoConvention이 쓰는 판정과 같아서 두 함수가 같은 닉네임을 같게 본다.
  *
  * 반환값은 사람이 손으로 적은 문자열이라 오타가 섞여 있을 수 있다. 매칭 힌트로만 쓰고
  * RiotAccount 행을 만드는 근거로는 쓰지 않는다.
  */
 export function kakaoRiotHint(rawNickname: string): string | null {
-  const nickname = normalizeKakaoNickname(rawNickname);
-  const parts = nickname.split("/").map((p) => p.trim());
-
-  if (parts.length >= 3 && /^\d+$/.test(parts[1])) {
-    return parts[2].length > 0 ? parts[2] : null;
-  }
-
-  // "선동엽 95/glenone#5022" — 이름과 연도 사이가 공백이다. kakaoMatchKey와 같은 조건
-  // (두 자리이거나 19xx·20xx)으로 연도를 인정한다.
-  if (parts.length >= 2 && /^(.+?)\s+(\d{2}|19\d{2}|20\d{2})$/.test(parts[0])) {
-    return parts[1].length > 0 ? parts[1] : null;
-  }
-
-  return null;
+  return readKakaoConvention(normalizeKakaoNickname(rawNickname))?.riotId ?? null;
 }
 
 function toPosition(word: string): (typeof REPLAY_POSITIONS)[number] | "ALL" | null {

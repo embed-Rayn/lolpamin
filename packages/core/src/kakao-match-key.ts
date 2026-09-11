@@ -9,6 +9,42 @@ export function normalizeForMatch(value: string): string {
   return value.toLowerCase().replace(/[\s#._-]/g, "");
 }
 
+/** 모임의 닉네임 관례 "실명/출생연도/게임닉#태그"를 읽은 결과. 관례 밖이면 null이다. */
+export interface KakaoConvention {
+  /** 실명 조각. 정규화 전 원문이다. */
+  realName: string;
+  /** 출생연도. "94"는 94, "1994"는 1994로 읽는다 — 쓰는 쪽이 그대로 키에 넣는다. */
+  year: number;
+  /** 관례상 Riot ID가 적히는 조각. 비어 있으면 null이다. */
+  riotId: string | null;
+}
+
+/**
+ * 관례를 지킨 닉네임인지 한곳에서 판정한다. kakaoMatchKey와 kakaoRiotHint가 같은 답을
+ * 내야 하므로(설계: "kakaoMatchKey가 쓰는 판정과 같다") 판정을 복사하지 않고 공유한다.
+ *
+ * 인자는 normalizeKakaoNickname을 이미 거친 값이어야 한다.
+ */
+export function readKakaoConvention(nickname: string): KakaoConvention | null {
+  const parts = nickname.split("/").map((part) => part.trim());
+
+  if (parts.length >= 3 && /^\d+$/.test(parts[1])) {
+    return { realName: parts[0], year: Number(parts[1]), riotId: parts[2].length > 0 ? parts[2] : null };
+  }
+
+  // "선동엽 95/glenone#5022" — 이름과 연도 사이가 공백이다. 두 자리(95)이거나 19xx·20xx여야
+  // 연도로 본다. 네 자리를 다 열어 두면 "늑구 5022"의 5022까지 연도가 되어, 이름 뒤에 숫자를
+  // 붙이는 게임닉이 통째로 다른 사람이 된다.
+  if (parts.length >= 2) {
+    const spaced = parts[0].match(/^(.+?)\s+(\d{2}|19\d{2}|20\d{2})$/);
+    if (spaced) {
+      return { realName: spaced[1], year: Number(spaced[2]), riotId: parts[1].length > 0 ? parts[1] : null };
+    }
+  }
+
+  return null;
+}
+
 /**
  * 회원을 찾을 때 쓰는 키. 모임의 닉네임 관례 "실명/출생연도/게임닉#태그"에서 앞
  * 두 조각만 남긴다 — 뒤 조각은 롤 닉을 바꾸거나 "(5시)", "밥먹고옴" 같은 메모를
@@ -31,21 +67,10 @@ export function kakaoMatchKey(rawNickname: string): string {
   // 관례를 지킨 닉네임에서는 어차피 뒤 조각이 버려지므로 결과가 같다.
   const nickname = normalizeKakaoNickname(rawNickname);
 
-  const parts = nickname.split("/");
-  if (parts.length >= 3 && /^\d+$/.test(parts[1].trim())) {
-    const realName = normalizeForMatch(parts[0]);
-    if (realName.length > 0) return `${realName}/${Number(parts[1].trim())}`;
-  }
-
-  // "선동엽 95/glenone#5022" — 이름과 연도 사이가 공백이다. 두 자리(95)이거나
-  // 19xx·20xx여야 연도로 본다. 네 자리를 다 열어 두면 "늑구 5022"의 5022까지 연도가
-  // 되어, 이름 뒤에 숫자를 붙이는 게임닉이 통째로 다른 사람이 된다.
-  if (parts.length >= 2) {
-    const spaced = parts[0].trim().match(/^(.+?)\s+(\d{2}|19\d{2}|20\d{2})$/);
-    if (spaced) {
-      const realName = normalizeForMatch(spaced[1]);
-      if (realName.length > 0) return `${realName}/${Number(spaced[2])}`;
-    }
+  const convention = readKakaoConvention(nickname);
+  if (convention) {
+    const realName = normalizeForMatch(convention.realName);
+    if (realName.length > 0) return `${realName}/${convention.year}`;
   }
 
   return normalizeForMatch(nickname);

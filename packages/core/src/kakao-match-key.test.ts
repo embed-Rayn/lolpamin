@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kakaoMatchKey, normalizeForMatch } from "./kakao-match-key";
+import { kakaoMatchKey, normalizeForMatch, readKakaoConvention } from "./kakao-match-key";
 
 describe("normalizeForMatch", () => {
   it("folds case, whitespace and decoration away", () => {
@@ -9,6 +9,43 @@ describe("normalizeForMatch", () => {
 
   it("leaves a plain nickname alone apart from case", () => {
     expect(normalizeForMatch("올빼미")).toBe("올빼미");
+  });
+});
+
+describe("readKakaoConvention", () => {
+  it("reads the slash form 실명/출생연도/게임닉#태그", () => {
+    const result = readKakaoConvention("박병준/94/늑구#KR1");
+    expect(result).toEqual({ realName: "박병준", year: 94, riotId: "늑구#KR1" });
+  });
+
+  it("reads the spaced form 실명 출생연도/게임닉#태그", () => {
+    const result = readKakaoConvention("선동엽 95/glenone#5022");
+    expect(result).toEqual({ realName: "선동엽", year: 95, riotId: "glenone#5022" });
+  });
+
+  it("accepts a four-digit birth year", () => {
+    const result = readKakaoConvention("선동엽 1995/glenone#5022");
+    expect(result).toEqual({ realName: "선동엽", year: 1995, riotId: "glenone#5022" });
+  });
+
+  it("keeps extra trailing segments out of the result", () => {
+    const result = readKakaoConvention("배성민/97/성민탑#KR1/정글");
+    expect(result).toEqual({ realName: "배성민", year: 97, riotId: "성민탑#KR1" });
+  });
+
+  it("returns riotId: null when the third segment is empty", () => {
+    const result = readKakaoConvention("박병준/94/");
+    expect(result).toEqual({ realName: "박병준", year: 94, riotId: null });
+  });
+
+  it("returns null when the convention is not followed with no digits in second segment", () => {
+    const result = readKakaoConvention("올빼미/정글/탑");
+    expect(result).toBeNull();
+  });
+
+  it("returns null for a single-segment nickname", () => {
+    const result = readKakaoConvention("올빼미");
+    expect(result).toBeNull();
   });
 });
 
