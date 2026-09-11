@@ -165,8 +165,11 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord): MemberRow 
 }
 
 /**
- * 회원별 승/패. 흡수한 회원의 참가 기록은 묘비 쪽에 남으므로(absorbMember가 기록을
- * 옮기지 않는다) 묘비의 경기도 생존자에게 더한다.
+ * 회원별 승/패. absorbMember는 이제 참가 기록을 생존자에게 옮기지만, 이 branch 이전에
+ * 병합된 묘비는 그때는 옮겨지지 않았으므로 여전히 자기 몫의 기록을 들고 있을 수 있다.
+ * 한 GameParticipant 행은 언제나 정확히 한 쪽(생존자 또는 그 묘비)에만 있으므로 자기
+ * 것과 묘비 것을 더해도 이중 계산이 아니다 — 새 병합은 묘비 쪽이 0건이라 자기 몫만
+ * 더해지는 것과 같은 결과다.
  *
  * 되돌린 경기와 마지막 리셋 이전 경기는 제외한다 — MMR은 움직였는데 전적만 남으면 같은
  * 화면 안에서 두 숫자가 어긋난다. getCountedGameFilter가 그 규칙이고,

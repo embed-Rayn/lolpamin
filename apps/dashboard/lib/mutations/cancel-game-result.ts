@@ -7,6 +7,7 @@ export const CANCEL_GAME_RESULT_ERRORS = {
   alreadyCancelled: "이미 취소된 경기입니다.",
   notLatest: "가장 최근 경기만 되돌릴 수 있습니다. 뒤에 입력된 경기를 먼저 되돌리세요.",
   beforeReset: "리셋 이후에 입력된 경기만 되돌릴 수 있습니다.",
+  absorbedParticipant: "병합된 회원의 기록이 있는 경기입니다. 연결을 먼저 해제한 뒤 되돌리세요.",
 } as const;
 
 /**
@@ -25,6 +26,13 @@ export const CANCEL_GAME_RESULT_ERRORS = {
  * 마지막 리셋보다 먼저 입력된 경기는 되돌릴 수 없다. 그 판의 mmrBefore는 리셋 전 값이라
  * 되돌리면 참가자만 옛 점수로 되살아난다(resetAllRatings 참고). 리셋이 「가장 최근 판」의
  * 앞을 끊으므로, 리셋 직후에는 되돌릴 수 있는 경기가 하나도 없는 것이 맞다.
+ *
+ * 흡수로 이 경기의 참가 기록이 생존자에게 넘어와 있으면(GameParticipant.absorbedFromId)
+ * 마찬가지로 되돌릴 수 없다. absorbMember는 참가 기록을 생존자에게 옮기지만 mmrBefore는
+ * 원주인의 그 시점 점수다 — memberId(지금은 생존자)와 mmrBefore(원주인의 값)가 더 이상
+ * 같은 사람의 것이 아니므로 "현재 mmr은 정확히 이 경기의 mmrAfter다"라는 전제가 깨진다.
+ * 그대로 되돌리면 생존자의 점수가 남의 값으로 덮인다. 연결을 먼저 해제하면(releaseMember)
+ * 참가 기록이 원주인에게 돌아가고, 그때는 다시 되돌릴 수 있다.
  */
 export async function cancelGameResult(
   prisma: PrismaClient,
@@ -55,6 +63,13 @@ export async function cancelGameResult(
       throw new Error(CANCEL_GAME_RESULT_ERRORS.beforeReset);
     }
 
+    // 흡수로 넘어온 참가 기록이 있으면 mmrBefore가 그 행의 현재 주인(생존자)이 아니라
+    // 원주인의 점수다. 그대로 되돌리면 생존자의 점수가 남의 값으로 덮인다.
+    // 안내대로 연결을 먼저 끊으면 참가 기록이 원주인에게 돌아가고, 그때는 되돌릴 수 있다.
+    if (game.participants.some((p) => p.absorbedFromId !== null)) {
+      throw new Error(CANCEL_GAME_RESULT_ERRORS.absorbedParticipant);
+    }
+
     for (const participant of game.participants) {
       await tx.member.update({
         where: { id: participant.memberId },
@@ -63,10 +78,17 @@ export async function cancelGameResult(
     }
 
     // 참가 기록은 지우지 않는다. 취소된 뒤에도 누가 뛰었고 점수가 어떻게 움직였는지가
-    // 「경기 기록」에 보여야 한다 — 회원 병합이 활동 기록을 옮기지 않는 것과 같은 방침이다.
+    // 「경기 기록」에 보여야 한다. 회원 병합은 참가 기록을 생존자에게 옮기지만(absorbMember)
+    // 그것과는 다른 얘기다 — 취소는 옮겨진 기록의 존재 자체를 막지 않고, 위의
+    // absorbedParticipant 가드가 「옮겨진 기록이 있는 경기」만 애초에 걸러낸다.
+    //
+    // replayKey도 함께 비운다. 유니크 제약이 취소 여부를 보지 않아 값을 남겨 두면 같은
+    // 리플레이 파일을 다시 올릴 수 없다 — 리플레이를 취소하는 가장 흔한 이유가 매칭을
+    // 잘못 지정한 경우인데, 그러면 재업로드가 막혀 이 기능이 없애려던 수기 입력으로
+    // 되돌아간다.
     await tx.gameResult.update({
       where: { id: game.id },
-      data: { cancelledAt: new Date(), cancelledById: adminId },
+      data: { cancelledAt: new Date(), cancelledById: adminId, replayKey: null },
     });
   });
 }

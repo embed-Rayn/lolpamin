@@ -2,6 +2,9 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { SAVE_REPLAY_IMPORT_ERRORS, saveReplayImport } from "./save-replay-import";
+import { cancelGameResult } from "./cancel-game-result";
+import { prepareReplayImport } from "../replay-import/prepare-import";
+import { buildRoflFixture, tenPlayers } from "../replay-import/test-fixture";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -267,5 +270,31 @@ describe("saveReplayImport", () => {
     const unchanged = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-red" } });
     expect(unchanged.memberId).toBe(blue.id);
     expect(unchanged.absorbedFromId).toBe(formerOwner.id);
+  });
+
+  // 취소해도 GameResult.replayKey의 유니크 제약이 남아 있으면 같은 파일을 다시 올릴 수
+  // 없다 — 리플레이를 취소하는 가장 흔한 이유(매칭을 잘못 지정)의 복구 경로가 막힌다.
+  it("clears replayKey on cancellation so the same replay can be re-imported", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const bytes = buildRoflFixture(tenPlayers());
+    const { replayKey } = await prepareReplayImport(prisma, bytes);
+
+    const saved = await saveReplayImport(prisma, {
+      replayKey,
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments: [assignment("puuid-0", "BLUE", blue.id), assignment("puuid-5", "RED", red.id)],
+    });
+
+    await cancelGameResult(prisma, saved.gameResultId, null);
+
+    const cancelled = await prisma.gameResult.findUniqueOrThrow({ where: { id: saved.gameResultId } });
+    expect(cancelled.cancelledAt).toBeInstanceOf(Date);
+    expect(cancelled.replayKey).toBeNull();
+
+    // 유니크 제약이 더는 막지 않으므로 같은 바이트를 다시 올릴 수 있다.
+    const reprepared = await prepareReplayImport(prisma, bytes);
+    expect(reprepared.replayKey).toBe(replayKey);
   });
 });

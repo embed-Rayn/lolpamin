@@ -2,6 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { saveGameResult } from "./save-game-result";
+import { absorbMember } from "./absorb-member";
+import { releaseMember } from "./release-member";
 import { CANCEL_GAME_RESULT_ERRORS, cancelGameResult } from "./cancel-game-result";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
@@ -188,5 +190,46 @@ describe("cancelGameResult", () => {
     expect(await mmrOf(blue.id)).toBe(1000);
     const row = await prisma.gameResult.findUniqueOrThrow({ where: { id: game.gameResultId } });
     expect(row.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  // GameParticipant.memberId가 흡수로 생존자를 가리키게 되면 mmrBefore는 더 이상 그
+  // 행의 주인 것이 아니다 — 원주인(흡수당한 회원)의 그 시점 값이다. 되돌리면 생존자의
+  // 점수가 남의 값으로 덮인다. cancel-game-result.ts의 absorbedParticipant 가드가 이를 막는다.
+  it("refuses to cancel a game whose participation was transferred by absorbMember, and restores it once released", async () => {
+    // 카톡만 있는 회원도 리플레이로 확인된 RiotAccount가 있으면 뛸 수 있다(완화된 규칙).
+    const kakaoOnly = await prisma.member.create({
+      data: { kakaoNickname: "박병준/94/늑구#KR1", mmr: 1000 },
+    });
+    await prisma.riotAccount.create({
+      data: { memberId: kakaoOnly.id, puuid: "puuid-absorb", gameName: "늑구", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    const opponent = await createLinkedMember(1000);
+
+    const game = await playGame([kakaoOnly], [opponent], "BLUE");
+    const kakaoOnlyMmrAfterGame = await mmrOf(kakaoOnly.id);
+    expect(kakaoOnlyMmrAfterGame).not.toBe(1000);
+
+    // 나중에 같은 사람으로 밝혀진 디스코드 쪽 회원에게 흡수시킨다. 참가 기록이
+    // survivor에게 옮겨 가지만 mmrBefore/mmrAfter는 kakaoOnly 시절 값 그대로다.
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-survivor", mmr: 1000 } });
+    await absorbMember(prisma, kakaoOnly.id, survivor.id);
+    const survivorMmrAfterAbsorb = await mmrOf(survivor.id);
+
+    await expect(cancelGameResult(prisma, game.gameResultId, null)).rejects.toThrow(
+      CANCEL_GAME_RESULT_ERRORS.absorbedParticipant,
+    );
+    // 거부됐으므로 survivor의 mmr은 남의 값(kakaoOnly의 mmrBefore)으로 덮이지 않는다.
+    expect(await mmrOf(survivor.id)).toBe(survivorMmrAfterAbsorb);
+    const untouched = await prisma.gameResult.findUniqueOrThrow({ where: { id: game.gameResultId } });
+    expect(untouched.cancelledAt).toBeNull();
+
+    // 안내대로 연결을 먼저 끊으면 참가 기록이 원주인에게 돌아가고, 그때는 되돌릴 수 있다 —
+    // 이것이 문서화된 복구 경로이고, 실제로 되는지가 이 테스트의 두 번째 절반이다.
+    await releaseMember(prisma, kakaoOnly.id);
+
+    await cancelGameResult(prisma, game.gameResultId, null);
+    expect(await mmrOf(kakaoOnly.id)).toBe(1000);
+    const cancelled = await prisma.gameResult.findUniqueOrThrow({ where: { id: game.gameResultId } });
+    expect(cancelled.cancelledAt).toBeInstanceOf(Date);
   });
 });
