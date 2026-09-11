@@ -192,6 +192,8 @@ describe("saveReplayImport", () => {
 
   it("leaves nothing behind when the game save fails", async () => {
     // 계정만 등록되고 경기는 없는 상태가 되면 다음 업로드가 조용히 어긋난다.
+    // 존재 확인이 쓰기보다 먼저 걸리므로 이 테스트는 에러 메시지만 증명한다 — 롤백은
+    // 아래 "rolls back a riot account..." 테스트가 증명한다.
     const blue = await linkedMember("blue");
 
     await expect(
@@ -208,5 +210,62 @@ describe("saveReplayImport", () => {
 
     expect(await prisma.riotAccount.count()).toBe(0);
     expect(await prisma.gameResult.count()).toBe(0);
+  });
+
+  it("rolls back a riot account that was already written when the game save fails", async () => {
+    // 존재 확인을 통과한 뒤에 실패하는 유일한 경로다. 유령 id 테스트는 쓰기 전에 막히므로
+    // 롤백을 증명하지 못한다 — 트랜잭션이 없어도 통과한다.
+    const blue = await linkedMember("blue");
+    const survivor = await linkedMember("survivor");
+    const tombstone = await prisma.member.create({
+      data: { kakaoNickname: "배성민/97/성민탑#KR1", mergedIntoId: survivor.id },
+    });
+
+    await expect(
+      saveReplayImport(prisma, {
+        replayKey: "key-11",
+        playedAt: new Date("2026-09-05T12:00:00Z"),
+        winner: "BLUE",
+        assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-tomb", "RED", tombstone.id)],
+      }),
+    ).rejects.toThrow(/absorbed into another member/);
+
+    expect(await prisma.riotAccount.count()).toBe(0);
+    expect(await prisma.gameResult.count()).toBe(0);
+  });
+
+  it("clears the absorb marker only when the admin changed an account's owner", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const formerOwner = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1" } });
+    // 주인이 바뀌는 계정과 그대로인 계정을 한 번에 저장해 두 갈래를 같이 본다.
+    for (const [puuid, memberId] of [["p-blue", blue.id], ["p-red", blue.id]] as const) {
+      await prisma.riotAccount.create({
+        data: {
+          memberId,
+          absorbedFromId: formerOwner.id,
+          puuid,
+          gameName: "옛날닉",
+          tagLine: "KR9",
+          lastSeenAt: new Date("2026-01-01T00:00:00Z"),
+        },
+      });
+    }
+
+    await saveReplayImport(prisma, {
+      replayKey: "key-12",
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      // p-blue는 red에게 넘어가고(주인 변경), p-red는 blue 그대로다(주인 유지).
+      assignments: [assignment("p-blue", "BLUE", red.id), assignment("p-red", "RED", blue.id)],
+    });
+
+    const reassigned = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-blue" } });
+    expect(reassigned.memberId).toBe(red.id);
+    expect(reassigned.absorbedFromId).toBeNull();
+
+    const unchanged = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-red" } });
+    expect(unchanged.memberId).toBe(blue.id);
+    expect(unchanged.absorbedFromId).toBe(formerOwner.id);
   });
 });
