@@ -48,6 +48,26 @@ async function mmrOf(id: string): Promise<number> {
   return m.mmr;
 }
 
+async function playAramGame(
+  blue: { id: string }[],
+  red: { id: string }[],
+  winner: "BLUE" | "RED",
+  playedAt = new Date("2026-09-01T12:00:00Z"),
+) {
+  return saveGameResult(prisma, {
+    playedAt,
+    blueMemberIds: blue.map((m) => m.id),
+    redMemberIds: red.map((m) => m.id),
+    winner,
+    mode: "ARAM",
+  });
+}
+
+async function aramMmrOf(id: string): Promise<number> {
+  const m = await prisma.member.findUniqueOrThrow({ where: { id } });
+  return m.aramMmr;
+}
+
 describe("cancelGameResult", () => {
   it("puts every participant's mmr back to what it was before the game", async () => {
     const blue = await createLinkedMember(1500);
@@ -231,5 +251,42 @@ describe("cancelGameResult", () => {
     expect(await mmrOf(kakaoOnly.id)).toBe(1000);
     const cancelled = await prisma.gameResult.findUniqueOrThrow({ where: { id: game.gameResultId } });
     expect(cancelled.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  it("reverts aramMmr, not mmr, when cancelling an ARAM game", async () => {
+    const blue = await createLinkedMember(1500); // sets rift mmr; aramMmr starts at the 1000 default
+    const red = await createLinkedMember(1500);
+    const game = await playAramGame([blue], [red], "BLUE");
+    expect(await aramMmrOf(blue.id)).not.toBe(1000);
+
+    await cancelGameResult(prisma, game.gameResultId, null);
+
+    expect(await aramMmrOf(blue.id)).toBe(1000);
+    expect(await mmrOf(blue.id)).toBe(1500); // untouched rift track
+  });
+
+  // 협곡과 칼바람은 서로 다른 레이팅 트랙이다. 더 최근 칼바람 경기가 있다고 해서
+  // 더 오래된 협곡 경기를 못 되돌릴 이유가 없다 — 서로의 mmr에 관여하지 않기 때문이다.
+  it("does not let a newer game in the other mode block cancelling the latest one in this mode", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const riftGame = await playGame([blue], [red], "BLUE");
+    await playAramGame([blue], [red], "RED"); // newer overall, but a different track
+
+    await cancelGameResult(prisma, riftGame.gameResultId, null);
+
+    const row = await prisma.gameResult.findUniqueOrThrow({ where: { id: riftGame.gameResultId } });
+    expect(row.cancelledAt).not.toBeNull();
+  });
+
+  it("still enforces per-mode LIFO — a newer ARAM game must be cancelled before an older one", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const first = await playAramGame([blue], [red], "BLUE");
+    await playAramGame([blue], [red], "RED");
+
+    await expect(cancelGameResult(prisma, first.gameResultId, null)).rejects.toThrow(
+      CANCEL_GAME_RESULT_ERRORS.notLatest,
+    );
   });
 });

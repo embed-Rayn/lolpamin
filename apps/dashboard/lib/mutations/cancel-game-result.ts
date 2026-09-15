@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@lolpamin/db";
+import { ratingField } from "../rating-field";
 
 // cancelGameResult가 의도적으로 던지는 안내 문구. 서버 액션은 이 목록에 있는 메시지만
 // 관리자 화면에 그대로 보여준다 — absorbMember와 같은 방침이다.
@@ -49,7 +50,7 @@ export async function cancelGameResult(
     if (game.cancelledAt !== null) throw new Error(CANCEL_GAME_RESULT_ERRORS.alreadyCancelled);
 
     const latest = await tx.gameResult.findFirst({
-      where: { cancelledAt: null },
+      where: { cancelledAt: null, mode: game.mode },
       orderBy: { createdAt: "desc" },
       select: { id: true },
     });
@@ -70,10 +71,11 @@ export async function cancelGameResult(
       throw new Error(CANCEL_GAME_RESULT_ERRORS.absorbedParticipant);
     }
 
+    const field = ratingField(game.mode);
     for (const participant of game.participants) {
       await tx.member.update({
         where: { id: participant.memberId },
-        data: { mmr: participant.mmrBefore },
+        data: { [field]: participant.mmrBefore },
       });
     }
 
