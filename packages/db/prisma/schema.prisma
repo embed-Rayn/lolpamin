@@ -57,6 +57,13 @@ enum RatingResetKind {
   HARD
 }
 
+// 게임 모드. 협곡과 칼바람은 서로 완전히 독립된 레이팅 트랙이다 — Member.mmr/aramMmr,
+// GameResult.mode 참고. 셋 이상으로 늘어나면 그때 모드를 키로 하는 테이블로 일반화한다.
+enum GameMode {
+  RIFT
+  ARAM
+}
+
 model Member {
   id                 String   @id @default(uuid())
   realName           String?
@@ -72,6 +79,7 @@ model Member {
   kakaoUserId        String?  @unique
   kakaoNickname      String?
   mmr                Int      @default(1000)
+  aramMmr            Int      @default(1000)
   lastActiveAt       DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -93,6 +101,7 @@ model GameResult {
   id        String   @id @default(uuid())
   playedAt  DateTime
   winner    Team
+  mode      GameMode @default(RIFT)
   createdAt DateTime @default(now())
 
   // 같은 리플레이의 재업로드를 막는다. 정렬한 PUUID 10개 + gameLength의 SHA-256.
