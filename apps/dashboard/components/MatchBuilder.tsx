@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { calculateTeamMmrChange, type MmrConfig, type TeamSide } from "@lolpamin/core";
+import type { GameMode } from "@lolpamin/db";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { saveGameResultAction } from "@/app/matches/actions";
 
@@ -29,9 +30,23 @@ export function MatchBuilder({
   const [winner, setWinner] = useState<TeamSide | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [mode, setMode] = useState<GameMode>("RIFT");
 
   const byId = useMemo(() => new Map(pool.map((p) => [p.id, p])), [pool]);
   const attending = new Set(roster);
+
+  function ratingOf(id: string): number {
+    const m = byId.get(id)!;
+    return mode === "ARAM" ? m.aramMmr : m.mmr;
+  }
+  function winsOf(id: string): number {
+    const m = byId.get(id)!;
+    return mode === "ARAM" ? m.aramWins : m.wins;
+  }
+  function lossesOf(id: string): number {
+    const m = byId.get(id)!;
+    return mode === "ARAM" ? m.aramLosses : m.losses;
+  }
 
   const visiblePool = pool.filter((p) => !poolQuery || p.name.toLowerCase().includes(poolQuery.toLowerCase()));
 
@@ -41,21 +56,21 @@ export function MatchBuilder({
 
   const preview = useMemo(() => {
     if (blueIds.length === 0 || redIds.length === 0 || !winner) return null;
-    const blueRatings = blueIds.map((id) => byId.get(id)!.mmr);
-    const redRatings = redIds.map((id) => byId.get(id)!.mmr);
+    const blueRatings = blueIds.map((id) => ratingOf(id));
+    const redRatings = redIds.map((id) => ratingOf(id));
     const result = calculateTeamMmrChange({ blueRatings, redRatings, winner, config });
-    const toRow = (id: string, delta: number) => ({ ...byId.get(id)!, delta, after: byId.get(id)!.mmr + delta });
+    const toRow = (id: string, delta: number) => ({ ...byId.get(id)!, mmr: ratingOf(id), delta, after: ratingOf(id) + delta });
     return {
       ...result,
       rows: [...blueIds.map((id) => toRow(id, result.blueDelta)), ...redIds.map((id) => toRow(id, result.redDelta))],
     };
-  }, [blueIds, redIds, winner, byId, config]);
+  }, [blueIds, redIds, winner, byId, config, mode]);
 
   const canSave = blueIds.length > 0 && redIds.length > 0 && winner !== null && unassignedCount === 0;
 
   function averageMmr(ids: string[]): string {
     if (ids.length === 0) return "—";
-    return String(Math.round(ids.reduce((sum, id) => sum + byId.get(id)!.mmr, 0) / ids.length));
+    return String(Math.round(ids.reduce((sum, id) => sum + ratingOf(id), 0) / ids.length));
   }
 
   function attend(id: string) {
@@ -104,6 +119,7 @@ export function MatchBuilder({
         blueMemberIds: blueIds,
         redMemberIds: redIds,
         winner,
+        mode,
       });
       setSavedMessage(`저장됨 · ${result.updates.length}명의 MMR이 재계산되었습니다.`);
       setWinner(null);
@@ -113,7 +129,24 @@ export function MatchBuilder({
   }
 
   return (
-    <div className="grid grid-cols-[296px_1fr_300px] items-start gap-4">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[12px] font-bold text-[#6E7889]">게임 모드</span>
+        <div className="flex overflow-hidden rounded-lg border border-white/[.12]">
+          {(["RIFT", "ARAM"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`px-3 py-1.5 text-[12.5px] font-bold ${
+                mode === m ? "cursor-pointer bg-[#4472C4] text-white" : "cursor-pointer bg-transparent text-[#7A8496]"
+              }`}
+            >
+              {m === "RIFT" ? "협곡" : "칼바람"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-[296px_1fr_300px] items-start gap-4">
       <section className="flex flex-col overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
         <div className="flex flex-col gap-2 border-b border-white/[.06] p-4">
           <div className="flex items-center justify-between">
@@ -137,7 +170,7 @@ export function MatchBuilder({
               >
                 <div className="flex flex-1 flex-col">
                   <span className="truncate text-[13.5px] font-semibold">{p.name}</span>
-                  <span className="font-mono text-[12px] text-[#6E7889]">MMR {p.mmr}</span>
+                  <span className="font-mono text-[12px] text-[#6E7889]">MMR {ratingOf(p.id)}</span>
                 </div>
                 <button
                   onClick={() => attend(p.id)}
@@ -199,9 +232,9 @@ export function MatchBuilder({
                     <div className="text-right font-mono text-[12px] text-[#5C6577]">{index + 1}</div>
                     <div className="truncate font-semibold">{m.name}</div>
                     <div className="truncate font-mono text-[12.5px] text-[#8FA9F5]">{m.discordName}</div>
-                    <div className="text-right font-mono text-[13px] text-[#9BD173]">{m.wins}</div>
-                    <div className="text-right font-mono text-[13px] text-[#EE8B8B]">{m.losses}</div>
-                    <div className="text-right font-mono text-[13.5px] font-bold">{m.mmr}</div>
+                    <div className="text-right font-mono text-[13px] text-[#9BD173]">{winsOf(id)}</div>
+                    <div className="text-right font-mono text-[13px] text-[#EE8B8B]">{lossesOf(id)}</div>
+                    <div className="text-right font-mono text-[13.5px] font-bold">{ratingOf(id)}</div>
                     <select
                       value={team ?? ""}
                       onChange={(e) => assign(id, (e.target.value || null) as Assignment)}
@@ -348,6 +381,7 @@ export function MatchBuilder({
           )}
         </div>
       </section>
+      </div>
     </div>
   );
 }
