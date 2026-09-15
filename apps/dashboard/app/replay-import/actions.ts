@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { GameMode } from "@lolpamin/db";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { prepareReplayImport, type PreparedReplayImport } from "@/lib/replay-import/prepare-import";
@@ -23,6 +24,7 @@ export interface SaveReplayImportActionInput {
   playedAt: string;
   winner: "BLUE" | "RED";
   assignments: ReplayAssignment[];
+  mode?: GameMode;
 }
 
 export async function saveReplayImportAction(input: SaveReplayImportActionInput) {

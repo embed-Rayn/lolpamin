@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import type { GameMode } from "@lolpamin/db";
 import { prepareReplayImportAction, saveReplayImportAction } from "@/app/replay-import/actions";
 import { isMemberOfferable } from "@/lib/replay-import/offerable";
 import type { ImportSlot, PreparedReplayImport } from "@/lib/replay-import/prepare-import";
@@ -59,6 +60,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
   const [prepared, setPrepared] = useState<PreparedReplayImport | null>(null);
   const [state, setState] = useState<Record<string, SlotState>>({});
   const [playedAt, setPlayedAt] = useState<string>(toDateInput(new Date()));
+  const [mode, setMode] = useState<GameMode>("RIFT");
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState<number | null>(null);
@@ -124,6 +126,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
           team: s.team,
           memberId: state[s.puuid].memberId,
         })),
+        mode,
       });
       setSavedCount(result.updates.length);
       setPrepared(null);
@@ -240,6 +243,23 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
           <span className="text-[12px] text-[#6E7889]">
             롤 클라이언트 &gt; 내 기록에서 내려받은 파일입니다. 같은 경기를 두 번 올리면 거부됩니다.
           </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-bold text-[#6E7889]">게임 모드</span>
+          <div className="flex overflow-hidden rounded-lg border border-white/[.12]">
+            {(["RIFT", "ARAM"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`px-3 py-1.5 text-[12.5px] font-bold ${
+                  mode === m ? "cursor-pointer bg-[#4472C4] text-white" : "cursor-pointer bg-transparent text-[#7A8496]"
+                }`}
+              >
+                {m === "RIFT" ? "협곡" : "칼바람"}
+              </button>
+            ))}
+          </div>
         </div>
         {isAdmin ? (
           <>
