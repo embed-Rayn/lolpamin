@@ -84,6 +84,17 @@ export function MatchBuilder({
     setWinner(null);
   }
 
+  function swapTeams() {
+    const next: Record<string, Assignment> = {};
+    for (const id of roster) {
+      const team = teamById[id];
+      next[id] = team === "blue" ? "red" : team === "red" ? "blue" : null;
+    }
+    setTeamById(next);
+    setWinner((w) => (w === "BLUE" ? "RED" : w === "RED" ? "BLUE" : w));
+    setSavedMessage(null);
+  }
+
   async function handleSave() {
     if (!canSave || !winner) return;
     setIsSaving(true);
@@ -95,7 +106,7 @@ export function MatchBuilder({
         winner,
       });
       setSavedMessage(`저장됨 · ${result.updates.length}명의 MMR이 재계산되었습니다.`);
-      clearRoster();
+      setWinner(null);
     } finally {
       setIsSaving(false);
     }
@@ -221,11 +232,24 @@ export function MatchBuilder({
         </div>
 
         <div className="flex flex-col gap-3 rounded-xl border border-white/[.06] bg-[#151A24] px-4 py-3.5">
-          <div>
-            <div className="text-[13.5px] font-bold">경기 정보</div>
-            <div className="text-[12px] text-[#6E7889]">
-              5v5 내전 · 승/패 방식 · K값 {config.k} · 승리 점수 +{config.winPoint} · 패배 점수 +{config.lossPoint}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13.5px] font-bold">경기 정보</div>
+              <div className="text-[12px] text-[#6E7889]">
+                5v5 내전 · 승/패 방식 · K값 {config.k} · 승리 점수 +{config.winPoint} · 패배 점수 +{config.lossPoint}
+              </div>
             </div>
+            <button
+              onClick={swapTeams}
+              disabled={roster.length === 0}
+              className={`rounded-md border px-2.5 py-1 text-[12px] font-bold ${
+                roster.length === 0
+                  ? "cursor-not-allowed border-white/[.09] text-[#5C6577]"
+                  : "border-white/[.14] text-[#B7C0D1]"
+              }`}
+            >
+              블루 ↔ 레드
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {(["blue", "red"] as const).map((team) => {
