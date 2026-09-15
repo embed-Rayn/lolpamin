@@ -236,4 +236,45 @@ describe("saveGameResult", () => {
     // 유니크 제약이 최후의 방어선이다. 화면에서 거르는 것과 별개로 DB가 막아야 한다.
     await expect(saveGameResult(prisma, input)).rejects.toThrow();
   });
+
+  it("updates aramMmr instead of mmr when the game mode is ARAM", async () => {
+    const blue = await createLinkedMember(1500);
+    const red = await createLinkedMember(1500);
+
+    const result = await saveGameResult(prisma, {
+      playedAt: new Date("2026-09-16T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+      mode: "ARAM",
+    });
+
+    expect(result.updates.find((u) => u.memberId === blue.id)).toMatchObject({ mmrBefore: 1000, mmrAfter: 1023 });
+
+    const refreshedBlue = await prisma.member.findUniqueOrThrow({ where: { id: blue.id } });
+    expect(refreshedBlue.aramMmr).toBe(1023);
+    expect(refreshedBlue.mmr).toBe(1500); // rift mmr untouched
+
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(game.mode).toBe("ARAM");
+  });
+
+  it("defaults to RIFT and leaves aramMmr untouched when mode is omitted", async () => {
+    const blue = await createLinkedMember(1500);
+    const red = await createLinkedMember(1500);
+
+    await saveGameResult(prisma, {
+      playedAt: new Date("2026-09-16T12:00:00Z"),
+      blueMemberIds: [blue.id],
+      redMemberIds: [red.id],
+      winner: "BLUE",
+    });
+
+    const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue.id } });
+    expect(refreshed.aramMmr).toBe(1000);
+    expect(refreshed.mmr).not.toBe(1500);
+
+    const game = await prisma.gameResult.findFirstOrThrow();
+    expect(game.mode).toBe("RIFT");
+  });
 });

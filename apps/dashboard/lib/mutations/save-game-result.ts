@@ -1,6 +1,7 @@
-import type { Prisma, PrismaClient, Team } from "@lolpamin/db";
+import type { GameMode, Prisma, PrismaClient, Team } from "@lolpamin/db";
 import { calculateTeamMmrChange } from "@lolpamin/core";
 import { getMmrConfig } from "../queries/mmr-config";
+import { ratingField } from "../rating-field";
 
 export interface SaveGameResultInput {
   playedAt: Date;
@@ -12,6 +13,8 @@ export interface SaveGameResultInput {
   // 리플레이에서 들어온 경기의 내용 해시. 같은 파일을 두 번 올리는 것을 DB가 막는다.
   // 손으로 입력한 경기는 null이다.
   replayKey?: string | null;
+  // 어느 레이팅 트랙인지. 기본은 협곡 — 기존 호출부(리플레이 임포트 포함)를 그대로 둔다.
+  mode?: GameMode;
 }
 
 export interface SaveGameResultOutput {
@@ -27,7 +30,8 @@ export async function saveGameResultTx(
   tx: Prisma.TransactionClient,
   input: SaveGameResultInput
 ): Promise<SaveGameResultOutput> {
-  const { playedAt, blueMemberIds, redMemberIds, winner, createdById = null, replayKey = null } = input;
+  const { playedAt, blueMemberIds, redMemberIds, winner, createdById = null, replayKey = null, mode = "RIFT" } = input;
+  const field = ratingField(mode);
 
   const overlap = blueMemberIds.filter((id) => redMemberIds.includes(id));
   if (overlap.length > 0) {
@@ -67,14 +71,14 @@ export async function saveGameResultTx(
   // 하나의 설정으로만 계산된다.
   const config = await getMmrConfig(tx);
   const { blueDelta, redDelta } = calculateTeamMmrChange({
-    blueRatings: blueMemberIds.map((id) => byId.get(id)!.mmr),
-    redRatings: redMemberIds.map((id) => byId.get(id)!.mmr),
+    blueRatings: blueMemberIds.map((id) => byId.get(id)![field]),
+    redRatings: redMemberIds.map((id) => byId.get(id)![field]),
     winner,
     config,
   });
 
   const gameResult = await tx.gameResult.create({
-    data: { playedAt, winner: winner as Team, createdById, replayKey },
+    data: { playedAt, winner: winner as Team, createdById, replayKey, mode },
   });
 
   const updates: SaveGameResultOutput["updates"] = [];
@@ -84,12 +88,12 @@ export async function saveGameResultTx(
     ["RED", redMemberIds, redDelta],
   ] as const) {
     for (const memberId of ids) {
-      const mmrBefore = byId.get(memberId)!.mmr;
+      const mmrBefore = byId.get(memberId)![field];
       const mmrAfter = mmrBefore + delta;
       await tx.gameParticipant.create({
         data: { gameResultId: gameResult.id, memberId, team: team as Team, mmrBefore, mmrAfter },
       });
-      await tx.member.update({ where: { id: memberId }, data: { mmr: mmrAfter } });
+      await tx.member.update({ where: { id: memberId }, data: { [field]: mmrAfter } });
       updates.push({ memberId, mmrBefore, mmrAfter });
     }
   }
