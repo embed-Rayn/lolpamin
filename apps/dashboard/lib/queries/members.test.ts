@@ -379,3 +379,36 @@ describe("getMemberListData 전적", () => {
     expect(rowOf(data.rows, "가회원")).toMatchObject({ wins: 0, losses: 0, playedCount: 0 });
   });
 });
+
+describe("getMemberListData mode", () => {
+  it("sorts and counts by aramMmr when mode is ARAM", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({ data: { realName: "가", discordUserId: "d-a", mmr: 1000, aramMmr: 1400 } });
+    await prisma.member.create({ data: { realName: "나", discordUserId: "d-b", mmr: 2000, aramMmr: 1100 } });
+
+    const data = await getMemberListData("all", "", "mmr", "desc", "ARAM");
+
+    expect(data.rows.map((r) => r.realName)).toEqual(["가", "나"]);
+    expect(data.rows.map((r) => r.mmr)).toEqual([1400, 1100]);
+    expect(data.averageMmr).toBe(1250);
+  });
+
+  it("only counts games of the requested mode in wins/losses", async () => {
+    await resetDatabase(prisma);
+    const member = await prisma.member.create({ data: { realName: "가", discordUserId: "d-a", mmr: 1000, aramMmr: 1000 } });
+    const riftGame = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "BLUE", mode: "RIFT" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: riftGame.id, memberId: member.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
+    });
+    const aramGame = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "RED", mode: "ARAM" } });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: aramGame.id, memberId: member.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 981 },
+    });
+
+    const riftData = await getMemberListData("all", "", "mmr", "desc");
+    const aramData = await getMemberListData("all", "", "mmr", "desc", "ARAM");
+
+    expect(riftData.rows[0]).toMatchObject({ wins: 1, losses: 0 });
+    expect(aramData.rows[0]).toMatchObject({ wins: 0, losses: 1 });
+  });
+});

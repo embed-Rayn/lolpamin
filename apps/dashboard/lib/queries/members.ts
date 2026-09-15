@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import type { Member, MemberTier, Prisma } from "@lolpamin/db";
+import type { GameMode, Member, MemberTier, Prisma } from "@lolpamin/db";
 import { tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
+import { ratingField } from "../rating-field";
 
 type ActivityCounts = { mentionLogs: number; participants: number };
 type MemberWithCounts = Member & {
@@ -67,8 +68,8 @@ export function parseSortDirection(value: string | undefined): SortDirection {
 
 // 값이 비어 있는 행은 방향과 무관하게 마지막에 둔다 — 실명 없는 회원이 목록 맨 위를
 // 차지하면 정렬이 쓸모없어진다. id 2차 정렬은 동점일 때 순서를 고정하기 위한 것이다.
-function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByWithRelationInput[] {
-  if (sort === "mmr") return [{ mmr: dir }, { id: "asc" }];
+function orderByFor(sort: MemberSort, dir: SortDirection, mode: GameMode): Prisma.MemberOrderByWithRelationInput[] {
+  if (sort === "mmr") return [{ [ratingField(mode)]: dir }, { id: "asc" }];
   if (sort === "realName") return [{ realName: { sort: dir, nulls: "last" } }, { id: "asc" }];
   // 티어는 점수 순으로 정렬해야 하는데 Postgres는 enum을 선언 순서로 정렬한다. 지금은
   // 두 순서가 우연히 같지만 그 우연에 기대면 enum 순서를 바꾸는 순간 정렬이 조용히
@@ -136,7 +137,7 @@ function displayDiscordName(m: MemberWithCounts): string {
   return m.discordDisplayName ?? m.discordHandle ?? m.discordUserId;
 }
 
-function toRow(m: MemberWithCounts, now: Date, record: MemberRecord): MemberRow {
+function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameMode): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   // 카톡 멘션은 닉네임을 가진 행에 붙으므로(processKakaoExport), 흡수한 뒤에는 묘비 쪽에
   // 쌓인다. 생존자 자기 _count만 보면 "0건"이라 안내하고 실제로는 수십 건을 지우게 된다.
@@ -147,7 +148,7 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord): MemberRow 
     realName: m.realName ?? "-",
     kakaoNickname: displayKakaoNickname(m),
     discordName: displayDiscordName(m),
-    mmr: m.mmr,
+    mmr: m[ratingField(mode)],
     tier: m.tier,
     riotId: m.riotId,
     wins: record.wins,
@@ -175,7 +176,7 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord): MemberRow 
  * 화면 안에서 두 숫자가 어긋난다. getCountedGameFilter가 그 규칙이고,
  * queries/linked-members.ts와 apps/discord-bot도 같은 것을 쓴다.
  */
-async function tallyRecords(members: MemberWithCounts[]): Promise<Map<string, MemberRecord>> {
+async function tallyRecords(members: MemberWithCounts[], mode: GameMode): Promise<Map<string, MemberRecord>> {
   // 묘비 id → 생존자 id. 조회는 둘을 한꺼번에 하고, 집계할 때 생존자 쪽으로 몰아준다.
   const ownerOf = new Map<string, string>();
   for (const m of members) {
@@ -189,10 +190,11 @@ async function tallyRecords(members: MemberWithCounts[]): Promise<Map<string, Me
   const countedGame = await getCountedGameFilter(prisma);
   const participations = await prisma.gameParticipant.findMany({
     where: { memberId: { in: [...ownerOf.keys()] }, gameResult: countedGame },
-    select: { memberId: true, team: true, gameResult: { select: { winner: true } } },
+    select: { memberId: true, team: true, gameResult: { select: { winner: true, mode: true } } },
   });
 
   for (const p of participations) {
+    if (p.gameResult.mode !== mode) continue;
     const tally = record.get(ownerOf.get(p.memberId)!);
     if (!tally) continue;
     if (p.team === p.gameResult.winner) tally.wins += 1;
@@ -206,12 +208,13 @@ export async function getMemberListData(
   filter: MemberFilter,
   query: string,
   sort: MemberSort = "mmr",
-  dir: SortDirection = "desc"
+  dir: SortDirection = "desc",
+  mode: GameMode = "RIFT",
 ): Promise<MemberListData> {
   const now = new Date();
   const allMembers = await prisma.member.findMany({
     where: { mergedIntoId: null },
-    orderBy: orderByFor(sort, dir),
+    orderBy: orderByFor(sort, dir, mode),
     include: {
       _count: { select: { mentionLogs: true, participants: true } },
       // 삭제 확인창 숫자용. 묘비의 활동 기록도 함께 지워지므로 같이 세어 온다.
@@ -224,14 +227,15 @@ export async function getMemberListData(
     },
   });
 
-  const record = await tallyRecords(allMembers);
+  const record = await tallyRecords(allMembers, mode);
 
   const totalCount = allMembers.length;
   const halfCount = allMembers.filter(isHalfMember).length;
   const unassignedCount = halfCount;
+  const field = ratingField(mode);
   const averageMmr = totalCount === 0
     ? 0
-    : Math.round(allMembers.reduce((sum, m) => sum + m.mmr, 0) / totalCount);
+    : Math.round(allMembers.reduce((sum, m) => sum + m[field], 0) / totalCount);
 
   const trimmedQuery = query.trim().toLowerCase();
   // 검색은 화면에 안 띄우는 값까지 훑는다. 미연결 디스코드 계정은 실명도 카톡 닉네임도
@@ -250,7 +254,7 @@ export async function getMemberListData(
   }
 
   const rows = allMembers
-    .map((m) => ({ m, row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }) }))
+    .map((m) => ({ m, row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }, mode) }))
     .filter(({ m, row }) => {
       if (filter === "linked" && !(row.hasDiscord && row.hasKakao)) return false;
       if (filter === "kakaoOnly" && (row.hasDiscord || !row.hasKakao)) return false;
