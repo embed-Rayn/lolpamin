@@ -30,17 +30,21 @@ export async function resetAllRatings(
   return prisma.$transaction(async (tx) => {
     const members = await tx.member.findMany({
       where: { mergedIntoId: null },
-      select: { id: true, mmr: true },
+      select: { id: true, mmr: true, aramMmr: true },
     });
 
     if (kind === "HARD") {
       // 목표값이 하나라 한 문장으로 끝난다. 값이 이미 같은 행까지 덮어써도 결과는 같다.
-      await tx.member.updateMany({ where: { mergedIntoId: null }, data: { mmr: applyHardReset() } });
+      await tx.member.updateMany({
+        where: { mergedIntoId: null },
+        data: { mmr: applyHardReset(), aramMmr: applyHardReset() },
+      });
     } else {
       for (const member of members) {
         const mmr = applySoftReset(member.mmr);
-        if (mmr === member.mmr) continue;
-        await tx.member.update({ where: { id: member.id }, data: { mmr } });
+        const aramMmr = applySoftReset(member.aramMmr);
+        if (mmr === member.mmr && aramMmr === member.aramMmr) continue;
+        await tx.member.update({ where: { id: member.id }, data: { mmr, aramMmr } });
       }
     }
 

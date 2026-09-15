@@ -73,6 +73,16 @@ describe("resetAllRatings (SOFT)", () => {
     const result = await resetAllRatings(prisma, SOFT);
     expect(result.count).toBe(0);
   });
+
+  it("pulls aramMmr halfway back to the base rating too", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-both", mmr: 1300, aramMmr: 1400 } });
+
+    await resetAllRatings(prisma, SOFT);
+
+    const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
+    expect(refreshed.mmr).toBe(1150);
+    expect(refreshed.aramMmr).toBe(1200);
+  });
 });
 
 describe("resetAllRatings (HARD)", () => {
@@ -85,6 +95,16 @@ describe("resetAllRatings (HARD)", () => {
     expect(result.count).toBe(2);
     expect((await prisma.member.findUniqueOrThrow({ where: { id: high.id } })).mmr).toBe(1000);
     expect((await prisma.member.findUniqueOrThrow({ where: { id: low.id } })).mmr).toBe(1000);
+  });
+
+  it("puts aramMmr on the base rating too", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-both", mmr: 1300, aramMmr: 1400 } });
+
+    await resetAllRatings(prisma, HARD);
+
+    const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
+    expect(refreshed.mmr).toBe(1000);
+    expect(refreshed.aramMmr).toBe(1000);
   });
 
   it("skips tombstones too", async () => {
