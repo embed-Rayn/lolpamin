@@ -16,6 +16,10 @@ export interface LinkedMemberOption {
   // 팀짜기 화면이 쓰는 값. 점수는 저장하지 않고 tierScore로 계산한다.
   tier: MemberTier;
   riotId: string | null;
+  // 칼바람 트랙. MatchBuilder가 모드 토글에 따라 이쪽과 협곡 값을 오간다.
+  aramMmr: number;
+  aramWins: number;
+  aramLosses: number;
 }
 
 export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
@@ -47,15 +51,21 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
   const countedGame = await getCountedGameFilter(prisma);
   const participations = await prisma.gameParticipant.findMany({
     where: { memberId: { in: members.map((m) => m.id) }, gameResult: countedGame },
-    select: { memberId: true, team: true, gameResult: { select: { winner: true } } },
+    select: { memberId: true, team: true, gameResult: { select: { winner: true, mode: true } } },
   });
 
-  const record = new Map(members.map((m) => [m.id, { wins: 0, losses: 0 }]));
+  const record = new Map(
+    members.map((m) => [m.id, { wins: 0, losses: 0, aramWins: 0, aramLosses: 0 }]),
+  );
   for (const p of participations) {
     const tally = record.get(p.memberId);
     if (!tally) continue;
-    if (p.team === p.gameResult.winner) tally.wins += 1;
-    else tally.losses += 1;
+    const isWin = p.team === p.gameResult.winner;
+    if (p.gameResult.mode === "ARAM") {
+      if (isWin) tally.aramWins += 1; else tally.aramLosses += 1;
+    } else {
+      if (isWin) tally.wins += 1; else tally.losses += 1;
+    }
   }
 
   return members.map((m) => ({
@@ -65,6 +75,7 @@ export async function getLinkedMembers(): Promise<LinkedMemberOption[]> {
     mmr: m.mmr,
     tier: m.tier,
     riotId: m.riotId,
+    aramMmr: m.aramMmr,
     ...record.get(m.id)!,
   }));
 }

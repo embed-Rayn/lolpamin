@@ -260,4 +260,38 @@ describe("getLinkedMembers", () => {
 
     expect(pool.some((m) => m.id === member.id)).toBe(false);
   });
+
+  it("carries the aram rating and record alongside the rift ones", async () => {
+    const blue = await prisma.member.create({
+      data: {
+        realName: "승자", discordUserId: "d-1", discordHandle: "winner", kakaoUserId: "k-1",
+        mmr: 1000, aramMmr: 1200,
+      },
+    });
+    const red = await prisma.member.create({
+      data: {
+        realName: "패자", discordUserId: "d-2", discordHandle: "loser", kakaoUserId: "k-2",
+        mmr: 1000, aramMmr: 1100,
+      },
+    });
+    const riftGame = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "BLUE", mode: "RIFT" } });
+    await prisma.gameParticipant.createMany({
+      data: [
+        { gameResultId: riftGame.id, memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
+        { gameResultId: riftGame.id, memberId: red.id, team: "RED", mmrBefore: 1000, mmrAfter: 985 },
+      ],
+    });
+    const aramGame = await prisma.gameResult.create({ data: { playedAt: new Date(), winner: "RED", mode: "ARAM" } });
+    await prisma.gameParticipant.createMany({
+      data: [
+        { gameResultId: aramGame.id, memberId: blue.id, team: "BLUE", mmrBefore: 1200, mmrAfter: 1181 },
+        { gameResultId: aramGame.id, memberId: red.id, team: "RED", mmrBefore: 1100, mmrAfter: 1123 },
+      ],
+    });
+
+    const byName = new Map((await getLinkedMembers()).map((o) => [o.name, o]));
+
+    expect(byName.get("승자")).toMatchObject({ wins: 1, losses: 0, aramMmr: 1200, aramWins: 0, aramLosses: 1 });
+    expect(byName.get("패자")).toMatchObject({ wins: 0, losses: 1, aramMmr: 1100, aramWins: 1, aramLosses: 0 });
+  });
 });
