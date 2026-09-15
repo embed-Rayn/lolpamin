@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@lolpamin/db";
+import type { GameMode, PrismaClient } from "@lolpamin/db";
 import { saveGameResultTx, type SaveGameResultOutput } from "./save-game-result";
 
 export interface ReplayAssignment {
@@ -17,6 +17,8 @@ export interface SaveReplayImportInput {
   winner: "BLUE" | "RED";
   assignments: ReplayAssignment[];
   createdById?: string | null;
+  // 리플레이에 큐 정보가 없어 관리자가 업로드 화면에서 직접 고른다. 기본은 협곡.
+  mode?: GameMode;
 }
 
 export const SAVE_REPLAY_IMPORT_ERRORS = {
@@ -37,7 +39,7 @@ export async function saveReplayImport(
   prisma: PrismaClient,
   input: SaveReplayImportInput
 ): Promise<SaveGameResultOutput> {
-  const { replayKey, playedAt, winner, assignments, createdById = null } = input;
+  const { replayKey, playedAt, winner, assignments, createdById = null, mode = "RIFT" } = input;
 
   const memberIds = assignments.map((a) => a.memberId).filter((id): id is string => id !== null);
   if (new Set(memberIds).size !== memberIds.length) {
@@ -102,6 +104,7 @@ export async function saveReplayImport(
         winner,
         createdById,
         replayKey,
+        mode,
       });
 
       // 같이 게임을 했는데 카톡에 글을 안 썼다고 비활동으로 잡히는 구멍을 메운다.

@@ -32,6 +32,26 @@ function assignment(puuid: string, team: "BLUE" | "RED", memberId: string | null
 }
 
 describe("saveReplayImport", () => {
+  it("saves the game with the given mode", async () => {
+    const blue = await linkedMember("blue2");
+    const red = await linkedMember("red2");
+
+    const result = await saveReplayImport(prisma, {
+      replayKey: "key-aram",
+      playedAt: new Date("2026-09-16T12:00:00Z"),
+      winner: "BLUE",
+      assignments: [assignment("p-blue2", "BLUE", blue.id), assignment("p-red2", "RED", red.id)],
+      mode: "ARAM",
+    });
+
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(game.mode).toBe("ARAM");
+
+    const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue.id } });
+    expect(refreshed.aramMmr).not.toBe(1000);
+    expect(refreshed.mmr).toBe(1000);
+  });
+
   it("registers a riot account for every assigned slot and records the game", async () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
