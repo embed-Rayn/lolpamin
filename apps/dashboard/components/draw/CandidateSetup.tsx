@@ -39,7 +39,11 @@ export function CandidateSetup({
   const [manualName, setManualName] = useState("");
   const [manualError, setManualError] = useState<string | null>(null);
 
-  const visible = pool.filter((m) => !query || m.name.toLowerCase().includes(query.toLowerCase()));
+  // The pool arrives MMR-desc (shared with the ranking screens); a picker is
+  // scanned by name, so reorder it here rather than in the query.
+  const visible = pool
+    .filter((m) => !query || m.name.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
   const rangeError = validateNumberRange(range.min, range.max);
 
   function toggle(id: string) {
@@ -124,7 +128,7 @@ export function CandidateSetup({
               쓰세요.
             </div>
           ) : (
-            <div className="grid max-h-[220px] grid-cols-3 gap-1.5 overflow-y-auto">
+            <div className="grid max-h-[220px] grid-cols-8 gap-1.5 overflow-y-auto">
               {visible.map((m) => (
                 <label
                   key={m.id}
