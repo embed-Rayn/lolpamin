@@ -8,6 +8,7 @@ import {
   buildCourse,
   clearMarbles,
   createRaceEngine,
+  findFinishers,
   findWinner,
   leader,
   spawnMarbles,
@@ -184,5 +185,34 @@ describe("spinning crosses", () => {
 
     expect(first).toBeGreaterThan(0);
     expect(second).toBeGreaterThan(first / 4);
+  });
+});
+
+describe("findFinishers", () => {
+  // Fake marbles: only the position matters to the finish rule.
+  function marble(id: string, y: number) {
+    return { id, label: id, body: { position: { x: 0, y } } } as unknown as ReturnType<
+      typeof spawnMarbles
+    >[number];
+  }
+
+  it("appends marbles that crossed this step, lowest first", () => {
+    const marbles = [marble("a", GOAL_Y - 10), marble("b", GOAL_Y + 5), marble("c", GOAL_Y + 20)];
+    expect(findFinishers(marbles, [], 0)).toEqual(["c", "b"]);
+  });
+
+  it("keeps the order already recorded ahead of new finishers", () => {
+    const marbles = [marble("a", GOAL_Y + 50), marble("b", GOAL_Y + 5), marble("c", GOAL_Y - 1)];
+    expect(findFinishers(marbles, ["b"], 0)).toEqual(["b", "a"]);
+  });
+
+  it("leaves the order alone while nobody new has crossed", () => {
+    const marbles = [marble("a", GOAL_Y + 50), marble("b", 100)];
+    expect(findFinishers(marbles, ["a"], 0)).toEqual(["a"]);
+  });
+
+  it("ranks whoever is still out by position once the time cap hits", () => {
+    const marbles = [marble("a", GOAL_Y + 50), marble("b", 100), marble("c", 900)];
+    expect(findFinishers(marbles, ["a"], MAX_RACE_MS)).toEqual(["a", "c", "b"]);
   });
 });

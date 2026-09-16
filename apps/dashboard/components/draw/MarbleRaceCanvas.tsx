@@ -14,6 +14,7 @@ import {
   buildCourse,
   clearMarbles,
   createRaceEngine,
+  findFinishers,
   findWinner,
   leader,
   spawnMarbles,
@@ -35,6 +36,8 @@ const SKIP_STEPS_PER_FRAME = 40;
 // 100ms를 다 써도 24스텝이다. 예산 계산이 어긋났을 때 브라우저가 멎지 않게 하는 빗장이다.
 const MAX_STEPS_PER_FRAME = 30;
 const FLASH_MS = 1100;
+// 팀 뽑기는 한 명 들어올 때마다 알리되 레이스를 가리지 않도록 짧게, 어둡게 하지 않고 띄운다.
+const FINISH_FLASH_MS = 700;
 const CAMERA_EASE = 0.12;
 const RAIL_WIDTH = 26;
 
@@ -42,7 +45,26 @@ interface Race {
   marbles: RaceMarble[];
   elapsed: number;
   skipping: boolean;
-  resolve: (winner: DrawCandidate) => void;
+  // "first" ends at the first crossing; "all" records every crossing and ends
+  // once the field is home (or the time cap ranks the stragglers).
+  until: "first" | "all";
+  finished: string[];
+  onFinish?: (order: DrawCandidate[]) => void;
+  resolve: (order: DrawCandidate[]) => void;
+}
+
+interface Flash {
+  until: number;
+  label: string;
+  dim: boolean;
+}
+
+// The marbles still on the course — in an "all" race the ones already home sit
+// below the goal and must not count as the leader.
+function racing(race: Race): RaceMarble[] {
+  if (race.until === "first") return race.marbles;
+  const done = new Set(race.finished);
+  return race.marbles.filter((m) => !done.has(m.id));
 }
 
 export const MarbleRaceCanvas = forwardRef<
@@ -55,7 +77,7 @@ export const MarbleRaceCanvas = forwardRef<
     const moversRef = useRef<Mover[]>([]);
     const raceRef = useRef<Race | null>(null);
     const poolRef = useRef<DrawCandidate[]>(remaining);
-    const flashRef = useRef<{ until: number; label: string } | null>(null);
+    const flashRef = useRef<Flash | null>(null);
     const cameraRef = useRef(0);
     // rAF 루프는 마운트 때 한 번 만들어져 닫힌 값을 계속 본다. 배속은 레이스 도중에도
     // 바뀌므로 ref로 넘겨야 다음 프레임부터 바로 먹는다.
@@ -68,27 +90,41 @@ export const MarbleRaceCanvas = forwardRef<
       );
     }
 
+    function startRace(
+      until: Race["until"],
+      onFinish?: (order: DrawCandidate[]) => void
+    ): Promise<DrawCandidate[]> {
+      const engine = engineRef.current;
+      const pool = poolRef.current;
+      return new Promise<DrawCandidate[]>((resolve) => {
+        if (!engine || pool.length === 0) {
+          // No 2D context (so no engine) or an empty pool: resolve immediately
+          // rather than leaving the button spinning forever.
+          resolve(until === "first" ? pool.slice(0, 1) : pool);
+          return;
+        }
+        cameraRef.current = 0;
+        raceRef.current = {
+          marbles: spawnMarbles(engine, pool),
+          elapsed: 0,
+          // reduced-motion이라고 레이스를 건너뛰지 않는다. 그건 결과를 못 보게 만드는
+          // 것이지 움직임을 줄이는 게 아니다 — 대신 DrawScreen이 초기 배속을 올린다.
+          skipping: false,
+          until,
+          finished: [],
+          onFinish,
+          resolve,
+        };
+      });
+    }
+
     useImperativeHandle(ref, () => ({
-      race() {
-        const engine = engineRef.current;
-        const pool = poolRef.current;
-        return new Promise<DrawCandidate>((resolve) => {
-          if (!engine || pool.length === 0) {
-            // No 2D context (so no engine) or an empty pool: resolve immediately
-            // rather than leaving the button spinning forever.
-            resolve(pool[0]);
-            return;
-          }
-          cameraRef.current = 0;
-          raceRef.current = {
-            marbles: spawnMarbles(engine, pool),
-            elapsed: 0,
-            // reduced-motion이라고 레이스를 건너뛰지 않는다. 그건 결과를 못 보게 만드는
-            // 것이지 움직임을 줄이는 게 아니다 — 대신 DrawScreen이 초기 배속을 올린다.
-            skipping: false,
-            resolve,
-          };
-        });
+      async race() {
+        const [winner] = await startRace("first");
+        return winner;
+      },
+      raceAll(onFinish) {
+        return startRace("all", onFinish);
       },
       skip() {
         if (raceRef.current) raceRef.current.skipping = true;
@@ -141,36 +177,57 @@ export const MarbleRaceCanvas = forwardRef<
       const observer = new ResizeObserver(resize);
       observer.observe(canvas);
 
-      function finish(winner: RaceMarble) {
-        const race = raceRef.current;
+      function toOrder(race: Race, ids: string[]): DrawCandidate[] {
+        const byId = new Map(race.marbles.map((m) => [m.id, m]));
+        return ids.map((id) => ({ id, label: byId.get(id)!.label }));
+      }
+
+      function finish(race: Race, order: DrawCandidate[]) {
         raceRef.current = null;
+        if (race.until === "first") {
+          flashRef.current = {
+            until: performance.now() + (reducedMotion() ? 200 : FLASH_MS),
+            label: order[0].label,
+            dim: true,
+          };
+        }
+        race.resolve(order);
+      }
+
+      // 한 스텝 진행한다. 레이스가 끝났으면 true.
+      function advanceRace(race: Race): boolean {
+        advance(engine, moversRef.current, STEP_MS, race.elapsed);
+        race.elapsed += STEP_MS;
+        if (race.until === "first") {
+          const winner = findWinner(race.marbles, race.elapsed);
+          if (!winner) return false;
+          finish(race, [{ id: winner.id, label: winner.label }]);
+          return true;
+        }
+        const next = findFinishers(race.marbles, race.finished, race.elapsed);
+        if (next.length === race.finished.length) return false;
+        race.finished = next;
+        const order = toOrder(race, next);
+        const latest = order[order.length - 1];
         flashRef.current = {
-          until: performance.now() + (reducedMotion() ? 200 : FLASH_MS),
-          label: winner.label,
+          until: performance.now() + (reducedMotion() ? 200 : FINISH_FLASH_MS),
+          label: `${order.length}등 ${latest.label}`,
+          dim: false,
         };
-        race?.resolve({ id: winner.id, label: winner.label });
+        race.onFinish?.(order);
+        if (next.length < race.marbles.length) return false;
+        finish(race, order);
+        return true;
       }
 
       function trackCamera(race: Race | null, snap: boolean) {
-        const front = race ? leader(race.marbles) : null;
+        const front = race ? leader(racing(race)) : null;
         const target = front
           ? clamp(front.body.position.y - VIEW_HEIGHT * 0.45, 0, COURSE_HEIGHT - VIEW_HEIGHT)
           : 0;
         cameraRef.current = snap
           ? target
           : cameraRef.current + (target - cameraRef.current) * CAMERA_EASE;
-      }
-
-      // 한 스텝 진행한다. 승자가 나왔으면 true.
-      function advanceRace(race: Race): boolean {
-        advance(engine, moversRef.current, STEP_MS, race.elapsed);
-        race.elapsed += STEP_MS;
-        const winner = findWinner(race.marbles, race.elapsed);
-        if (winner) {
-          finish(winner);
-          return true;
-        }
-        return false;
       }
 
       function step(now: number) {
@@ -231,7 +288,7 @@ function draw(
   engine: Engine,
   pool: DrawCandidate[],
   race: Race | null,
-  flash: { until: number; label: string } | null,
+  flash: Flash | null,
   cameraY: number
 ): void {
   ctx.clearRect(0, 0, WIDTH_UNITS + RAIL_WIDTH, VIEW_HEIGHT);
@@ -276,7 +333,7 @@ function draw(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   if (race) {
-    const front = leader(race.marbles);
+    const front = leader(racing(race));
     for (const marble of race.marbles) {
       const { x, y } = marble.body.position;
       if (y < cameraY - 30 || y > cameraY + VIEW_HEIGHT + 30) continue;
@@ -306,19 +363,31 @@ function draw(
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillText(`대기 중 ${pool.length}명 · 뽑기를 누르면 출발`, WIDTH_UNITS / 2, 22);
   } else {
-    const front = leader(race.marbles);
+    const front = leader(racing(race));
     const progress = front ? Math.round((front.body.position.y / GOAL_Y) * 100) : 0;
+    const home = race.until === "all" ? ` · 통과 ${race.finished.length}/${race.marbles.length}` : "";
     ctx.fillStyle = "#F5D76E";
     ctx.font = "700 12px system-ui, sans-serif";
-    ctx.fillText(`선두 ${front?.label ?? "-"} · ${clamp(progress, 0, 100)}%`, WIDTH_UNITS / 2, 22);
+    ctx.fillText(
+      `선두 ${front?.label ?? "-"} · ${clamp(progress, 0, 100)}%${home}`,
+      WIDTH_UNITS / 2,
+      22
+    );
   }
 
   if (flash) {
-    ctx.fillStyle = "rgba(14,17,23,.8)";
-    ctx.fillRect(0, 0, WIDTH_UNITS + RAIL_WIDTH, VIEW_HEIGHT);
+    if (flash.dim) {
+      ctx.fillStyle = "rgba(14,17,23,.8)";
+      ctx.fillRect(0, 0, WIDTH_UNITS + RAIL_WIDTH, VIEW_HEIGHT);
+    }
     ctx.fillStyle = "#FFFFFF";
-    ctx.font = "800 38px system-ui, sans-serif";
+    ctx.font = `800 ${flash.dim ? 38 : 26}px system-ui, sans-serif`;
+    if (!flash.dim) {
+      ctx.shadowColor = "rgba(0,0,0,.9)";
+      ctx.shadowBlur = 12;
+    }
     ctx.fillText(flash.label, (WIDTH_UNITS + RAIL_WIDTH) / 2, VIEW_HEIGHT / 2);
+    ctx.shadowBlur = 0;
   }
 }
 

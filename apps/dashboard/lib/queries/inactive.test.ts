@@ -31,6 +31,22 @@ afterAll(async () => {
 });
 
 describe("getInactiveReportData", () => {
+  // The date column is what an admin edits, so it must echo the stored day
+  // exactly — not a value reconstructed from the day count, which drifts by
+  // one depending on the time of day.
+  it("shows the stored last-active day itself", async () => {
+    const lastActive = new Date();
+    lastActive.setDate(lastActive.getDate() - 20);
+    lastActive.setHours(23, 30, 0, 0);
+    await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1", lastActiveAt: lastActive } });
+
+    const data = await getInactiveReportData();
+    const y = lastActive.getFullYear();
+    const m = String(lastActive.getMonth() + 1).padStart(2, "0");
+    const d = String(lastActive.getDate()).padStart(2, "0");
+    expect(data.rows[0].lastActiveDate).toBe(`${y}-${m}-${d}`);
+  });
+
   // getInactiveMembers는 kakaoUserId나 kakaoNickname이 있는 회원만 센다. 흡수한
   // 생존자가 그 조건을 만족하지 못하면 리포트가 통째로 비어 버린다.
   it("counts the survivor of an absorb as an inactivity candidate", async () => {
