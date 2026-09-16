@@ -31,6 +31,13 @@ export function effectiveKakaoNickname(m: {
   return m.kakaoNickname ?? m.absorbed.find((a) => a.kakaoNickname !== null)?.kakaoNickname ?? null;
 }
 
+function toLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export async function getInactiveReportData(): Promise<InactiveReportData> {
   const now = new Date();
   // 「내전 N회」에 취소한 판과 리셋 이전 판은 넣지 않는다(getCountedGameFilter 참고).
@@ -59,13 +66,14 @@ export async function getInactiveReportData(): Promise<InactiveReportData> {
 
   const rows: InactiveRow[] = inactive.map(({ id, daysSinceActive }) => {
     const m = byId.get(id)!;
-    const lastActiveDate = new Date(now.getTime() - daysSinceActive * 86_400_000);
     return {
       id,
       name: m.realName ?? m.discordHandle ?? "이름 미확인",
       kakaoNickname: effectiveKakaoNickname(m) ?? "카톡 미연결",
       daysSinceActive,
-      lastActiveDate: lastActiveDate.toISOString().slice(0, 10),
+      // 저장된 날 그대로 — 경과일에서 역산하면 시각에 따라 하루 어긋나고, 관리자가
+      // 고친 값이 다르게 보인다. 로컬 날짜로 쓰는 것은 import가 로컬 시각으로 넣기 때문.
+      lastActiveDate: toLocalDate(m.lastActiveAt ?? m.createdAt),
       mmr: m.mmr,
       gameCount: m._count.participants,
     };
