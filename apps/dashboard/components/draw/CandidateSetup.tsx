@@ -5,10 +5,19 @@ import type { DrawCandidate } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { nextManualId, normalizeManualName, validateNumberRange } from "@/lib/draw/candidates";
 
-export type CandidateSource = "members" | "numbers";
+// "teams" picks from the same member list as "members"; the difference is what
+// the screen does with the draw, not who is in it.
+export type CandidateSource = "members" | "numbers" | "teams";
+
+const SOURCE_LABEL: Record<CandidateSource, string> = {
+  members: "회원",
+  numbers: "숫자",
+  teams: "랜덤 팀짜기",
+};
 
 export interface CandidateSetupProps {
   pool: LinkedMemberOption[];
+  sources: readonly CandidateSource[];
   source: CandidateSource;
   onSourceChange: (source: CandidateSource) => void;
   selectedIds: Set<string>;
@@ -25,6 +34,7 @@ const FIELD =
 
 export function CandidateSetup({
   pool,
+  sources,
   source,
   onSourceChange,
   selectedIds,
@@ -75,7 +85,7 @@ export function CandidateSetup({
     <div className="flex flex-col gap-3 rounded-xl border border-white/[.07] bg-[#12161F] p-4">
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-[#0E1117] p-1">
-          {(["members", "numbers"] as const).map((s) => (
+          {sources.map((s) => (
             <button
               key={s}
               type="button"
@@ -85,7 +95,7 @@ export function CandidateSetup({
                 source === s ? "bg-[#20293A] text-white" : "text-[#8A94A6]"
               }`}
             >
-              {s === "members" ? "회원" : "숫자"}
+              {SOURCE_LABEL[s]}
             </button>
           ))}
         </div>
@@ -94,7 +104,7 @@ export function CandidateSetup({
         )}
       </div>
 
-      {source === "members" ? (
+      {source !== "numbers" ? (
         <>
           <div className="flex items-center gap-2">
             <input

@@ -58,7 +58,7 @@ export function BgmPlayer() {
       ) : (
         <>
           <select
-            className={`${FIELD} min-w-0 flex-1`}
+            className={`${FIELD} w-40 min-w-0`}
             value={selected}
             onChange={(e) => {
               setSelected(e.target.value);

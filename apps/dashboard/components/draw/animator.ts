@@ -16,4 +16,8 @@ export interface PlaybackAnimator extends DrawAnimator {
 // hands the winner back. The screen then commits that candidate to the draw state.
 export interface RaceAnimator extends DrawAnimator {
   race(): Promise<DrawCandidate>;
+  // Team draw: one race that runs until the whole field is home. onFinish fires
+  // for each crossing with the order so far, and the promise resolves with the
+  // complete order.
+  raceAll(onFinish?: (order: DrawCandidate[]) => void): Promise<DrawCandidate[]>;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignTeams,
   createDrawState,
   drawById,
   drawNext,
@@ -148,5 +149,25 @@ describe("drawById", () => {
     const state = createDrawState(people);
     drawById(state, "a");
     expect(state.drawnIds).toEqual([]);
+  });
+});
+
+describe("assignTeams", () => {
+  const order = (ids: string[]): DrawCandidate[] => ids.map((id) => ({ id, label: id }));
+
+  it("alternates BLUE, RED down the finish order", () => {
+    const { blue, red } = assignTeams(order(["a", "b", "c", "d"]));
+    expect(blue.map((c) => c.id)).toEqual(["a", "c"]);
+    expect(red.map((c) => c.id)).toEqual(["b", "d"]);
+  });
+
+  it("gives BLUE the extra member of an odd field", () => {
+    const { blue, red } = assignTeams(order(["a", "b", "c"]));
+    expect(blue.map((c) => c.id)).toEqual(["a", "c"]);
+    expect(red.map((c) => c.id)).toEqual(["b"]);
+  });
+
+  it("returns two empty teams for an empty order", () => {
+    expect(assignTeams([])).toEqual({ blue: [], red: [] });
   });
 });

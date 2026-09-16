@@ -65,3 +65,17 @@ export function drawById(
     picked,
   };
 }
+
+// Team draw on 07: the finish order alternates BLUE, RED, BLUE, RED so the
+// first two home face each other. An odd field leaves BLUE one up.
+export interface TeamAssignment {
+  blue: DrawCandidate[];
+  red: DrawCandidate[];
+}
+
+export function assignTeams(order: DrawCandidate[]): TeamAssignment {
+  return {
+    blue: order.filter((_, i) => i % 2 === 0),
+    red: order.filter((_, i) => i % 2 === 1),
+  };
+}

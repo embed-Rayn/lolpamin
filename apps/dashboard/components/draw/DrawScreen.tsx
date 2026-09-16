@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  assignTeams,
   createDrawState,
   drawById,
   drawNext,
@@ -22,6 +23,12 @@ import { MarbleRaceCanvas } from "./MarbleRaceCanvas";
 import { CandidateSetup, type CandidateSource } from "./CandidateSetup";
 import { DrawControls } from "./DrawControls";
 import { ResultList } from "./ResultList";
+import { TeamTable } from "./TeamTable";
+
+const SOURCES: Record<"cannon" | "plinko", readonly CandidateSource[]> = {
+  cannon: ["members", "numbers"],
+  plinko: ["members", "numbers", "teams"],
+};
 
 const SPEED_KEY = "lolpamin.draw.speed";
 
@@ -81,9 +88,9 @@ export function DrawScreen({
 
   const setupCandidates = useMemo(
     () =>
-      source === "members"
-        ? [...toMemberCandidates(pool, selectedIds), ...manual]
-        : toNumberCandidates(range.min, range.max),
+      source === "numbers"
+        ? toNumberCandidates(range.min, range.max)
+        : [...toMemberCandidates(pool, selectedIds), ...manual],
     [source, pool, selectedIds, manual, range]
   );
 
@@ -91,6 +98,9 @@ export function DrawScreen({
   const remaining = remainingCandidates(active);
   const drawn = drawnCandidates(active);
   const locked = drawn.length > 0;
+  // Team draw is one race for the whole field, so there is nothing to undo one
+  // pick at a time — reset is the only way back.
+  const teamMode = source === "teams";
   const remainingKey = remaining.map((c) => c.id).join(",");
 
   useEffect(() => {
@@ -105,6 +115,16 @@ export function DrawScreen({
     if (remaining.length === 0) return;
     setIsAnimating(true);
     try {
+      if (teamMode) {
+        // Every crossing lands in the table as it happens; the final order is
+        // the same list, so the resolved value only needs committing once more
+        // in case the last onFinish was skipped.
+        const commit = (order: DrawCandidate[]) =>
+          setState({ candidates: active.candidates, drawnIds: order.map((c) => c.id) });
+        const order = await raceRef.current?.raceAll(commit);
+        if (order) commit(order);
+        return;
+      }
       if (variant === "plinko") {
         // Physics decides this one, so the state is committed after the race.
         const winner = await raceRef.current?.race();
@@ -135,6 +155,7 @@ export function DrawScreen({
       <div className="flex min-w-0 flex-col gap-4">
         <CandidateSetup
           pool={pool}
+          sources={SOURCES[variant]}
           source={source}
           onSourceChange={setSource}
           selectedIds={selectedIds}
@@ -152,10 +173,10 @@ export function DrawScreen({
           <MarbleRaceCanvas ref={raceRef} remaining={remaining} speed={speed} />
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <DrawControls
-            canDraw={remaining.length > 0}
-            canUndo={drawn.length > 0}
+            canDraw={teamMode ? drawn.length === 0 && remaining.length > 0 : remaining.length > 0}
+            canUndo={!teamMode && drawn.length > 0}
             canReset={drawn.length > 0}
             isAnimating={isAnimating}
             onDraw={handleDraw}
@@ -165,15 +186,17 @@ export function DrawScreen({
             speed={speed}
             onSpeedChange={setSpeed}
           />
-          <div className="font-mono text-[13px] text-[#8A94A6]">
-            남은 {remaining.length} / 전체 {active.candidates.length}
+          <BgmPlayer />
+          <div className="ml-auto whitespace-nowrap font-mono text-[13px] text-[#8A94A6]">
+            {teamMode
+              ? `통과 ${drawn.length} / 전체 ${active.candidates.length}`
+              : `남은 ${remaining.length} / 전체 ${active.candidates.length}`}
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-4">
-        <BgmPlayer />
-        <ResultList drawn={drawn} />
+        {teamMode ? <TeamTable teams={assignTeams(drawn)} /> : <ResultList drawn={drawn} />}
       </div>
     </div>
   );

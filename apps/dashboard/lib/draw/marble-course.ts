@@ -351,6 +351,25 @@ export function findWinner(marbles: RaceMarble[], elapsedMs: number): RaceMarble
   return null;
 }
 
+// The team draw waits for the whole field. Each step appends whoever crossed
+// since the last one (lowest first, as in findWinner) to the recorded order;
+// past the time cap the stragglers are ranked by how far they got so a wedged
+// marble cannot hold the table open forever.
+export function findFinishers(
+  marbles: RaceMarble[],
+  finishedIds: string[],
+  elapsedMs: number
+): string[] {
+  const done = new Set(finishedIds);
+  const out = marbles.filter((m) => !done.has(m.id));
+  const byDepth = (a: RaceMarble, b: RaceMarble) => b.body.position.y - a.body.position.y;
+  const crossed = out.filter((m) => m.body.position.y >= GOAL_Y).sort(byDepth);
+  if (elapsedMs >= MAX_RACE_MS) {
+    return [...finishedIds, ...out.sort(byDepth).map((m) => m.id)];
+  }
+  return crossed.length === 0 ? finishedIds : [...finishedIds, ...crossed.map((m) => m.id)];
+}
+
 export function leader(marbles: RaceMarble[]): RaceMarble | null {
   return marbles.length === 0 ? null : lowest(marbles);
 }
