@@ -209,8 +209,9 @@ export function AccountMappingPanel({
             <span className="text-[13.5px] font-bold">연결된 계정</span>
             <span className="font-mono text-[12px] text-[#7A8496]">{membersWithAliases.length}</span>
           </div>
-          {/* 연결이 늘수록 길어지는 목록이라 남는 가로 폭을 빈칸이 아니라 단으로 쓴다. */}
-          <div className="grid grid-cols-1 gap-x-5 gap-y-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+          {/* 연결이 늘수록 길어지는 목록이라 남는 가로 폭을 빈칸이 아니라 단으로 쓴다.
+              넓은 창에서 5단, 줄어들면 4단, 3단까지. */}
+          <div className="grid grid-cols-3 gap-x-5 gap-y-3 p-3 xl:grid-cols-4 2xl:grid-cols-5">
             {membersWithAliases.map((m) => (
               <div key={m.id} className="flex flex-col items-start gap-1.5">
                 <span className="text-[13px] font-semibold">{m.label}</span>
