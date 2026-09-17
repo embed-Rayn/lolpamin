@@ -59,7 +59,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
   }
 
   const memberItems: NavItem[] = [
-    { key: "members", href: "/members", label: "회원 대시보드" },
+    { key: "members", href: "/members", label: "협곡 대시보드" },
     { key: "aram", href: "/aram", label: "칼바람 대시보드" },
     { key: "kakao-import", href: "/kakao-import", label: "카톡 불러오기" },
     { key: "link-accounts", href: "/link-accounts", label: "계정 연결" },
