@@ -30,6 +30,10 @@ const STATUS_LABEL: Record<Resolution, string> = {
   unresolved: "미해결",
 };
 
+// 블루/레드 진영 색. 카드 배경 틴트와 헤더 글자에만 쓰고, 좌측 줄무늬는 매칭 상태 색으로 남긴다.
+const TEAM_COLOR = { BLUE: "#4A90E2", RED: "#E05A5A" } as const;
+const TEAM_TINT = { BLUE: "rgba(74,144,226,.06)", RED: "rgba(224,90,90,.06)" } as const;
+
 const POSITION_LABEL: Record<string, string> = {
   TOP: "탑",
   JUNGLE: "정글",
@@ -151,24 +155,25 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     return (
       <div
         key={slot.puuid}
-        className="flex gap-2.5 rounded-lg border border-white/[.06] bg-[#0F131B] p-2.5"
-        style={{ borderLeft: `3px solid ${STRIPE[current.resolution]}` }}
+        className="flex gap-2.5 rounded-lg border border-white/[.06] p-2.5"
+        style={{ borderLeft: `3px solid ${STRIPE[current.resolution]}`, background: TEAM_TINT[slot.team] }}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="flex items-baseline gap-2">
-            {/* 이름 매칭이 실패해도 "와윅 15/2/4 탑"을 보면 사람은 누구인지 안다. */}
-            <span className="text-[13.5px] font-bold">{slot.champion}</span>
-            <span className="font-mono text-[12.5px] text-[#B7C0D0]">
+          {/* 매칭은 사람을 확인하는 일이라 Riot ID가 첫 줄이다. */}
+          <div className="truncate text-[14px] font-bold text-[#E6EAF2]">
+            {slot.gameName}#{slot.tagLine}
+            {slot.wasAfk && <span className="ml-1.5 text-[12px] font-normal text-[#EE8B8B]">AFK</span>}
+            {slot.wasLeaver && <span className="ml-1.5 text-[12px] font-normal text-[#EE8B8B]">탈주</span>}
+          </div>
+          {/* 이름 매칭이 실패해도 "Warwick 15/2/4 탑"을 보면 사람은 누구인지 안다. */}
+          <div className="flex items-baseline gap-2 text-[12px] text-[#8A94A6]">
+            <span>{slot.champion}</span>
+            <span className="font-mono">
               {slot.kills}/{slot.deaths}/{slot.assists}
             </span>
-            <span className="text-[12px] text-[#6E7889]">
+            <span className="text-[#6E7889]">
               {POSITION_LABEL[slot.position] ?? slot.position} · {slot.cs}CS · Lv{slot.level}
             </span>
-          </div>
-          <div className="truncate text-[12px] text-[#8A94A6]">
-            {slot.gameName}#{slot.tagLine}
-            {slot.wasAfk && <span className="ml-1.5 text-[#EE8B8B]">AFK</span>}
-            {slot.wasLeaver && <span className="ml-1.5 text-[#EE8B8B]">탈주</span>}
           </div>
 
           {!isOpen ? (
@@ -323,7 +328,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
       {prepared && (
         <div className="flex flex-col gap-4 rounded-xl border border-white/[.06] bg-[#151A24] p-5">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[13.5px] font-bold">
+            <span className="text-[13.5px] font-bold" style={{ color: TEAM_COLOR[prepared.winner] }}>
               {prepared.winner === "BLUE" ? "블루 승" : "레드 승"}
             </span>
             <span className="text-[12px] text-[#6E7889]">
@@ -366,7 +371,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {(["BLUE", "RED"] as const).map((team) => (
               <div key={team} className="flex flex-col gap-2">
-                <div className="text-[12.5px] font-bold text-[#8A94A6]">
+                <div className="text-[12.5px] font-bold" style={{ color: TEAM_COLOR[team] }}>
                   {team === "BLUE" ? "블루팀" : "레드팀"}
                   {prepared.winner === team && <span className="ml-1.5 text-[#9BD173]">승</span>}
                 </div>
