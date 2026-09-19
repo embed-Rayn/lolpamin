@@ -9,11 +9,12 @@ export interface LeaderboardEntry {
 
 export async function getLeaderboard(
   prisma: PrismaClient,
-  limit: number
+  limit: number,
+  field: "mmr" | "aramMmr" = "mmr"
 ): Promise<LeaderboardEntry[]> {
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
-    orderBy: [{ mmr: "desc" }, { id: "asc" }],
+    orderBy: [{ [field]: "desc" }, { id: "asc" }],
     take: limit,
   });
 
@@ -21,10 +22,11 @@ export async function getLeaderboard(
   let previousMmr: number | null = null;
 
   return members.map((m, index) => {
-    if (m.mmr !== previousMmr) {
+    const value = m[field];
+    if (value !== previousMmr) {
       rank = index + 1;
-      previousMmr = m.mmr;
+      previousMmr = value;
     }
-    return { rank, name: getDisplayName(m), mmr: m.mmr };
+    return { rank, name: getDisplayName(m), mmr: value };
   });
 }

@@ -1,7 +1,7 @@
 import { REST, Routes } from "discord.js";
 import * as mmrCommand from "./commands/mmr";
-import * as mmrAramCommand from "./commands/mmr-aram";
 import * as leaderboardCommand from "./commands/leaderboard";
+import * as rankingAramCommand from "./commands/ranking-aram";
 import * as recordCommand from "./commands/record";
 
 const REQUIRED_ENV_VARS = ["DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_GUILD_ID"] as const;
@@ -14,8 +14,8 @@ for (const key of REQUIRED_ENV_VARS) {
 
 const commandPayloads = [
   mmrCommand.data.toJSON(),
-  mmrAramCommand.data.toJSON(),
   leaderboardCommand.data.toJSON(),
+  rankingAramCommand.data.toJSON(),
   recordCommand.data.toJSON(),
 ];
 
