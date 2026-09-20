@@ -14,7 +14,7 @@ export default async function MatchHistoryPage() {
   return (
     <AppShell
       activeNav="match-history"
-      pageTitle="경기 기록"
+      pageTitle="내전 상세 기록"
       pageDesc="입력한 순서대로 보기 · 가장 최근 한 판만 되돌릴 수 있습니다"
     >
       <div className="flex flex-col gap-4 px-7 pb-10 pt-6">

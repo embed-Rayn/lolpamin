@@ -29,7 +29,7 @@ export default async function AramPage({
   const isAdmin = currentAdmin !== null;
 
   return (
-    <AppShell activeNav="aram" pageTitle="칼바람 대시보드" pageDesc="칼바람 내전 전용 MMR과 전적">
+    <AppShell activeNav="aram" pageTitle="칼바람 MMR 랭킹" pageDesc="칼바람 내전 전용 MMR과 전적">
       <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
         <div className="grid grid-cols-4 gap-3">
           <StatCard label="전체 회원" value={data.totalCount} unit="명" colorClassName="text-[#E6EAF2]" />
