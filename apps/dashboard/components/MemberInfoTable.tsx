@@ -20,6 +20,13 @@ function winRateLabel(record: ModeRecord): string {
   return record.winRate === null ? "-" : `${record.winRate}%`;
 }
 
+// 협곡·칼바람 10칸(각 5칸)을 옅게 물들여 한눈에 구분되게 한다. 헤더 라벨과 같은 색
+// 계열(accent/orange)을 낮은 투명도로 쓴다. 그리드 컨테이너의 py-3가 셀이 아니라
+// 컨테이너 자체의 여백이라, 셀 배경이 위아래로 그 여백까지 덮게 하려면 -my-3 py-3로
+// 셀 상자를 그만큼 밀어냈다가 똑같이 되채운다 — 행 높이는 그대로고 배경만 꽉 찬다.
+const RIFT_CELL = "bg-accent-tint -my-3 py-3";
+const ARAM_CELL = "bg-orange/10 -my-3 py-3";
+
 export function MemberInfoTable({
   rows,
   isAdmin,
@@ -104,30 +111,30 @@ export function MemberInfoTable({
               {m.kakaoNickname}
             </div>
 
-            <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
-            <div className="text-right font-mono text-[13px] text-muted">{m.rift.games}</div>
-            <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+            <div className={`text-right font-mono text-[13.5px] font-bold ${RIFT_CELL} ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
+            <div className={`text-right font-mono text-[13px] text-muted ${RIFT_CELL}`}>{m.rift.games}</div>
+            <div className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
               {m.rift.wins}
             </div>
-            <div className={`text-right font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+            <div className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
               {m.rift.losses}
             </div>
             <div
-              className={`text-right font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
+              className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
             >
               {winRateLabel(m.rift)}
             </div>
 
-            <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
-            <div className="text-right font-mono text-[13px] text-muted">{m.aram.games}</div>
-            <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+            <div className={`text-right font-mono text-[13.5px] font-bold ${ARAM_CELL} ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
+            <div className={`text-right font-mono text-[13px] text-muted ${ARAM_CELL}`}>{m.aram.games}</div>
+            <div className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
               {m.aram.wins}
             </div>
-            <div className={`text-right font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+            <div className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
               {m.aram.losses}
             </div>
             <div
-              className={`text-right font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
+              className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
             >
               {winRateLabel(m.aram)}
             </div>

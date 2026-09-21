@@ -217,39 +217,5 @@ body {
   --rank-shine: rgba(255, 200, 150, 0.12);
 }
 
-/* 순위 배지: 월계관 대신 금속 광택의 원. 안쪽 하이라이트로 입체감을 준다. */
-.rank-badge {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  font-family: ui-monospace, monospace;
-  font-size: 14px;
-  font-weight: 800;
-  color: #10141c;
-  background: radial-gradient(circle at 35% 30%, var(--badge-hi) 0%, var(--badge-mid) 45%, var(--badge-lo) 100%);
-  box-shadow:
-    0 0 0 2px var(--badge-ring),
-    0 0 12px var(--badge-ring),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
-}
-.rank-badge-gold {
-  --badge-hi: #fff0b3;
-  --badge-mid: #f2c75c;
-  --badge-lo: #a8791b;
-  --badge-ring: rgba(242, 199, 92, 0.45);
-}
-.rank-badge-silver {
-  --badge-hi: #ffffff;
-  --badge-mid: #d5dce8;
-  --badge-lo: #7d8899;
-  --badge-ring: rgba(213, 220, 232, 0.4);
-}
-.rank-badge-bronze {
-  --badge-hi: #ffd9bd;
-  --badge-mid: #d6854a;
-  --badge-lo: #7f4a22;
-  --badge-ring: rgba(214, 133, 74, 0.45);
-}
+/* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
+   RankBadge) — 예전의 원형 그라데이션 배지 CSS는 여기서 뺐다. */
