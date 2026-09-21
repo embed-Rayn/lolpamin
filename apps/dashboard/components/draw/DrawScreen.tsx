@@ -26,7 +26,7 @@ import { ResultList } from "./ResultList";
 import { TeamTable } from "./TeamTable";
 
 const SOURCES: Record<"cannon" | "plinko", readonly CandidateSource[]> = {
-  cannon: ["members", "numbers"],
+  cannon: ["members", "numbers", "teams"],
   plinko: ["members", "numbers", "teams"],
 };
 
@@ -98,8 +98,9 @@ export function DrawScreen({
   const remaining = remainingCandidates(active);
   const drawn = drawnCandidates(active);
   const locked = drawn.length > 0;
-  // Team draw is one race for the whole field, so there is nothing to undo one
-  // pick at a time — reset is the only way back.
+  // Team draw runs the whole field in one go (one marble race, or one cannon
+  // volley), so there is nothing to undo one pick at a time — reset is the only
+  // way back.
   const teamMode = source === "teams";
   const remainingKey = remaining.map((c) => c.id).join(",");
 
@@ -115,10 +116,24 @@ export function DrawScreen({
     if (remaining.length === 0) return;
     setIsAnimating(true);
     try {
+      if (teamMode && variant === "cannon") {
+        // The cannon has no race: fire once per candidate until the pool is
+        // empty, committing each pick as it lands so the table fills in live.
+        // Draw order is the seat order assignTeams alternates over.
+        let current = active;
+        for (;;) {
+          const result = drawNext(current, secureNextIndex);
+          if (!result) break;
+          current = result.state;
+          setState(current);
+          await playbackRef.current?.play(result.picked);
+        }
+        return;
+      }
       if (teamMode) {
         // Every crossing lands in the table as it happens; the final order is
         // the same list, so the resolved value only needs committing once more
-        // in case the last onFinish was skipped.
+        // in case the last onFinish never fired.
         const commit = (order: DrawCandidate[]) =>
           setState({ candidates: active.candidates, drawnIds: order.map((c) => c.id) });
         const order = await raceRef.current?.raceAll(commit);
@@ -182,14 +197,13 @@ export function DrawScreen({
             onDraw={handleDraw}
             onUndo={handleUndo}
             onReset={handleReset}
-            onSkip={() => (variant === "plinko" ? raceRef.current : playbackRef.current)?.skip()}
             speed={speed}
             onSpeedChange={setSpeed}
           />
           <BgmPlayer />
           <div className="ml-auto whitespace-nowrap font-mono text-[13px] text-[#8A94A6]">
             {teamMode
-              ? `통과 ${drawn.length} / 전체 ${active.candidates.length}`
+              ? `${variant === "cannon" ? "발사" : "통과"} ${drawn.length} / 전체 ${active.candidates.length}`
               : `남은 ${remaining.length} / 전체 ${active.candidates.length}`}
           </div>
         </div>

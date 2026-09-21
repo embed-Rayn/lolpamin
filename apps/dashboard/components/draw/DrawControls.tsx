@@ -20,7 +20,6 @@ export interface DrawControlsProps {
   onDraw: () => void;
   onUndo: () => void;
   onReset: () => void;
-  onSkip: () => void;
   speed: number;
   onSpeedChange: (speed: number) => void;
 }
@@ -33,7 +32,6 @@ export function DrawControls({
   onDraw,
   onUndo,
   onReset,
-  onSkip,
   speed,
   onSpeedChange,
 }: DrawControlsProps) {
@@ -63,17 +61,8 @@ export function DrawControls({
       >
         리셋
       </button>
-      {isAnimating && (
-        <button
-          type="button"
-          className={`${BUTTON} bg-[#2A2033] text-[#D8B4F5] hover:bg-[#332640]`}
-          onClick={onSkip}
-        >
-          연출 스킵
-        </button>
-      )}
-
-      {/* 연출 도중에도 움직인다 — 느리게 깔다가 마지막에 올리는 식으로 쓴다. */}
+      {/* 연출 도중에도 움직인다 — 느리게 깔다가 마지막에 올리는 식으로 쓴다. 연출을
+          건너뛰는 버튼은 없다: 결과를 빨리 보고 싶으면 이 슬라이더를 끝까지 올린다. */}
       <label className="ml-2 flex items-center gap-2 text-[12.5px] text-[#8A94A6]">
         <span className="whitespace-nowrap">속도</span>
         <input

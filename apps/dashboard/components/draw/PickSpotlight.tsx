@@ -27,7 +27,6 @@ export const PickSpotlight = forwardRef<PlaybackAnimator, { remaining: DrawCandi
           timerRef.current = setTimeout(finish, 900);
         });
       },
-      skip: finish,
       sync: () => setShown(null),
     }));
 

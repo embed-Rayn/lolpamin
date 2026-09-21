@@ -1,7 +1,6 @@
 import type { DrawCandidate } from "@lolpamin/core";
 
 export interface DrawAnimator {
-  skip(): void;
   sync(remaining: DrawCandidate[]): void;
 }
 

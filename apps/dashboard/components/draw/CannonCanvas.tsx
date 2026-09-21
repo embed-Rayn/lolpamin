@@ -60,7 +60,6 @@ export const CannonCanvas = forwardRef<
           resolveRef.current = resolve;
         });
       },
-      skip: settle,
       sync(candidates) {
         poolRef.current = candidates;
       },

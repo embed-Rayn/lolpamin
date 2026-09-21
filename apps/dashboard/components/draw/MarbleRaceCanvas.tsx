@@ -31,7 +31,6 @@ import type { RaceAnimator } from "./animator";
 // leader and a rail on the right shows where everyone is on the whole drop.
 // Course geometry and the finish rule live in lib/draw/marble-course so a vitest
 // run can play hundreds of races without a browser.
-const SKIP_STEPS_PER_FRAME = 40;
 // 한 프레임이 돌 물리 스텝의 상한. 정상 동작에서는 닿지 않는다 — 4배속에 프레임 상한
 // 100ms를 다 써도 24스텝이다. 예산 계산이 어긋났을 때 브라우저가 멎지 않게 하는 빗장이다.
 const MAX_STEPS_PER_FRAME = 30;
@@ -44,7 +43,6 @@ const RAIL_WIDTH = 26;
 interface Race {
   marbles: RaceMarble[];
   elapsed: number;
-  skipping: boolean;
   // "first" ends at the first crossing; "all" records every crossing and ends
   // once the field is home (or the time cap ranks the stragglers).
   until: "first" | "all";
@@ -109,7 +107,6 @@ export const MarbleRaceCanvas = forwardRef<
           elapsed: 0,
           // reduced-motion이라고 레이스를 건너뛰지 않는다. 그건 결과를 못 보게 만드는
           // 것이지 움직임을 줄이는 게 아니다 — 대신 DrawScreen이 초기 배속을 올린다.
-          skipping: false,
           until,
           finished: [],
           onFinish,
@@ -125,9 +122,6 @@ export const MarbleRaceCanvas = forwardRef<
       },
       raceAll(onFinish) {
         return startRace("all", onFinish);
-      },
-      skip() {
-        if (raceRef.current) raceRef.current.skipping = true;
       },
       sync(candidates) {
         poolRef.current = candidates;
@@ -220,14 +214,12 @@ export const MarbleRaceCanvas = forwardRef<
         return true;
       }
 
-      function trackCamera(race: Race | null, snap: boolean) {
+      function trackCamera(race: Race | null) {
         const front = race ? leader(racing(race)) : null;
         const target = front
           ? clamp(front.body.position.y - VIEW_HEIGHT * 0.45, 0, COURSE_HEIGHT - VIEW_HEIGHT)
           : 0;
-        cameraRef.current = snap
-          ? target
-          : cameraRef.current + (target - cameraRef.current) * CAMERA_EASE;
+        cameraRef.current += (target - cameraRef.current) * CAMERA_EASE;
       }
 
       function step(now: number) {
@@ -235,28 +227,20 @@ export const MarbleRaceCanvas = forwardRef<
         const delta = lastNow === null ? 0 : now - lastNow;
         lastNow = now;
 
-        if (race?.skipping) {
-          // 스킵은 결과를 지금 보겠다는 조작이라 실시간·배속과 무관하게 최대 속도로 돈다.
-          budget = 0;
-          for (let i = 0; i < SKIP_STEPS_PER_FRAME && raceRef.current; i++) {
-            if (advanceRace(race)) break;
-          }
-        } else {
-          // 프레임당 한 스텝이 아니라 실제 경과 시간만큼 돌린다. 그래야 144Hz 모니터에서
-          // 레이스가 2.4배 빨라지지 않고, 배속이 화면과 무관하게 같은 뜻을 갖는다.
-          budget += frameBudget(delta, speedRef.current);
-          const drained = drainBudget(budget, STEP_MS, MAX_STEPS_PER_FRAME);
-          budget = drained.rest;
-          for (let i = 0; i < drained.steps; i++) {
-            if (!race) {
-              advance(engine, moversRef.current, STEP_MS, now);
-            } else if (!raceRef.current || advanceRace(race)) {
-              break;
-            }
+        // 프레임당 한 스텝이 아니라 실제 경과 시간만큼 돌린다. 그래야 144Hz 모니터에서
+        // 레이스가 2.4배 빨라지지 않고, 배속이 화면과 무관하게 같은 뜻을 갖는다.
+        budget += frameBudget(delta, speedRef.current);
+        const drained = drainBudget(budget, STEP_MS, MAX_STEPS_PER_FRAME);
+        budget = drained.rest;
+        for (let i = 0; i < drained.steps; i++) {
+          if (!race) {
+            advance(engine, moversRef.current, STEP_MS, now);
+          } else if (!raceRef.current || advanceRace(race)) {
+            break;
           }
         }
 
-        trackCamera(raceRef.current, race?.skipping ?? false);
+        trackCamera(raceRef.current);
 
         if (flashRef.current && now >= flashRef.current.until) flashRef.current = null;
         draw(ctx!, engine, poolRef.current, raceRef.current, flashRef.current, cameraRef.current);
