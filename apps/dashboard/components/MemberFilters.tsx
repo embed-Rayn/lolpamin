@@ -35,7 +35,7 @@ export function MemberFilters({
   }
 
   return (
-    <div className="flex items-center justify-between border-b border-white/[.06] px-5 py-3.5">
+    <div className="flex items-center justify-between border-b border-ink/[.06] px-5 py-3.5">
       <div className="flex items-center gap-3">
         <h2 className="m-0 text-[14.5px] font-bold">전체 회원</h2>
         <div className="flex gap-1">
@@ -45,8 +45,8 @@ export function MemberFilters({
               onClick={() => updateParams({ filter: f.key })}
               className={`rounded-md border px-2.5 py-1 text-[12.5px] font-semibold ${
                 activeFilter === f.key
-                  ? "border-[#4472C4]/45 bg-[#4472C4]/[.18] text-[#8FB4F5]"
-                  : "border-white/[.09] bg-transparent text-[#7A8496]"
+                  ? "border-accent/45 bg-accent/[.18] text-accent-soft"
+                  : "border-ink/[.09] bg-transparent text-faint"
               }`}
             >
               {f.label}
@@ -58,7 +58,7 @@ export function MemberFilters({
         defaultValue={query}
         onChange={(e) => updateParams({ q: e.target.value })}
         placeholder="실명 · 카톡 · 디코 검색"
-        className="w-56 rounded-lg border border-white/[.09] bg-[#0F131B] px-2.5 py-1.5 text-[13px] text-[#E6EAF2] outline-none focus:border-[#4472C4]"
+        className="w-56 rounded-lg border border-ink/[.09] bg-inset px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
       />
     </div>
   );

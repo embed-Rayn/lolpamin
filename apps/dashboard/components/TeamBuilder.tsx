@@ -67,7 +67,7 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
     // 바깥쪽(56px 트랙 바깥 가장자리)으로 정렬한다.
     const scoreCell = (
       <div
-        className={`font-mono text-[15.5px] font-bold text-[#E6EAF2] ${
+        className={`font-mono text-[15.5px] font-bold text-fg ${
           side === "blue" ? "text-right" : "text-left"
         }`}
       >
@@ -78,7 +78,7 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
     const tierCell = (
       <div className="min-w-0">
         {member === null ? (
-          <div className="text-[13.5px] text-[#5C6577]">—</div>
+          <div className="text-[13.5px] text-ghost">—</div>
         ) : (
           <MemberTierCell key={member.id} memberId={member.id} tier={member.tier} isAdmin={isAdmin} />
         )}
@@ -92,7 +92,7 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
         <select
           value={id ?? ""}
           onChange={(e) => seat(side, position, e.target.value === "" ? null : e.target.value)}
-          className="w-full min-w-0 cursor-pointer rounded-md border border-white/[.09] bg-[#0F131B] px-1.5 py-1 text-[13.5px] text-[#E6EAF2] outline-none focus:border-[#4472C4]"
+          className="w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-[13.5px] text-fg outline-none focus:border-accent"
         >
           <option value="">— 비어 있음 —</option>
           {candidates(id).map((p) => (
@@ -121,22 +121,22 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
       <div className="flex items-center justify-between">
         <div className="flex items-baseline gap-2.5">
           <h2 className="m-0 text-[14px] font-bold">팀 배치</h2>
-          <span className="text-[12px] text-[#6E7889]">
+          <span className="text-[12px] text-faint">
             매핑 완료 회원만 · 짠 팀은 저장되지 않습니다
           </span>
         </div>
         <button
           type="button"
           onClick={() => setSlots(emptySlots())}
-          className="rounded-lg bg-[#20293A] px-3 py-1.5 text-[13px] font-bold text-[#C7D0DF] transition-colors hover:bg-[#27324A]"
+          className="rounded-lg bg-raised px-3 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover"
         >
           전부 비우기
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-white/[.06] bg-[#151A24] p-5">
+      <div className="overflow-x-auto rounded-xl border border-ink/[.06] bg-surface p-5">
         <div className="min-w-[860px]">
-          <div className={`${GRID} border-b border-white/[.06] pb-2 text-[12.5px] font-bold tracking-wide text-[#6E7889]`}>
+          <div className={`${GRID} border-b border-ink/[.06] pb-2 text-[12.5px] font-bold tracking-wide text-faint`}>
             <div className="text-right">점수</div>
             <div>티어</div>
             <div>블루</div>
@@ -147,9 +147,9 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
           </div>
 
           {POSITIONS.map((position) => (
-            <div key={position} className={`${GRID} border-b border-white/[.04] py-3`}>
+            <div key={position} className={`${GRID} border-b border-ink/[.04] py-3`}>
               {slotCells("blue", position)}
-              <div className="pt-1.5 text-center font-mono text-[13px] font-bold text-[#8A94A6]">
+              <div className="pt-1.5 text-center font-mono text-[13px] font-bold text-muted">
                 {position}
               </div>
               {slotCells("red", position)}
@@ -157,17 +157,17 @@ export function TeamBuilder({ pool, isAdmin }: { pool: LinkedMemberOption[]; isA
           ))}
 
           <div className={`${GRID} pt-3 text-[15.5px] font-bold`}>
-            <div className="text-right font-mono text-[#8FB4F5]">{blueTotal}</div>
+            <div className="text-right font-mono text-accent-soft">{blueTotal}</div>
             <div />
             <div />
-            <div className="text-center text-[13px] text-[#8A94A6]">합</div>
+            <div className="text-center text-[13px] text-muted">합</div>
             <div />
             <div />
-            <div className="text-left font-mono text-[#EE8B8B]">{redTotal}</div>
+            <div className="text-left font-mono text-danger-soft">{redTotal}</div>
           </div>
 
-          <div className="pt-2 text-center text-[12.5px] text-[#6E7889]">
-            차이 <span className="font-mono font-bold text-[#E6EAF2]">{Math.abs(blueTotal - redTotal)}</span>
+          <div className="pt-2 text-center text-[12.5px] text-faint">
+            차이 <span className="font-mono font-bold text-fg">{Math.abs(blueTotal - redTotal)}</span>
           </div>
         </div>
       </div>

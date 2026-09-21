@@ -30,12 +30,25 @@ export default async function MemberInfoPage({
   return (
     <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어">
       <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard label="전체 회원" value={summary.totalCount} unit="명" colorClassName="text-[#E6EAF2]" />
-          <StatCard label="평균 협곡 MMR" value={summary.averageRiftMmr} unit="점" colorClassName="text-[#8FB4F5]" />
-          <StatCard label="평균 칼바람 MMR" value={summary.averageAramMmr} unit="점" colorClassName="text-[#F2985C]" />
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard label="전체 회원" value={summary.totalCount} unit="명" colorClassName="text-fg" icon="users" />
+          <StatCard
+            label="평균 협곡 MMR"
+            value={summary.averageRiftMmr}
+            unit="점"
+            colorClassName="text-accent-soft"
+            icon="swords"
+          />
+          <StatCard
+            label="평균 칼바람 MMR"
+            value={summary.averageAramMmr}
+            unit="점"
+            colorClassName="text-orange"
+            icon="snowflake"
+            iconClassName="text-orange"
+          />
         </div>
-        <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
+        <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberInfoSearch query={query} />
           <MemberInfoTable rows={rows} isAdmin={currentAdmin !== null} sort={sort} dir={dir} query={query} />
         </section>

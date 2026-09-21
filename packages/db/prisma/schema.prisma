@@ -227,3 +227,12 @@ model RiotAccount {
   @@index([memberId])
   @@index([absorbedFromId])
 }
+
+// 사이트 전체에 적용되는 스킨 등 운영 설정. 한 행(id = "default")만 쓴다 — MmrSetting과
+// 같은 싱글턴 패턴. 스킨은 관리자가 /admins에서 고르고 모든 방문자에게 같은 것이 보인다.
+model SiteSetting {
+  id          String   @id
+  theme       String   @default("clean")
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}

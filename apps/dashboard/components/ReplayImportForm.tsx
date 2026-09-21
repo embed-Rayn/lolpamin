@@ -15,11 +15,11 @@ interface SlotState {
 }
 
 const STRIPE: Record<Resolution, string> = {
-  confirmed: "#70AD47",
-  manual: "#70AD47",
-  auto: "#4472C4",
-  outsider: "#5C6577",
-  unresolved: "#C9A227",
+  confirmed: "rgb(var(--c-success))",
+  manual: "rgb(var(--c-success))",
+  auto: "rgb(var(--c-accent))",
+  outsider: "rgb(var(--c-ghost))",
+  unresolved: "rgb(var(--c-gold-deep))",
 };
 
 const STATUS_LABEL: Record<Resolution, string> = {
@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<Resolution, string> = {
 };
 
 // 블루/레드 진영 색. 카드 배경 틴트와 헤더 글자에만 쓰고, 좌측 줄무늬는 매칭 상태 색으로 남긴다.
-const TEAM_COLOR = { BLUE: "#4A90E2", RED: "#E05A5A" } as const;
+const TEAM_COLOR = { BLUE: "rgb(var(--c-accent))", RED: "rgb(var(--c-danger))" } as const;
 const TEAM_TINT = { BLUE: "rgba(74,144,226,.06)", RED: "rgba(224,90,90,.06)" } as const;
 
 const POSITION_LABEL: Record<string, string> = {
@@ -155,30 +155,30 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     return (
       <div
         key={slot.puuid}
-        className="flex gap-2.5 rounded-lg border border-white/[.06] p-2.5"
+        className="flex gap-2.5 rounded-lg border border-ink/[.06] p-2.5"
         style={{ borderLeft: `3px solid ${STRIPE[current.resolution]}`, background: TEAM_TINT[slot.team] }}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {/* 매칭은 사람을 확인하는 일이라 Riot ID가 첫 줄이다. */}
-          <div className="truncate text-[14px] font-bold text-[#E6EAF2]">
+          <div className="truncate text-[14px] font-bold text-fg">
             {slot.gameName}#{slot.tagLine}
-            {slot.wasAfk && <span className="ml-1.5 text-[12px] font-normal text-[#EE8B8B]">AFK</span>}
-            {slot.wasLeaver && <span className="ml-1.5 text-[12px] font-normal text-[#EE8B8B]">탈주</span>}
+            {slot.wasAfk && <span className="ml-1.5 text-[12px] font-normal text-danger-soft">AFK</span>}
+            {slot.wasLeaver && <span className="ml-1.5 text-[12px] font-normal text-danger-soft">탈주</span>}
           </div>
           {/* 이름 매칭이 실패해도 "Warwick 15/2/4 탑"을 보면 사람은 누구인지 안다. */}
-          <div className="flex items-baseline gap-2 text-[12px] text-[#8A94A6]">
+          <div className="flex items-baseline gap-2 text-[12px] text-muted">
             <span>{slot.champion}</span>
             <span className="font-mono">
               {slot.kills}/{slot.deaths}/{slot.assists}
             </span>
-            <span className="text-[#6E7889]">
+            <span className="text-faint">
               {POSITION_LABEL[slot.position] ?? slot.position} · {slot.cs}CS · Lv{slot.level}
             </span>
           </div>
 
           {!isOpen ? (
             <div className="flex items-center gap-2">
-              <span className="text-[12.5px] font-bold text-[#E6EAF2]">
+              <span className="text-[12.5px] font-bold text-fg">
                 {current.memberId ? labelOf(current.memberId) : "회원 아님"}
               </span>
               <span className="text-[11.5px]" style={{ color: STRIPE[current.resolution] }}>
@@ -187,7 +187,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
               <button
                 type="button"
                 onClick={() => assign(slot.puuid, null, "unresolved")}
-                className="cursor-pointer text-[11.5px] text-[#6E7889] underline"
+                className="cursor-pointer text-[11.5px] text-faint underline"
               >
                 바꾸기
               </button>
@@ -201,22 +201,22 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
                     key={c.memberId}
                     type="button"
                     onClick={() => assign(slot.puuid, c.memberId, "manual")}
-                    className="cursor-pointer rounded-md border border-[#4472C4]/40 bg-[#4472C4]/[.12] px-2 py-1 text-left"
+                    className="cursor-pointer rounded-md border border-accent/40 bg-accent/[.12] px-2 py-1 text-left"
                   >
-                    <span className="text-[12.5px] font-bold text-[#8FB4F5]">{c.label}</span>
-                    <span className="ml-1.5 font-mono text-[11px] text-[#6E7889]">{c.score}</span>
-                    <span className="ml-1.5 text-[11px] text-[#6E7889]">{c.reasons.join(" · ")}</span>
+                    <span className="text-[12.5px] font-bold text-accent-soft">{c.label}</span>
+                    <span className="ml-1.5 font-mono text-[11px] text-faint">{c.score}</span>
+                    <span className="ml-1.5 text-[11px] text-faint">{c.reasons.join(" · ")}</span>
                   </button>
                 ))}
                 {candidates.length === 0 && (
-                  <span className="text-[11.5px] text-[#6E7889]">후보 없음 — 직접 고르거나 회원 아님으로 두세요</span>
+                  <span className="text-[11.5px] text-faint">후보 없음 — 직접 고르거나 회원 아님으로 두세요</span>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value=""
                   onChange={(e) => e.target.value && assign(slot.puuid, e.target.value, "manual")}
-                  className="rounded-md border border-white/[.12] bg-[#151A24] px-2 py-1 text-[12.5px]"
+                  className="rounded-md border border-ink/[.12] bg-surface px-2 py-1 text-[12.5px]"
                 >
                   <option value="">회원 직접 선택…</option>
                   {others.map((m) => (
@@ -228,7 +228,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
                 <button
                   type="button"
                   onClick={() => assign(slot.puuid, null, "outsider")}
-                  className="cursor-pointer rounded-md border border-white/[.12] px-2 py-1 text-[12.5px] text-[#8A94A6]"
+                  className="cursor-pointer rounded-md border border-ink/[.12] px-2 py-1 text-[12.5px] text-muted"
                 >
                   회원 아님
                 </button>
@@ -242,23 +242,23 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4 rounded-xl border border-white/[.06] bg-[#151A24] p-5">
+      <div className="flex flex-col gap-4 rounded-xl border border-ink/[.06] bg-surface p-5">
         <div className="flex flex-col gap-1.5">
           <span className="text-[13.5px] font-bold">리플레이 파일 (.rofl) 업로드</span>
-          <span className="text-[12px] text-[#6E7889]">
+          <span className="text-[12px] text-faint">
             롤 클라이언트 &gt; 내 기록에서 내려받은 파일입니다. 같은 경기를 두 번 올리면 거부됩니다.
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[12px] font-bold text-[#6E7889]">게임 모드</span>
-          <div className="flex overflow-hidden rounded-lg border border-white/[.12]">
+          <span className="text-[12px] font-bold text-faint">게임 모드</span>
+          <div className="flex overflow-hidden rounded-lg border border-ink/[.12]">
             {(["RIFT", "ARAM"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
                 className={`px-3 py-1.5 text-[12.5px] font-bold ${
-                  mode === m ? "cursor-pointer bg-[#4472C4] text-white" : "cursor-pointer bg-transparent text-[#7A8496]"
+                  mode === m ? "cursor-pointer bg-accent text-white" : "cursor-pointer bg-transparent text-faint"
                 }`}
               >
                 {m === "RIFT" ? "협곡" : "칼바람"}
@@ -298,58 +298,58 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
               disabled={isBusy}
               className={`flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-8 text-center transition-colors ${
                 isDragging
-                  ? "border-[#70AD47] bg-[#70AD47]/[.10]"
-                  : "border-white/[.14] bg-[#0F131B] hover:border-white/[.24] hover:bg-[#131926]"
+                  ? "border-success bg-success/[.10]"
+                  : "border-ink/[.14] bg-inset hover:border-ink/[.24] hover:bg-inset"
               }`}
             >
-              <span className="text-[13.5px] font-bold text-[#B7C0D0]">
+              <span className="text-[13.5px] font-bold text-fg-2">
                 {isDragging ? "여기에 놓으세요" : "rofl 파일을 끌어다 놓거나 클릭해서 선택"}
               </span>
-              <span className="text-[12px] text-[#6E7889]">{file ? file.name : "리플레이 파일 하나"}</span>
+              <span className="text-[12px] text-faint">{file ? file.name : "리플레이 파일 하나"}</span>
             </button>
           </>
         ) : (
-          <div className="rounded-lg border border-white/[.06] bg-[#0F131B] p-3 text-[12.5px] text-[#8A94A6]">
+          <div className="rounded-lg border border-ink/[.06] bg-inset p-3 text-[12.5px] text-muted">
             변경하려면 관리자 로그인이 필요합니다.
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.12] p-2.5 text-[12px] text-[#EE8B8B]">
+          <div className="rounded-lg border border-danger/30 bg-danger/[.12] p-2.5 text-[12px] text-danger-soft">
             {error}
           </div>
         )}
         {savedCount !== null && (
-          <div className="rounded-lg border border-[#70AD47]/30 bg-[#70AD47]/[.12] p-2.5 text-[12px] text-[#9BD173]">
+          <div className="rounded-lg border border-success/30 bg-success/[.12] p-2.5 text-[12px] text-success-soft">
             저장했습니다. {savedCount}명의 MMR이 갱신됐습니다.
           </div>
         )}
       </div>
 
       {prepared && (
-        <div className="flex flex-col gap-4 rounded-xl border border-white/[.06] bg-[#151A24] p-5">
+        <div className="flex flex-col gap-4 rounded-xl border border-ink/[.06] bg-surface p-5">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[13.5px] font-bold" style={{ color: TEAM_COLOR[prepared.winner] }}>
               {prepared.winner === "BLUE" ? "블루 승" : "레드 승"}
             </span>
-            <span className="text-[12px] text-[#6E7889]">
+            <span className="text-[12px] text-faint">
               패치 {prepared.gameVersion} · {formatDuration(prepared.gameLengthMs)}
             </span>
             {/* 검증 칩. AFK·탈주가 있어도 막지 않는다 — 판단은 관리자 몫이다. */}
             {prepared.slots.some((s) => s.wasAfk) ? (
-              <span className="rounded-md bg-[#C9A227]/[.15] px-2 py-0.5 text-[11.5px] text-[#C9A227]">AFK 있음</span>
+              <span className="rounded-md bg-gold-deep/[.15] px-2 py-0.5 text-[11.5px] text-gold-deep">AFK 있음</span>
             ) : (
-              <span className="rounded-md bg-[#70AD47]/[.12] px-2 py-0.5 text-[11.5px] text-[#9BD173]">AFK 없음</span>
+              <span className="rounded-md bg-success/[.12] px-2 py-0.5 text-[11.5px] text-success-soft">AFK 없음</span>
             )}
             {prepared.slots.some((s) => s.wasLeaver) && (
-              <span className="rounded-md bg-[#C9A227]/[.15] px-2 py-0.5 text-[11.5px] text-[#C9A227]">탈주 있음</span>
+              <span className="rounded-md bg-gold-deep/[.15] px-2 py-0.5 text-[11.5px] text-gold-deep">탈주 있음</span>
             )}
             {prepared.endedInSurrender && (
-              <span className="rounded-md bg-white/[.06] px-2 py-0.5 text-[11.5px] text-[#8A94A6]">항복 종료</span>
+              <span className="rounded-md bg-ink/[.06] px-2 py-0.5 text-[11.5px] text-muted">항복 종료</span>
             )}
             <span
               className="ml-auto rounded-md px-2 py-0.5 text-[11.5px] font-bold"
               style={{
-                color: unresolved > 0 ? "#C9A227" : "#9BD173",
+                color: unresolved > 0 ? "rgb(var(--c-gold-deep))" : "rgb(var(--c-success-soft))",
                 background: unresolved > 0 ? "rgba(201,162,39,.15)" : "rgba(112,173,71,.12)",
               }}
             >
@@ -357,14 +357,14 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
             </span>
           </div>
 
-          <label className="flex w-fit items-center gap-2 text-[12.5px] text-[#8A94A6]">
+          <label className="flex w-fit items-center gap-2 text-[12.5px] text-muted">
             경기 날짜
             {/* 리플레이에 벽시계 시각이 없다. 파일의 lastModified를 기본값으로 두고 고치게 한다. */}
             <input
               type="date"
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
-              className="rounded-md border border-white/[.12] bg-[#0F131B] px-2 py-1 text-[12.5px] text-[#E6EAF2]"
+              className="rounded-md border border-ink/[.12] bg-inset px-2 py-1 text-[12.5px] text-fg"
             />
           </label>
 
@@ -373,7 +373,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
               <div key={team} className="flex flex-col gap-2">
                 <div className="text-[12.5px] font-bold" style={{ color: TEAM_COLOR[team] }}>
                   {team === "BLUE" ? "블루팀" : "레드팀"}
-                  {prepared.winner === team && <span className="ml-1.5 text-[#9BD173]">승</span>}
+                  {prepared.winner === team && <span className="ml-1.5 text-success-soft">승</span>}
                 </div>
                 {prepared.slots.filter((s) => s.team === team).map(renderSlot)}
               </div>
@@ -385,8 +385,8 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
             disabled={!isAdmin || isBusy || unresolved > 0}
             className={`w-fit rounded-lg px-4 py-2 text-[13.5px] font-extrabold ${
               isAdmin && !isBusy && unresolved === 0
-                ? "cursor-pointer bg-[#70AD47] text-[#0E1117]"
-                : "cursor-not-allowed bg-[#1E2534] text-[#5C6577]"
+                ? "cursor-pointer bg-success text-page"
+                : "cursor-not-allowed bg-hover text-ghost"
             }`}
           >
             {isBusy ? "처리 중..." : unresolved > 0 ? `미해결 ${unresolved}명을 먼저 처리하세요` : "경기 저장"}

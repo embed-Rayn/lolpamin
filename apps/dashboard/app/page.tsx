@@ -11,7 +11,7 @@ export default function HomePage() {
         <img
           src="/banner.png"
           alt="롤파민"
-          className="w-full max-w-4xl rounded-xl border border-white/[.06]"
+          className="w-full max-w-4xl rounded-xl border border-ink/[.06]"
         />
       </div>
     </AppShell>

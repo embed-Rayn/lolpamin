@@ -7,8 +7,8 @@ import { MemberNoteCell } from "@/components/MemberNoteCell";
 const GRID = "grid-cols-[40px_72px_1.3fr_58px_38px_34px_34px_54px_58px_38px_34px_34px_54px_112px_1.3fr]";
 
 function mmrClassName(mmr: number): string {
-  if (mmr === 0) return "text-[#5C6577]";
-  return mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]";
+  if (mmr === 0) return "text-ghost";
+  return mmr >= 1600 ? "text-gold" : "text-fg";
 }
 
 // 이름은 오름차순, 숫자는 내림차순으로 시작한다 — 가나다순으로 찾는 칸과 "가장 많이/잘한
@@ -47,7 +47,7 @@ export function MemberInfoTable({
 
   function SortLink({ sortKey, label, align }: { sortKey: MemberInfoSort; label: string; align?: "right" }) {
     return (
-      <Link href={sortHref(sortKey)} className={`hover:text-[#B7C0D0] ${align === "right" ? "text-right" : ""}`}>
+      <Link href={sortHref(sortKey)} className={`hover:text-fg-2 ${align === "right" ? "text-right" : ""}`}>
         {label}
         {sortMark(sortKey)}
       </Link>
@@ -57,18 +57,18 @@ export function MemberInfoTable({
   return (
     <>
       <div
-        className={`grid ${GRID} gap-3 border-b border-white/[.06] bg-[#12161F] px-5 pt-3 text-[11.5px] font-bold tracking-wide text-[#5C6577]`}
+        className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pt-3 text-[11.5px] font-bold tracking-wide text-ghost`}
       >
         <div />
         <div />
         <div />
-        <div className="col-span-5 text-center text-[#8FB4F5]">협곡</div>
-        <div className="col-span-5 text-center text-[#F2985C]">칼바람</div>
+        <div className="col-span-5 text-center text-accent-soft">협곡</div>
+        <div className="col-span-5 text-center text-orange">칼바람</div>
         <div />
         <div />
       </div>
       <div
-        className={`grid ${GRID} gap-3 border-b border-white/[.06] bg-[#12161F] px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-[#6E7889]`}
+        className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-faint`}
       >
         <div className="text-right">NO.</div>
         <SortLink sortKey="realName" label="이름" />
@@ -87,45 +87,45 @@ export function MemberInfoTable({
         <div>비고</div>
       </div>
       {rows.length === 0 && (
-        <div className="px-5 py-8 text-center text-[13.5px] text-[#5C6577]">조건에 맞는 회원이 없습니다.</div>
+        <div className="px-5 py-8 text-center text-[13.5px] text-ghost">조건에 맞는 회원이 없습니다.</div>
       )}
       {rows.map((m, index) => (
         <div
           key={m.id}
-          className={`grid ${GRID} items-center gap-3 border-b border-white/[.04] px-5 py-3 text-[14px] hover:bg-[#181E29]`}
+          className={`grid ${GRID} items-center gap-3 border-b border-ink/[.04] px-5 py-3 text-[14px] hover:bg-hover`}
         >
-          <div className="text-right font-mono text-[12.5px] text-[#5C6577]">{index + 1}</div>
-          <div className={`truncate font-semibold ${m.realName === "-" ? "text-[#5C6577]" : ""}`}>{m.realName}</div>
+          <div className="text-right font-mono text-[12.5px] text-ghost">{index + 1}</div>
+          <div className={`truncate font-semibold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
           <div
-            className={`truncate font-mono text-[13px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}
+            className={`truncate font-mono text-[13px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-gold"}`}
           >
             {m.kakaoNickname}
           </div>
 
           <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
-          <div className="text-right font-mono text-[13px] text-[#8A94A6]">{m.rift.games}</div>
-          <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
+          <div className="text-right font-mono text-[13px] text-muted">{m.rift.games}</div>
+          <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
             {m.rift.wins}
           </div>
-          <div className={`text-right font-mono text-[13px] ${m.rift.losses > 0 ? "text-[#EE8B8B]" : "text-[#5C6577]"}`}>
+          <div className={`text-right font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
             {m.rift.losses}
           </div>
           <div
-            className={`text-right font-mono text-[13px] ${m.rift.winRate === null ? "text-[#5C6577]" : "text-[#E6EAF2]"}`}
+            className={`text-right font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
           >
             {winRateLabel(m.rift)}
           </div>
 
           <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
-          <div className="text-right font-mono text-[13px] text-[#8A94A6]">{m.aram.games}</div>
-          <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
+          <div className="text-right font-mono text-[13px] text-muted">{m.aram.games}</div>
+          <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
             {m.aram.wins}
           </div>
-          <div className={`text-right font-mono text-[13px] ${m.aram.losses > 0 ? "text-[#EE8B8B]" : "text-[#5C6577]"}`}>
+          <div className={`text-right font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
             {m.aram.losses}
           </div>
           <div
-            className={`text-right font-mono text-[13px] ${m.aram.winRate === null ? "text-[#5C6577]" : "text-[#E6EAF2]"}`}
+            className={`text-right font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
           >
             {winRateLabel(m.aram)}
           </div>

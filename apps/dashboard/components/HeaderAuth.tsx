@@ -9,7 +9,7 @@ export function HeaderAuth({ username }: { username: string | null }) {
 
   if (!username) {
     return (
-      <Link href="/login" className="rounded-md border border-white/[.10] px-2.5 py-1 text-[12.5px] font-bold text-[#B7C0D0] hover:bg-white/[.06]">
+      <Link href="/login" className="rounded-md border border-ink/[.10] px-2.5 py-1 text-[12.5px] font-bold text-fg-2 hover:bg-ink/[.06]">
         로그인
       </Link>
     );
@@ -17,12 +17,12 @@ export function HeaderAuth({ username }: { username: string | null }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[12.5px] text-[#B7C0D0]">{username}</span>
+      <span className="text-[12.5px] text-fg-2">{username}</span>
       <button
         type="button"
         disabled={isPending}
         onClick={() => startTransition(async () => { await logoutAction(); })}
-        className="rounded-md border border-white/[.10] px-2.5 py-1 text-[12.5px] font-bold text-[#8A94A6] hover:bg-white/[.06]"
+        className="rounded-md border border-ink/[.10] px-2.5 py-1 text-[12.5px] font-bold text-muted hover:bg-ink/[.06]"
       >
         로그아웃
       </button>

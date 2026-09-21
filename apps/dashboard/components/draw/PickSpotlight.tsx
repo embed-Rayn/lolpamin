@@ -31,9 +31,9 @@ export const PickSpotlight = forwardRef<PlaybackAnimator, { remaining: DrawCandi
     }));
 
     return (
-      <div className="flex h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-white/[.07] bg-[#12161F]">
-        <div className="text-[12.5px] text-[#6E7889]">남은 인원 {remaining.length}명</div>
-        <div className="text-[40px] font-extrabold text-white">{shown ? shown.label : "—"}</div>
+      <div className="flex h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-ink/[.07] bg-surface-2">
+        <div className="text-[12.5px] text-faint">남은 인원 {remaining.length}명</div>
+        <div className="text-[40px] font-extrabold text-fg">{shown ? shown.label : "—"}</div>
       </div>
     );
   }

@@ -39,7 +39,7 @@ export function DrawControls({
     <div className="flex items-center gap-2">
       <button
         type="button"
-        className={`${BUTTON} bg-[#4472C4] text-white hover:bg-[#3862B4]`}
+        className={`${BUTTON} bg-accent text-white hover:bg-accent-hover`}
         disabled={!canDraw || isAnimating}
         onClick={onDraw}
       >
@@ -47,7 +47,7 @@ export function DrawControls({
       </button>
       <button
         type="button"
-        className={`${BUTTON} bg-[#20293A] text-[#C7D0DF] hover:bg-[#27324A]`}
+        className={`${BUTTON} bg-raised text-fg-2 hover:bg-raised-hover`}
         disabled={!canUndo || isAnimating}
         onClick={onUndo}
       >
@@ -55,7 +55,7 @@ export function DrawControls({
       </button>
       <button
         type="button"
-        className={`${BUTTON} bg-[#20293A] text-[#C7D0DF] hover:bg-[#27324A]`}
+        className={`${BUTTON} bg-raised text-fg-2 hover:bg-raised-hover`}
         disabled={!canReset || isAnimating}
         onClick={onReset}
       >
@@ -63,7 +63,7 @@ export function DrawControls({
       </button>
       {/* 연출 도중에도 움직인다 — 느리게 깔다가 마지막에 올리는 식으로 쓴다. 연출을
           건너뛰는 버튼은 없다: 결과를 빨리 보고 싶으면 이 슬라이더를 끝까지 올린다. */}
-      <label className="ml-2 flex items-center gap-2 text-[12.5px] text-[#8A94A6]">
+      <label className="ml-2 flex items-center gap-2 text-[12.5px] text-muted">
         <span className="whitespace-nowrap">속도</span>
         <input
           type="range"
@@ -73,7 +73,7 @@ export function DrawControls({
           list="draw-speed-ticks"
           value={speedToSlider(speed)}
           onChange={(e) => onSpeedChange(sliderToSpeed(Number(e.target.value)))}
-          className="h-1 w-32 cursor-pointer accent-[#4472C4]"
+          className="h-1 w-32 cursor-pointer accent-accent"
           aria-label="연출 속도"
         />
         <datalist id="draw-speed-ticks">
@@ -81,7 +81,7 @@ export function DrawControls({
             <option key={tick} value={speedToSlider(tick)} label={formatSpeed(tick)} />
           ))}
         </datalist>
-        <span className="w-11 whitespace-nowrap text-right font-mono text-[#C7D0DF]">
+        <span className="w-11 whitespace-nowrap text-right font-mono text-fg-2">
           {formatSpeed(speed)}
         </span>
       </label>

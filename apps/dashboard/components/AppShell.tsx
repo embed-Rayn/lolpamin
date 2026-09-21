@@ -2,9 +2,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers } from "@lolpamin/core";
 import { effectiveKakaoNickname } from "@/lib/queries/inactive";
-import { NavGroupLink, NavLink } from "./NavLink";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { HeaderAuth } from "./HeaderAuth";
+import { NavIcon } from "./nav-icons";
+import { SidebarNav, type SidebarNavGroup } from "./SidebarNav";
 
 export interface AppShellProps {
   activeNav:
@@ -51,118 +52,77 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
     new Date(),
   ).length;
 
-  // The sidebar is three groups and the displayed numbers come from position, so
-  // adding or removing an item keeps 1.1 / 2.2 correct without hand-editing them.
-  // A group heading is itself a link to that group's first navigable child.
-  // `disabled` items (not-yet-built pages) render as an inert row instead of a
-  // link, and admin-only items are simply left out of the array for a signed-out
-  // visitor, which is why they don't need a `disabled` flag of their own.
-  interface NavItem {
-    key: AppShellProps["activeNav"] | string;
-    href?: string;
-    label: string;
-    badge?: string;
-    disabled?: boolean;
-  }
-
-  const memberItems: NavItem[] = [
-    { key: "member-info", href: "/member-info", label: "회원 정보 페이지" },
-    { key: "rift", href: "/rift", label: "협곡 MMR 랭킹" },
-    { key: "aram", href: "/aram", label: "칼바람 MMR 랭킹" },
-    { key: "inactive", href: "/inactive", label: "미활동 리포트", badge: String(inactiveNavCount) },
+  // Four groups after the reference design. Operator-only items are left out of
+  // the arrays for a signed-out visitor (the pages themselves redirect to /login
+  // when reached by URL), and `disabled` marks pages that are not built yet.
+  const memberItems: SidebarNavGroup["items"] = [
+    { key: "member-info", href: "/member-info", label: "회원 정보", icon: "user-list" },
+    { key: "rift", href: "/rift", label: "협곡 MMR 랭킹", icon: "crown" },
+    { key: "aram", href: "/aram", label: "칼바람 MMR 랭킹", icon: "swords" },
+    { key: "inactive", href: "/inactive", label: "미활동 회원", icon: "user-clock", badge: String(inactiveNavCount) },
   ];
 
-  // The rest of member management is operator-only: hidden from the sidebar
-  // entirely for a signed-out visitor, and the pages themselves redirect to
-  // /login if reached directly by URL.
-  if (currentAdmin) {
-    memberItems.push(
-      { key: "kakao-import", href: "/kakao-import", label: "카톡 불러오기" },
-      { key: "link-accounts", href: "/link-accounts", label: "계정 연결" },
-      { key: "admins", href: "/admins", label: "관리자" },
-    );
-  }
-
-  const matchItems: NavItem[] = [
-    { key: "match-history", href: "/match-history", label: "내전 상세 기록" },
-    { key: "player-stats", label: "플레이어별 통계", disabled: true },
-    { key: "champion-stats", label: "챔피언 통계", disabled: true },
+  const matchItems: SidebarNavGroup["items"] = [
+    { key: "match-history", href: "/match-history", label: "내전 기록", icon: "file-search" },
+    { key: "player-stats", label: "플레이어 통계", icon: "bar-chart", disabled: true },
+    { key: "champion-stats", label: "챔피언 통계", icon: "trophy", disabled: true },
   ];
-
   if (currentAdmin) {
     matchItems.push(
-      { key: "matches", href: "/matches", label: "게임결과 입력" },
-      { key: "replay-import", href: "/replay-import", label: "리플레이 불러오기" },
-      { key: "team-builder", href: "/team-builder", label: "수동 팀짜기" },
+      { key: "matches", href: "/matches", label: "게임결과 입력", icon: "plus-square" },
+      { key: "replay-import", href: "/replay-import", label: "리플레이 불러오기", icon: "film" },
+      { key: "team-builder", href: "/team-builder", label: "수동 팀짜기", icon: "grid" },
     );
   }
 
-  const navGroups: Array<{ label: string; items: NavItem[] }> = [
-    { label: "회원 관리", items: memberItems },
-    { label: "경기기록", items: matchItems },
+  const groups: SidebarNavGroup[] = [
+    { key: "members", label: "회원 · 랭킹", icon: "users", items: memberItems },
+    { key: "matches", label: "경기 기록", icon: "gamepad", items: matchItems },
     {
-      label: "뽑기 게임",
+      key: "draw",
+      label: "추첨",
+      icon: "gift",
       items: [
-        { key: "draw-cannon", href: "/draw/cannon", label: "대포뽑기" },
-        { key: "draw-plinko", href: "/draw/plinko", label: "핀볼뽑기" },
+        { key: "draw-cannon", href: "/draw/cannon", label: "대포 뽑기", icon: "cube" },
+        { key: "draw-plinko", href: "/draw/plinko", label: "핀볼 뽑기", icon: "dice" },
       ],
     },
   ];
+  if (currentAdmin) {
+    groups.push({
+      key: "ops",
+      label: "운영 관리",
+      icon: "gear",
+      items: [
+        { key: "kakao-import", href: "/kakao-import", label: "카톡 불러오기", icon: "message" },
+        { key: "link-accounts", href: "/link-accounts", label: "계정 연결", icon: "link" },
+        { key: "admins", href: "/admins", label: "관리자 · 설정", icon: "shield" },
+      ],
+    });
+  }
+
+  const activeGroup = groups.find((g) => g.items.some((n) => n.key === activeNav));
 
   return (
-    <div className="flex min-h-screen bg-[#0E1117] font-sans text-[#E6EAF2]">
-      <aside className="sticky top-0 flex h-screen w-[250px] flex-none flex-col gap-6 border-r border-white/[.07] bg-[#12161F] p-3.5">
-        <Link href="/" className="flex items-center gap-2.5 px-2">
-          <div className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] bg-gradient-to-br from-[#4472C4] to-[#1E3461] text-[15px] font-extrabold text-white">
-            롤
+    <div className="flex min-h-screen bg-page font-sans text-fg">
+      <aside className="sticky top-0 flex h-screen w-[260px] flex-none flex-col gap-5 overflow-y-auto border-r border-ink/[.07] bg-[rgb(var(--sidebar-bg))] px-3.5 py-5">
+        <Link href="/" className="flex items-center gap-3 px-2">
+          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-accent-tint text-accent">
+            <NavIcon name="gamepad" size={22} />
           </div>
           <div className="flex flex-col gap-px">
-            <div className="text-[14.5px] font-bold">롤파민</div>
-            <div className="text-[12px] text-[#6E7889]">내부 운영 도구</div>
+            <div className="text-[17px] font-extrabold tracking-tight text-fg">롤파민</div>
+            <div className="text-[12px] text-faint">함께라서 더 즐거운 게임</div>
           </div>
         </Link>
 
-        <nav className="flex flex-col gap-4">
-          {navGroups.map((g, gi) => (
-            <div key={g.label} className="flex flex-col gap-0.5">
-              <NavGroupLink
-                href={g.items.find((n) => !n.disabled)?.href ?? "/"}
-                number={String(gi + 1)}
-                label={g.label}
-                active={g.items.some((n) => n.key === activeNav)}
-              />
-              {g.items.map((n, ni) =>
-                n.disabled ? (
-                  <div
-                    key={n.key}
-                    className="flex items-center gap-2 rounded-lg py-1.5 pl-3 pr-2.5 text-[13.5px] text-[#4E576A]"
-                  >
-                    <span className="w-6 flex-none font-mono text-[12px] text-[#3A4152]">{`${gi + 1}.${ni + 1}`}</span>
-                    <span className="flex-1">{n.label}</span>
-                    <span className="rounded-full bg-white/[.04] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[#5C6577]">
-                      추가예정
-                    </span>
-                  </div>
-                ) : (
-                  <NavLink
-                    key={n.key}
-                    href={n.href!}
-                    label={n.label}
-                    icon={`${gi + 1}.${ni + 1}`}
-                    active={activeNav === n.key}
-                    badge={n.badge}
-                  />
-                ),
-              )}
-            </div>
-          ))}
-        </nav>
+        <SidebarNav groups={groups} activeNav={activeNav} />
 
         <div className="mt-auto flex flex-col gap-2.5">
-          <div className="flex flex-col gap-2 rounded-[10px] border border-white/[.06] bg-[#161B26] p-3">
-            <div className="text-[12px] font-semibold text-[#6E7889]">봇 연동 상태</div>
-            <div className="flex items-center gap-1.5 text-[12.5px] text-[#B7C0D0]">
-              <span className="h-1.5 w-1.5 flex-none rounded-full bg-[#70AD47]" />
+          <div className="flex flex-col gap-2 rounded-[10px] border border-ink/[.06] bg-surface-3 p-3">
+            <div className="text-[12px] font-semibold text-faint">봇 연동 상태</div>
+            <div className="flex items-center gap-1.5 text-[12.5px] text-fg-2">
+              <span className="h-1.5 w-1.5 flex-none rounded-full bg-success" />
               Discord Bot · 정상
             </div>
           </div>
@@ -170,14 +130,26 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-[58px] flex-none items-center justify-between border-b border-white/[.07] bg-[#0E1117]/85 px-7 backdrop-blur">
-          <div className="flex items-baseline gap-2.5">
-            <h1 className="m-0 text-[17px] font-bold">{pageTitle}</h1>
-            <span className="text-[12.5px] text-[#6E7889]">{pageDesc}</span>
+        <header className="sticky top-0 z-10 flex h-[72px] flex-none items-center justify-between border-b border-ink/[.07] bg-[rgb(var(--header-bg)/0.9)] px-7 backdrop-blur">
+          <div className="flex flex-col gap-0.5">
+            <h1 className="m-0 text-[20px] font-extrabold tracking-tight">{pageTitle}</h1>
+            <div className="flex items-center gap-1.5 text-[12.5px] text-faint">
+              <Link href="/" className="hover:text-fg-2">
+                홈
+              </Link>
+              {activeGroup && (
+                <>
+                  <span className="text-ghost">›</span>
+                  <span>{activeGroup.label}</span>
+                </>
+              )}
+              <span className="text-ghost">›</span>
+              <span className="text-muted">{pageDesc}</span>
+            </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-[12.5px] text-[#8A94A6]">
-              회원 <span className="font-mono font-semibold text-[#E6EAF2]">{totalCount}</span>명
+            <div className="text-[12.5px] text-muted">
+              회원 <span className="font-mono font-semibold text-fg">{totalCount}</span>명
             </div>
             <HeaderAuth username={currentAdmin?.username ?? null} />
           </div>

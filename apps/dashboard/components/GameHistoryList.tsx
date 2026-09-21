@@ -13,11 +13,11 @@ function formatPlayedAt(playedAt: Date): string {
 function PlayerLine({ player, up }: { player: GameHistoryPlayer; up: boolean }) {
   return (
     <span className="whitespace-nowrap">
-      <span className="text-[#C7D0DF]">{player.name}</span>{" "}
-      <span className="font-mono text-[12px] text-[#6E7889]">
+      <span className="text-fg-2">{player.name}</span>{" "}
+      <span className="font-mono text-[12px] text-faint">
         {player.mmrBefore}→{player.mmrAfter}
       </span>{" "}
-      <span className={`font-mono text-[12px] ${up ? "text-[#9BD173]" : "text-[#EE8B8B]"}`}>
+      <span className={`font-mono text-[12px] ${up ? "text-success-soft" : "text-danger-soft"}`}>
         {player.delta > 0 ? `+${player.delta}` : player.delta}
       </span>
     </span>
@@ -39,7 +39,7 @@ export function GameHistoryList({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[.07] bg-[#12161F] px-5 py-12 text-center text-[13.5px] text-[#5C6577]">
+      <div className="rounded-xl border border-ink/[.07] bg-surface-2 px-5 py-12 text-center text-[13.5px] text-ghost">
         조건에 맞는 경기가 없습니다.
       </div>
     );
@@ -59,7 +59,7 @@ export function GameHistoryList({
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <div className="rounded-lg border border-[#E05A5A]/30 bg-[#E05A5A]/[.10] px-3 py-2.5 text-[13px] text-[#EE8B8B]">
+        <div className="rounded-lg border border-danger/30 bg-danger/[.10] px-3 py-2.5 text-[13px] text-danger-soft">
           {error}
         </div>
       )}
@@ -69,37 +69,37 @@ export function GameHistoryList({
           key={row.id}
           className={`rounded-xl border px-5 py-4 ${
             row.isCancelled
-              ? "border-white/[.05] bg-[#0F131B] opacity-60"
-              : "border-white/[.07] bg-[#12161F]"
+              ? "border-ink/[.05] bg-inset opacity-60"
+              : "border-ink/[.07] bg-surface-2"
           }`}
         >
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[13px] text-[#8A94A6]">{formatPlayedAt(row.playedAt)}</span>
+            <span className="font-mono text-[13px] text-muted">{formatPlayedAt(row.playedAt)}</span>
             {showMode && (
               <span
                 className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${
-                  row.mode === "ARAM" ? "bg-[#F2985C]/15 text-[#F2985C]" : "bg-[#8FB4F5]/15 text-[#8FB4F5]"
+                  row.mode === "ARAM" ? "bg-orange/15 text-orange" : "bg-accent-soft/15 text-accent-soft"
                 }`}
               >
                 {row.mode === "ARAM" ? "칼바람" : "협곡"}
               </span>
             )}
             {row.isCancelled ? (
-              <span className="rounded-md bg-[#2A2033] px-2 py-0.5 text-[12px] font-bold text-[#C79BE5]">
+              <span className="rounded-md bg-purple-tint px-2 py-0.5 text-[12px] font-bold text-purple">
                 취소됨
               </span>
             ) : (
               <span
                 className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${
                   row.winner === "BLUE"
-                    ? "bg-[#4472C4]/20 text-[#8FB4F5]"
-                    : "bg-[#E05A5A]/20 text-[#EE8B8B]"
+                    ? "bg-accent/20 text-accent-soft"
+                    : "bg-danger/20 text-danger-soft"
                 }`}
               >
                 {row.winner === "BLUE" ? "블루 승" : "레드 승"}
               </span>
             )}
-            <span className="text-[12.5px] text-[#6E7889]">
+            <span className="text-[12.5px] text-faint">
               {row.createdByLabel} 입력
               {row.cancelledByLabel !== null && ` · ${row.cancelledByLabel} 취소`}
             </span>
@@ -109,7 +109,7 @@ export function GameHistoryList({
                 type="button"
                 disabled={pending}
                 onClick={() => handleCancel(row.id)}
-                className="ml-auto rounded-lg bg-[#20293A] px-3 py-1.5 text-[13px] font-bold text-[#C7D0DF] transition-colors hover:bg-[#27324A] disabled:opacity-35"
+                className="ml-auto rounded-lg bg-raised px-3 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover disabled:opacity-35"
               >
                 되돌리기
               </button>
@@ -118,13 +118,13 @@ export function GameHistoryList({
 
           <div className="mt-3 flex flex-col gap-1.5 text-[13.5px]">
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <span className="w-3 flex-none text-[#9BD173]">↑</span>
+              <span className="w-3 flex-none text-success-soft">↑</span>
               {row.winners.map((p) => (
                 <PlayerLine key={p.name} player={p} up />
               ))}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <span className="w-3 flex-none text-[#EE8B8B]">↓</span>
+              <span className="w-3 flex-none text-danger-soft">↓</span>
               {row.losers.map((p) => (
                 <PlayerLine key={p.name} player={p} up={false} />
               ))}

@@ -1,6 +1,7 @@
 import "./globals.css";
 import { prisma } from "@/lib/prisma";
 import { ensureBootstrapAdminOnce } from "@/lib/auth/bootstrap";
+import { getSiteTheme } from "@/lib/queries/site-theme";
 
 export const metadata = {
   title: "롤파민 · 내부 운영 도구",
@@ -12,9 +13,12 @@ export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   await ensureBootstrapAdminOnce(prisma);
+  // 스킨은 사이트 전체 설정이라 여기서 한 번 읽어 <html>에 붙인다. globals.css의
+  // [data-theme] 블록이 색 변수를 갈아끼우므로 이 속성 하나가 곧 스킨 전환이다.
+  const theme = await getSiteTheme(prisma);
 
   return (
-    <html lang="ko">
+    <html lang="ko" data-theme={theme}>
       <head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

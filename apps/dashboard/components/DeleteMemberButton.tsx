@@ -64,13 +64,13 @@ export function DeleteMemberButton({
         title={`${label} 삭제`}
         className={`rounded-md border px-2 py-1 text-[12px] font-bold ${
           isPending
-            ? "cursor-not-allowed border-white/[.06] text-[#5C6577]"
-            : "cursor-pointer border-[#E05A5A]/30 text-[#EE8B8B] hover:bg-[#E05A5A]/[.12]"
+            ? "cursor-not-allowed border-ink/[.06] text-ghost"
+            : "cursor-pointer border-danger/30 text-danger-soft hover:bg-danger/[.12]"
         }`}
       >
         {isPending ? "삭제 중" : "삭제"}
       </button>
-      {error && <span className="text-right text-[11.5px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="text-right text-[11.5px] text-danger-soft">{error}</span>}
     </div>
   );
 }

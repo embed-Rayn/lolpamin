@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
 import { resetAllRatings } from "@/lib/mutations/reset-ratings";
+import { setSiteTheme } from "@/lib/mutations/set-site-theme";
 import { MmrConfigValidationError, updateMmrConfig } from "@/lib/mutations/update-mmr-config";
 import type { RatingResetKind } from "@lolpamin/db";
 
@@ -109,5 +110,14 @@ export async function updateMmrConfigAction(input: {
   revalidatePath("/admins");
   // 경기 입력 화면은 이 값으로 프리뷰와 시뮬레이터를 그리므로 함께 무효화한다.
   revalidatePath("/matches");
+  return { error: null };
+}
+
+// 스킨은 <html data-theme>로 layout에서 붙으므로 layout 단위로 재검증해야 모든 페이지가
+// 다음 요청부터 새 스킨으로 나온다. 페이지 하나만 revalidate하면 나머지는 옛 스킨이다.
+export async function setSiteThemeAction(theme: string): Promise<{ error: string | null }> {
+  const acting = await requireAdmin();
+  await setSiteTheme(prisma, theme, acting.id);
+  revalidatePath("/", "layout");
   return { error: null };
 }

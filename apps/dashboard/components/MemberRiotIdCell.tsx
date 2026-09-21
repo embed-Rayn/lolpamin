@@ -23,7 +23,7 @@ export function MemberRiotIdCell({
 
   if (!isAdmin) {
     return (
-      <div className={`truncate font-mono text-[13.5px] ${riotId === null ? "text-[#5C6577]" : "text-[#9BD173]"}`}>
+      <div className={`truncate font-mono text-[13.5px] ${riotId === null ? "text-ghost" : "text-success-soft"}`}>
         {label}
       </div>
     );
@@ -59,7 +59,7 @@ export function MemberRiotIdCell({
           }
         }}
         placeholder="이름#태그"
-        className="w-full rounded-md border border-[#4472C4]/50 bg-[#0F131B] px-1.5 py-1 font-mono text-[13.5px] text-[#E6EAF2] outline-none"
+        className="w-full rounded-md border border-accent/50 bg-inset px-1.5 py-1 font-mono text-[13.5px] text-fg outline-none"
       />
     );
   }
@@ -76,11 +76,11 @@ export function MemberRiotIdCell({
       title="클릭해서 Riot ID 수정"
       disabled={isPending}
       className={`truncate text-left font-mono text-[13.5px] hover:underline ${
-        riotId === null ? "text-[#5C6577]" : "text-[#9BD173]"
+        riotId === null ? "text-ghost" : "text-success-soft"
       }`}
     >
       {isPending ? "저장 중..." : label}
-      {error && <span className="ml-1 text-[12px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="ml-1 text-[12px] text-danger-soft">{error}</span>}
     </button>
   );
 }

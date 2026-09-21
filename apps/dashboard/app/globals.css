@@ -7,12 +7,137 @@
    @import that follows any rule is invalid CSS — the browser drops it, which is
    how Pretendard silently fell back to Noto Sans KR in production. */
 
+/* ---------------------------------------------------------------------------
+   Skins. Each block sets the RGB triplets that tailwind.config.ts turns into
+   bg-surface / text-muted / border-ink/[.06] and so on. Components never carry a
+   hex value; switching <html data-theme> is the whole theme change.
+   "clean" (시안 1) is the default and also the fallback when the attribute is
+   missing; "pink" is 시안 2; "dark" is the original operator palette.
+   --------------------------------------------------------------------------- */
+:root,
+[data-theme="clean"] {
+  --c-page: 243 246 251;
+  --c-surface: 255 255 255;
+  --c-surface-2: 247 249 252;
+  --c-surface-3: 240 244 250;
+  --c-inset: 245 247 251;
+  --c-hover: 244 247 253;
+  --c-raised: 232 238 249;
+  --c-raised-hover: 220 230 247;
+
+  --c-fg: 27 35 51;
+  --c-fg-2: 46 58 79;
+  --c-muted: 91 107 133;
+  --c-faint: 124 138 163;
+  --c-ghost: 163 174 194;
+  --c-ghost-2: 197 205 219;
+  --c-ink: 20 30 50;
+
+  --c-accent: 59 125 224;
+  --c-accent-hover: 47 107 200;
+  --c-accent-soft: 39 102 196;
+  --c-accent-tint: 227 237 251;
+  --c-success: 46 158 91;
+  --c-success-soft: 31 138 76;
+  --c-danger: 224 75 75;
+  --c-danger-soft: 210 52 52;
+  --c-danger-tint: 253 232 232;
+  --c-gold: 217 160 23;
+  --c-gold-deep: 184 134 11;
+  --c-orange: 232 118 43;
+  --c-purple: 124 82 232;
+  --c-purple-tint: 239 231 254;
+  --c-discord: 88 101 242;
+
+  --sidebar-bg: 255 255 255;
+  --header-bg: 255 255 255;
+  color-scheme: light;
+}
+
+[data-theme="pink"] {
+  --c-page: 255 240 245;
+  --c-surface: 255 251 253;
+  --c-surface-2: 255 234 242;
+  --c-surface-3: 255 240 246;
+  --c-inset: 255 245 249;
+  --c-hover: 255 243 248;
+  --c-raised: 255 220 232;
+  --c-raised-hover: 255 207 224;
+
+  --c-fg: 58 37 48;
+  --c-fg-2: 74 46 58;
+  --c-muted: 138 90 110;
+  --c-faint: 168 120 144;
+  --c-ghost: 201 163 179;
+  --c-ghost-2: 227 198 210;
+  --c-ink: 90 40 60;
+
+  --c-accent: 236 92 142;
+  --c-accent-hover: 217 73 123;
+  --c-accent-soft: 205 60 112;
+  --c-accent-tint: 255 224 236;
+  --c-success: 58 163 107;
+  --c-success-soft: 46 152 96;
+  --c-danger: 224 69 122;
+  --c-danger-soft: 212 56 110;
+  --c-danger-tint: 255 225 234;
+  --c-gold: 232 162 26;
+  --c-gold-deep: 197 138 16;
+  --c-orange: 240 122 58;
+  --c-purple: 168 85 247;
+  --c-purple-tint: 246 233 255;
+  --c-discord: 88 101 242;
+
+  --sidebar-bg: 255 246 250;
+  --header-bg: 255 246 250;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --c-page: 14 17 23;
+  --c-surface: 21 26 36;
+  --c-surface-2: 18 22 31;
+  --c-surface-3: 22 27 38;
+  --c-inset: 15 19 27;
+  --c-hover: 24 30 41;
+  --c-raised: 32 41 58;
+  --c-raised-hover: 39 50 74;
+
+  --c-fg: 230 234 242;
+  --c-fg-2: 199 208 223;
+  --c-muted: 138 148 166;
+  --c-faint: 110 120 137;
+  --c-ghost: 92 101 119;
+  --c-ghost-2: 62 71 86;
+  --c-ink: 255 255 255;
+
+  --c-accent: 68 114 196;
+  --c-accent-hover: 56 98 180;
+  --c-accent-soft: 143 180 245;
+  --c-accent-tint: 22 35 58;
+  --c-success: 112 173 71;
+  --c-success-soft: 155 209 115;
+  --c-danger: 224 90 90;
+  --c-danger-soft: 238 139 139;
+  --c-danger-tint: 58 26 30;
+  --c-gold: 242 199 92;
+  --c-gold-deep: 201 162 39;
+  --c-orange: 242 152 92;
+  --c-purple: 216 180 245;
+  --c-purple-tint: 42 32 51;
+  --c-discord: 88 101 242;
+
+  --sidebar-bg: 18 22 31;
+  --header-bg: 14 17 23;
+  color-scheme: dark;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background: #0e1117;
-  color: #e6eaf2;
+  background: rgb(var(--c-page));
+  color: rgb(var(--c-fg));
   font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -23,7 +148,7 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a3242;
+  background: rgb(var(--c-ghost-2));
   border-radius: 6px;
 }
 ::-webkit-scrollbar-track {

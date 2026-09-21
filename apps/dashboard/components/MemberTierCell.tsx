@@ -23,7 +23,7 @@ export function MemberTierCell({
   const muted = tierScore(tier) === 0;
 
   if (!isAdmin) {
-    return <div className={`truncate ${muted ? "text-[#5C6577]" : "text-[#C7D0DF]"}`}>{tierLabel(tier)}</div>;
+    return <div className={`truncate ${muted ? "text-ghost" : "text-fg-2"}`}>{tierLabel(tier)}</div>;
   }
 
   function save(next: MemberTier) {
@@ -45,8 +45,8 @@ export function MemberTierCell({
         disabled={isPending}
         onChange={(e) => save(e.target.value as MemberTier)}
         title="티어 수정"
-        className={`w-full min-w-0 cursor-pointer rounded-md border border-white/[.09] bg-[#0F131B] px-1.5 py-1 text-[13.5px] outline-none focus:border-[#4472C4] disabled:opacity-40 ${
-          muted ? "text-[#5C6577]" : "text-[#E6EAF2]"
+        className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-[13.5px] outline-none focus:border-accent disabled:opacity-40 ${
+          muted ? "text-ghost" : "text-fg"
         }`}
       >
         {TIER_OPTIONS.map((option) => (
@@ -55,7 +55,7 @@ export function MemberTierCell({
           </option>
         ))}
       </select>
-      {error && <span className="flex-none text-[12px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="flex-none text-[12px] text-danger-soft">{error}</span>}
     </div>
   );
 }

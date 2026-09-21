@@ -20,7 +20,7 @@ export function MemberNoteCell({
   const [isPending, startTransition] = useTransition();
 
   if (!isAdmin) {
-    return <div className={`truncate ${note ? "text-[#B7C0D0]" : "text-[#5C6577]"}`}>{note ?? "-"}</div>;
+    return <div className={`truncate ${note ? "text-fg-2" : "text-ghost"}`}>{note ?? "-"}</div>;
   }
 
   function save() {
@@ -53,7 +53,7 @@ export function MemberNoteCell({
           }
         }}
         placeholder="비고"
-        className="w-full rounded-md border border-[#4472C4]/50 bg-[#0F131B] px-1.5 py-1 text-[13.5px] text-[#E6EAF2] outline-none"
+        className="w-full rounded-md border border-accent/50 bg-inset px-1.5 py-1 text-[13.5px] text-fg outline-none"
       />
     );
   }
@@ -67,10 +67,10 @@ export function MemberNoteCell({
       }}
       title="클릭해서 비고 수정"
       disabled={isPending}
-      className={`truncate text-left hover:underline ${note ? "text-[#B7C0D0]" : "text-[#5C6577]"}`}
+      className={`truncate text-left hover:underline ${note ? "text-fg-2" : "text-ghost"}`}
     >
       {isPending ? "저장 중..." : note ?? "-"}
-      {error && <span className="ml-1 text-[11.5px] text-[#EE8B8B]">{error}</span>}
+      {error && <span className="ml-1 text-[11.5px] text-danger-soft">{error}</span>}
     </button>
   );
 }

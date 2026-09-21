@@ -33,7 +33,7 @@ function RankCell({ rank }: { rank: number | null }) {
     );
   }
   return (
-    <div className={`text-center font-mono text-[13.5px] ${rank === null ? "text-[#3E4756]" : "text-[#8A94A6]"}`}>
+    <div className={`text-center font-mono text-[13.5px] ${rank === null ? "text-ghost-2" : "text-muted"}`}>
       {rank ?? "-"}
     </div>
   );
@@ -80,22 +80,22 @@ export function MemberTable({
   return (
     <>
       <div
-        className={`grid ${GRID} gap-4 border-b border-white/[.06] bg-[#12161F] px-5 py-3 text-[12.5px] font-bold tracking-wide text-[#6E7889]`}
+        className={`grid ${GRID} gap-4 border-b border-ink/[.06] bg-surface-2 px-5 py-3 text-[12.5px] font-bold tracking-wide text-faint`}
       >
-        <Link href={sortHref("mmr")} className="text-center hover:text-[#B7C0D0]">
+        <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
           순위
         </Link>
-        <Link href={sortHref("realName")} className="hover:text-[#B7C0D0]">
+        <Link href={sortHref("realName")} className="hover:text-fg-2">
           실명{sortMark("realName")}
         </Link>
-        <Link href={sortHref("kakaoNickname")} className="hover:text-[#B7C0D0]">
+        <Link href={sortHref("kakaoNickname")} className="hover:text-fg-2">
           카톡 닉네임{sortMark("kakaoNickname")}
         </Link>
         <div>디코 닉네임</div>
-        <Link href={sortHref("tier")} className="hover:text-[#B7C0D0]">
+        <Link href={sortHref("tier")} className="hover:text-fg-2">
           티어{sortMark("tier")}
         </Link>
-        <Link href={sortHref("mmr")} className="text-right hover:text-[#B7C0D0]">
+        <Link href={sortHref("mmr")} className="text-right hover:text-fg-2">
           MMR{sortMark("mmr")}
         </Link>
         <div className="text-right">판</div>
@@ -109,40 +109,40 @@ export function MemberTable({
         return (
           <div
             key={m.id}
-            className={`grid ${GRID} relative items-center gap-4 border-b border-white/[.04] px-5 py-3.5 text-[15px] ${
-              podium ? podium.row : "hover:bg-[#181E29]"
+            className={`grid ${GRID} relative items-center gap-4 border-b border-ink/[.04] px-5 py-3.5 text-[15px] ${
+              podium ? podium.row : "hover:bg-hover"
             }`}
           >
             <RankCell rank={m.rank} />
             <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
-            <div className={`truncate font-mono text-[13.5px] ${m.kakaoNickname === "-" ? "text-[#5C6577]" : "text-[#F2C75C]"}`}>
+            <div className={`truncate font-mono text-[13.5px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-gold"}`}>
               {m.kakaoNickname}
             </div>
-            <div className={`truncate font-mono text-[13.5px] ${m.discordName === "-" ? "text-[#5C6577]" : "text-[#8FA9F5]"}`}>
+            <div className={`truncate font-mono text-[13.5px] ${m.discordName === "-" ? "text-ghost" : "text-accent-soft"}`}>
               {m.discordName}
             </div>
             <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
             <div
               className={`text-right font-mono text-[15.5px] font-bold ${
-                m.mmr === 0 ? "text-[#5C6577]" : m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"
+                m.mmr === 0 ? "text-ghost" : m.mmr >= 1600 ? "text-gold" : "text-fg"
               }`}
             >
               {m.mmr}
             </div>
-            <div className="text-right font-mono text-[13.5px] text-[#8A94A6]">{m.playedCount}</div>
-            <div className={`text-right font-mono text-[13.5px] ${m.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
+            <div className="text-right font-mono text-[13.5px] text-muted">{m.playedCount}</div>
+            <div className={`text-right font-mono text-[13.5px] ${m.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
               {m.wins}
             </div>
-            <div className={`text-right font-mono text-[13.5px] ${m.losses > 0 ? "text-[#EE8B8B]" : "text-[#5C6577]"}`}>
+            <div className={`text-right font-mono text-[13.5px] ${m.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
               {m.losses}
             </div>
             <div
               className={`text-right font-mono text-[13.5px] ${
                 m.daysSinceActive !== null && m.daysSinceActive >= 30
-                  ? "text-[#EE8B8B]"
+                  ? "text-danger-soft"
                   : m.daysSinceActive !== null && m.daysSinceActive >= 14
-                  ? "text-[#F2985C]"
-                  : "text-[#8A94A6]"
+                  ? "text-orange"
+                  : "text-muted"
               }`}
             >
               {m.lastActiveLabel}

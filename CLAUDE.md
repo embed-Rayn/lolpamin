@@ -194,6 +194,28 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 연결의 필요를 없애지 않는다 — 그래서 라이엇 계정으로 경기를 뛰는 회원도 디코나 카톡 한쪽이
 비어 있으면 여전히 반쪽으로 집계된다. 의도적인 차이이고 버그가 아니다.
 
+## Skins
+
+Three site-wide skins — `clean` (default, the light blue reference design), `pink`
+and `dark` (the original palette). The choice is one row in `SiteSetting`
+(`theme`), set from `/admins`, and `app/layout.tsx` puts it on `<html data-theme>`.
+Colours in components are **never hex**: `tailwind.config.ts` defines semantic
+roles (`bg-surface`, `text-muted`, `border-ink/[.06]`, `text-accent-soft`…) as
+`rgb(var(--c-…) / <alpha>)`, and `globals.css` holds the RGB triplets per
+`[data-theme]`. `ink` is "the colour lines are drawn in" (white on dark, near-black
+on light) and is always used with an opacity, so `border-ink/[.06]` is a faint line
+on every skin. Inline styles use `rgb(var(--c-role))`. The two canvas renderers
+(`CannonCanvas`, `MarbleRaceCanvas`) keep literal colours: the stage is dark on
+every skin. `text-white` is only allowed on a solid `bg-accent` / semantic button.
+Changing the skin `revalidatePath("/", "layout")` so every page re-renders with the
+new attribute.
+
+Sidebar groups fold; the fold state is per-browser (`localStorage`
+`lolpamin.nav.collapsed`), applied after mount, and the group holding the current
+page is always opened on arrival. Icons are inline SVG paths in
+`components/nav-icons.tsx` named by string so the nav config survives the
+server → client boundary.
+
 ## Deployment
 
 The OCI instance runs `docker-compose.prod.yml`: a Postgres container with no

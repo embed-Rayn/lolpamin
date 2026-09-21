@@ -11,3 +11,4 @@ export * from "./parse-rofl";
 export * from "./riot-hint";
 export * from "./score-riot-account-match";
 export * from "./displayed-rating";
+export * from "./theme";

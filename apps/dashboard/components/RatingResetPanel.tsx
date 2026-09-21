@@ -73,14 +73,14 @@ export function RatingResetPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-[#E05A5A]/25 bg-[#151A24] px-4 py-3.5">
-      <div className="text-[13.5px] font-bold text-[#EE8B8B]">시즌 리셋</div>
+    <div className="flex flex-col gap-3 rounded-xl border border-danger/25 bg-surface px-4 py-3.5">
+      <div className="text-[13.5px] font-bold text-danger-soft">시즌 리셋</div>
       <div className="flex flex-col gap-3">
         {RESET_OPTIONS.map((option) => (
           <div key={option.kind} className="flex flex-col gap-2">
             <div>
-              <div className="text-[13px] font-bold text-[#C7CEDB]">{option.title}</div>
-              <div className="text-[12px] text-[#6E7889]">{option.description} 되돌릴 수 없습니다.</div>
+              <div className="text-[13px] font-bold text-fg-2">{option.title}</div>
+              <div className="text-[12px] text-faint">{option.description} 되돌릴 수 없습니다.</div>
             </div>
             <button
               type="button"
@@ -88,8 +88,8 @@ export function RatingResetPanel() {
               disabled={isPending}
               className={`self-start rounded-md border px-3 py-1.5 text-[12px] font-bold ${
                 isPending
-                  ? "cursor-not-allowed border-white/[.06] text-[#5C6577]"
-                  : "cursor-pointer border-[#E05A5A]/30 text-[#EE8B8B] hover:bg-[#E05A5A]/[.12]"
+                  ? "cursor-not-allowed border-ink/[.06] text-ghost"
+                  : "cursor-pointer border-danger/30 text-danger-soft hover:bg-danger/[.12]"
               }`}
             >
               {runningKind === option.kind ? "리셋 중" : option.buttonLabel}
@@ -97,11 +97,11 @@ export function RatingResetPanel() {
           </div>
         ))}
       </div>
-      <div className="text-[12px] text-[#6E7889]">
+      <div className="text-[12px] text-faint">
         경기 기록은 지워지지 않습니다. 리셋 이전 경기는 전적 집계에서만 빠지고, 그 경기는 되돌릴 수 없게 됩니다.
       </div>
-      {doneMessage && <span className="text-[12px] text-[#9BD173]">{doneMessage}</span>}
-      {error && <span className="text-[12px] text-[#EE8B8B]">{error}</span>}
+      {doneMessage && <span className="text-[12px] text-success-soft">{doneMessage}</span>}
+      {error && <span className="text-[12px] text-danger-soft">{error}</span>}
     </div>
   );
 }

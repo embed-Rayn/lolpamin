@@ -25,8 +25,8 @@ export function GameHistoryModeFilter({ mode }: { mode: GameHistoryMode }) {
           href={historyHref(m.key, 1)}
           className={`rounded-md border px-2.5 py-1 text-[12.5px] font-semibold ${
             mode === m.key
-              ? "border-[#4472C4]/45 bg-[#4472C4]/[.18] text-[#8FB4F5]"
-              : "border-white/[.09] bg-transparent text-[#7A8496] hover:text-[#B7C0D0]"
+              ? "border-accent/45 bg-accent/[.18] text-accent-soft"
+              : "border-ink/[.09] bg-transparent text-faint hover:text-fg-2"
           }`}
         >
           {m.label}
@@ -62,8 +62,8 @@ export function GameHistoryPagination({
 }) {
   if (pageCount <= 1) return null;
 
-  const linkClass = "rounded-md border border-white/[.09] px-2.5 py-1 font-mono text-[12.5px] text-[#7A8496] hover:text-[#B7C0D0]";
-  const disabledClass = "rounded-md border border-white/[.05] px-2.5 py-1 font-mono text-[12.5px] text-[#3E4756]";
+  const linkClass = "rounded-md border border-ink/[.09] px-2.5 py-1 font-mono text-[12.5px] text-faint hover:text-fg-2";
+  const disabledClass = "rounded-md border border-ink/[.05] px-2.5 py-1 font-mono text-[12.5px] text-ghost-2";
 
   return (
     <nav className="flex items-center justify-center gap-1.5" aria-label="쪽">
@@ -76,13 +76,13 @@ export function GameHistoryPagination({
       )}
       {pageNumbers(page, pageCount).map((p, i) =>
         p === "gap" ? (
-          <span key={`gap-${i}`} className="px-1 font-mono text-[12.5px] text-[#4E576A]">
+          <span key={`gap-${i}`} className="px-1 font-mono text-[12.5px] text-ghost">
             …
           </span>
         ) : p === page ? (
           <span
             key={p}
-            className="rounded-md border border-[#4472C4]/45 bg-[#4472C4]/[.18] px-2.5 py-1 font-mono text-[12.5px] font-bold text-[#8FB4F5]"
+            className="rounded-md border border-accent/45 bg-accent/[.18] px-2.5 py-1 font-mono text-[12.5px] font-bold text-accent-soft"
           >
             {p}
           </span>

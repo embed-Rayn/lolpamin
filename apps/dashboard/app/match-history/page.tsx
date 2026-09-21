@@ -30,7 +30,7 @@ export default async function MatchHistoryPage({
       <div className="flex flex-col gap-4 px-7 pb-10 pt-6">
         <div className="flex items-center justify-between">
           <GameHistoryModeFilter mode={history.mode} />
-          <div className="font-mono text-[13px] text-[#8A94A6]">
+          <div className="font-mono text-[13px] text-muted">
             살아 있는 경기 {history.liveCount} / 전체 {history.totalCount}
             {history.pageCount > 1 && ` · ${history.page}/${history.pageCount}쪽`}
           </div>

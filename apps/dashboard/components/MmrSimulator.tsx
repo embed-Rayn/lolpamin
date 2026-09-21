@@ -18,9 +18,9 @@ function signed(delta: number): string {
 }
 
 function deltaColor(delta: number): string {
-  if (delta > 0) return "#7FD1A0";
-  if (delta < 0) return "#EE8B8B";
-  return "#8B94A6";
+  if (delta > 0) return "rgb(var(--c-success-soft))";
+  if (delta < 0) return "rgb(var(--c-danger-soft))";
+  return "rgb(var(--c-muted))";
 }
 
 export function MmrSimulator({ config }: { config: MmrConfig }) {
@@ -41,35 +41,35 @@ export function MmrSimulator({ config }: { config: MmrConfig }) {
         };
 
   return (
-    <div className="flex flex-col gap-3.5 rounded-xl border border-white/[.06] bg-[#151A24] px-4 py-3.5">
+    <div className="flex flex-col gap-3.5 rounded-xl border border-ink/[.06] bg-surface px-4 py-3.5">
       <div>
         <div className="text-[13.5px] font-bold">MMR 계산식</div>
-        <div className="text-[12px] text-[#6E7889]">팀 평균 Elo. 두 팀의 평균 MMR만으로 변동폭이 정해집니다.</div>
+        <div className="text-[12px] text-faint">팀 평균 Elo. 두 팀의 평균 MMR만으로 변동폭이 정해집니다.</div>
       </div>
 
-      <div className="flex flex-col gap-1.5 rounded-lg border border-white/[.06] bg-[#0F131B] px-3.5 py-3 font-mono text-[12px] leading-relaxed text-[#A7B0C0]">
+      <div className="flex flex-col gap-1.5 rounded-lg border border-ink/[.06] bg-inset px-3.5 py-3 font-mono text-[12px] leading-relaxed text-muted">
         <div>
-          <span className="text-[#8FB4F5]">기대승률(블루)</span> = 1 / (1 + 10<sup>((레드평균 − 블루평균) / 400)</sup>)
+          <span className="text-accent-soft">기대승률(블루)</span> = 1 / (1 + 10<sup>((레드평균 − 블루평균) / 400)</sup>)
         </div>
         <div>
-          <span className="text-[#8FB4F5]">변동</span> = round(K × (경기결과 − 기대승률)) + 참가점수
+          <span className="text-accent-soft">변동</span> = round(K × (경기결과 − 기대승률)) + 참가점수
         </div>
-        <div className="text-[#5C6577]">경기결과: 이기면 1, 지면 0 · 참가점수: 이기면 +{config.winPoint}, 지면 +{config.lossPoint}</div>
-        <div className="pt-1 text-[#8B94A6]">
+        <div className="text-ghost">경기결과: 이기면 1, 지면 0 · 참가점수: 이기면 +{config.winPoint}, 지면 +{config.lossPoint}</div>
+        <div className="pt-1 text-muted">
           현재 설정 · K {config.k} · 승리 +{config.winPoint} · 패배 +{config.lossPoint}
         </div>
       </div>
 
       <div>
         <div className="text-[13.5px] font-bold">시뮬레이터</div>
-        <div className="text-[12px] text-[#6E7889]">평균 MMR이 X, Y인 두 팀이 붙었을 때 각 결과의 변동폭.</div>
+        <div className="text-[12px] text-faint">평균 MMR이 X, Y인 두 팀이 붙었을 때 각 결과의 변동폭.</div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
         {(
           [
-            ["블루 평균", blueRaw, setBlueRaw, "#8FB4F5"],
-            ["레드 평균", redRaw, setRedRaw, "#EE8B8B"],
+            ["블루 평균", blueRaw, setBlueRaw, "rgb(var(--c-accent-soft))"],
+            ["레드 평균", redRaw, setRedRaw, "rgb(var(--c-danger-soft))"],
           ] as const
         ).map(([label, value, setValue, color]) => (
           <label key={label} className="flex flex-col gap-1.5">
@@ -82,13 +82,13 @@ export function MmrSimulator({ config }: { config: MmrConfig }) {
               step={10}
               value={value}
               onChange={(event) => setValue(event.target.value)}
-              className="w-[110px] rounded-md border border-white/[.08] bg-[#0F131B] px-2.5 py-1.5 font-mono text-[13px] text-[#E6EAF2] outline-none focus:border-[#4472C4]/60"
+              className="w-[110px] rounded-md border border-ink/[.08] bg-inset px-2.5 py-1.5 font-mono text-[13px] text-fg outline-none focus:border-accent/60"
             />
           </label>
         ))}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] font-bold text-[#A7B0C0]">기대 승률</span>
-          <span className="py-1.5 font-mono text-[13px] text-[#E6EAF2]">
+          <span className="text-[12px] font-bold text-muted">기대 승률</span>
+          <span className="py-1.5 font-mono text-[13px] text-fg">
             {outcomes
               ? `블루 ${(outcomes.blueWins.expectedBlueWinRate * 100).toFixed(1)}% · 레드 ${(
                   (1 - outcomes.blueWins.expectedBlueWinRate) *
@@ -100,12 +100,12 @@ export function MmrSimulator({ config }: { config: MmrConfig }) {
       </div>
 
       {outcomes === null ? (
-        <div className="text-[12px] text-[#6E7889]">두 팀의 평균 MMR을 모두 입력하세요.</div>
+        <div className="text-[12px] text-faint">두 팀의 평균 MMR을 모두 입력하세요.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[320px] border-collapse text-[13px]">
             <thead>
-              <tr className="text-[12px] text-[#6E7889]">
+              <tr className="text-[12px] text-faint">
                 <th className="w-[110px] py-1.5 text-left font-bold"> </th>
                 <th className="py-1.5 text-right font-bold">블루 승리 시</th>
                 <th className="py-1.5 text-right font-bold">레드 승리 시</th>
@@ -114,11 +114,11 @@ export function MmrSimulator({ config }: { config: MmrConfig }) {
             <tbody>
               {(
                 [
-                  ["블루 팀원", "#8FB4F5", outcomes.blueWins.blueDelta, outcomes.redWins.blueDelta],
-                  ["레드 팀원", "#EE8B8B", outcomes.blueWins.redDelta, outcomes.redWins.redDelta],
+                  ["블루 팀원", "rgb(var(--c-accent-soft))", outcomes.blueWins.blueDelta, outcomes.redWins.blueDelta],
+                  ["레드 팀원", "rgb(var(--c-danger-soft))", outcomes.blueWins.redDelta, outcomes.redWins.redDelta],
                 ] as const
               ).map(([label, color, onBlueWin, onRedWin]) => (
-                <tr key={label} className="border-t border-white/[.06]">
+                <tr key={label} className="border-t border-ink/[.06]">
                   <td className="py-2 text-[12.5px] font-extrabold" style={{ color }}>
                     {label}
                   </td>
@@ -135,7 +135,7 @@ export function MmrSimulator({ config }: { config: MmrConfig }) {
               ))}
             </tbody>
           </table>
-          <div className="pt-2 text-[11.5px] text-[#5C6577]">
+          <div className="pt-2 text-[11.5px] text-ghost">
             한 경기당 풀 전체로는 +{config.winPoint + config.lossPoint}점이 들어옵니다 — 참가 보너스만큼 인플레이션이
             일어납니다.
           </div>

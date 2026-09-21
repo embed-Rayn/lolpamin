@@ -101,10 +101,10 @@ export function MmrConfigPanel({ config, updatedLabel }: MmrConfigPanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-white/[.06] bg-[#151A24] px-4 py-3.5">
+    <div className="flex flex-col gap-3 rounded-xl border border-ink/[.06] bg-surface px-4 py-3.5">
       <div>
         <div className="text-[13.5px] font-bold">MMR 계산 설정</div>
-        <div className="text-[12px] text-[#6E7889]">
+        <div className="text-[12px] text-faint">
           다음 경기부터 적용됩니다. 이미 기록된 경기의 변동값은 그대로 남습니다.
         </div>
       </div>
@@ -112,7 +112,7 @@ export function MmrConfigPanel({ config, updatedLabel }: MmrConfigPanelProps) {
       <div className="grid gap-3 sm:grid-cols-3">
         {FIELDS.map((field) => (
           <label key={field.key} className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-bold text-[#A7B0C0]">{field.label}</span>
+            <span className="text-[12px] font-bold text-muted">{field.label}</span>
             <input
               type="number"
               inputMode="numeric"
@@ -122,9 +122,9 @@ export function MmrConfigPanel({ config, updatedLabel }: MmrConfigPanelProps) {
               value={draft[field.key]}
               onChange={(event) => set(field.key, event.target.value)}
               disabled={isPending}
-              className="w-full rounded-md border border-white/[.08] bg-[#0F131B] px-2.5 py-1.5 font-mono text-[13px] text-[#E6EAF2] outline-none focus:border-[#4472C4]/60"
+              className="w-full rounded-md border border-ink/[.08] bg-inset px-2.5 py-1.5 font-mono text-[13px] text-fg outline-none focus:border-accent/60"
             />
-            <span className="text-[11.5px] leading-snug text-[#5C6577]">{field.hint}</span>
+            <span className="text-[11.5px] leading-snug text-ghost">{field.hint}</span>
           </label>
         ))}
       </div>
@@ -136,8 +136,8 @@ export function MmrConfigPanel({ config, updatedLabel }: MmrConfigPanelProps) {
           disabled={isPending || !isDirty}
           className={`rounded-md border px-3 py-1.5 text-[12px] font-bold ${
             isPending || !isDirty
-              ? "cursor-not-allowed border-white/[.06] text-[#5C6577]"
-              : "cursor-pointer border-[#4472C4]/40 text-[#8FB4F5] hover:bg-[#4472C4]/[.14]"
+              ? "cursor-not-allowed border-ink/[.06] text-ghost"
+              : "cursor-pointer border-accent/40 text-accent-soft hover:bg-accent/[.14]"
           }`}
         >
           {isPending ? "저장 중" : "저장"}
@@ -146,20 +146,20 @@ export function MmrConfigPanel({ config, updatedLabel }: MmrConfigPanelProps) {
           type="button"
           onClick={fillDefaults}
           disabled={isPending}
-          className="cursor-pointer rounded-md border border-white/[.08] px-3 py-1.5 text-[12px] font-bold text-[#8B94A6] hover:bg-white/[.04]"
+          className="cursor-pointer rounded-md border border-ink/[.08] px-3 py-1.5 text-[12px] font-bold text-muted hover:bg-ink/[.04]"
         >
           기본값 ({DEFAULT_MMR_CONFIG.k} / +{DEFAULT_MMR_CONFIG.winPoint} / +{DEFAULT_MMR_CONFIG.lossPoint})
         </button>
-        {savedAt !== null && <span className="text-[12px] text-[#6E7889]">저장 완료</span>}
+        {savedAt !== null && <span className="text-[12px] text-faint">저장 완료</span>}
         {error &&
           error.split("\n").map((line) => (
-            <span key={line} className="text-[12px] text-[#EE8B8B]">
+            <span key={line} className="text-[12px] text-danger-soft">
               {line}
             </span>
           ))}
       </div>
 
-      <div className="text-[11.5px] text-[#5C6577]">
+      <div className="text-[11.5px] text-ghost">
         {updatedLabel ? `마지막 변경: ${updatedLabel}` : "아직 저장된 적이 없어 기본값으로 계산 중입니다."}
       </div>
     </div>
