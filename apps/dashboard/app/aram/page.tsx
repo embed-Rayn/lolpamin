@@ -29,9 +29,9 @@ export default async function AramPage({
 
   return (
     <AppShell activeNav="aram" pageTitle="칼바람 MMR 랭킹" pageDesc="칼바람 내전 전용 MMR과 전적">
-      <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
+      <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:gap-6 md:px-7 md:pb-10 md:pt-6">
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
-          <MemberFilters activeFilter={filter} query={query} basePath="/aram" />
+          <MemberFilters activeFilter={filter} query={query} sort={sort} dir={dir} basePath="/aram" />
           <MemberTable rows={data.rows} isAdmin={isAdmin} sort={sort} dir={dir} filter={filter} query={query} basePath="/aram" />
         </section>
       </div>
