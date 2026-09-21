@@ -7,6 +7,7 @@ export * from "./kakao-match-key";
 export * from "./score-account-match";
 export * from "./draw";
 export * from "./tier";
+export * from "./lane";
 export * from "./parse-rofl";
 export * from "./riot-hint";
 export * from "./score-riot-account-match";

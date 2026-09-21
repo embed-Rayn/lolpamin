@@ -3,10 +3,12 @@ import type { MemberInfoRow, MemberInfoSort, ModeRecord, SortDirection } from "@
 import { MemberTierCell } from "@/components/MemberTierCell";
 import { MemberNoteCell } from "@/components/MemberNoteCell";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
+import { MemberLaneCell } from "@/components/MemberLaneCell";
+import { LaneFilterMenu } from "@/components/LaneFilterMenu";
 
 // 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임과 비고가 가져간다.
 // 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 — METRICS_GRID 참고.
-const GRID = "grid-cols-[44px_80px_1.3fr_600px_120px_1fr]";
+const GRID = "grid-cols-[44px_80px_1.3fr_600px_88px_88px_120px_1fr]";
 
 // 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
 // 곧 협곡·칼바람 경계다.
@@ -43,18 +45,25 @@ export function MemberInfoTable({
   sort,
   dir,
   query,
+  laneTokens,
+  sublaneTokens,
 }: {
   rows: MemberInfoRow[];
   isAdmin: boolean;
   sort: MemberInfoSort;
   dir: SortDirection;
   query: string;
+  laneTokens: string[];
+  sublaneTokens: string[];
 }) {
   function sortHref(key: MemberInfoSort): string {
     const startDir: SortDirection = TEXT_SORTS.includes(key) ? "asc" : "desc";
     const nextDir = sort === key ? (dir === "asc" ? "desc" : "asc") : startDir;
     const params = new URLSearchParams({ sort: key, dir: nextDir });
     if (query) params.set("q", query);
+    // 정렬을 바꿔도 걸어 둔 라인 필터는 유지된다.
+    if (laneTokens.length > 0) params.set("lane", laneTokens.join(","));
+    if (sublaneTokens.length > 0) params.set("sublane", sublaneTokens.join(","));
     return `/member-info?${params.toString()}`;
   }
 
@@ -87,6 +96,8 @@ export function MemberInfoTable({
           </div>
           <div />
           <div />
+          <div />
+          <div />
         </div>
         <div
           className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-faint`}
@@ -109,6 +120,8 @@ export function MemberInfoTable({
             <div className="text-center">패</div>
             <SortLink sortKey="aramWinRate" label="승률" align="center" />
           </div>
+          <LaneFilterMenu param="lane" label="주 라인" selected={laneTokens} />
+          <LaneFilterMenu param="sublane" label="부 라인" selected={sublaneTokens} />
           <SortLink sortKey="tier" label="현재티어" align="center" />
           <div className="text-center">비고</div>
         </div>
@@ -161,6 +174,8 @@ export function MemberInfoTable({
               </div>
             </div>
 
+            <MemberLaneCell memberId={m.id} slot="primary" lane={m.primaryLane} isAdmin={isAdmin} />
+            <MemberLaneCell memberId={m.id} slot="secondary" lane={m.secondaryLane} isAdmin={isAdmin} />
             <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
             <MemberNoteCell memberId={m.id} note={m.note} isAdmin={isAdmin} />
           </div>

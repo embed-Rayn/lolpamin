@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { Member, MemberTier } from "@lolpamin/db";
-import { displayedRating, tierScore } from "@lolpamin/core";
+import type { Member, MemberLane, MemberTier } from "@lolpamin/db";
+import { displayedRating, isMemberLane, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
 type MemberWithAbsorbed = Member & {
@@ -39,6 +39,30 @@ export function parseSortDirection(value: string | undefined): SortDirection {
   return value === "desc" ? "desc" : "asc";
 }
 
+// 라인 필터는 체크박스 다중 선택이라 URL에 "TOP,JUNGLE"처럼 실린다. `null`은 미지정
+// 회원을 고른 것이고(빈 값 `-`로 들어온다), 아무것도 고르지 않으면 빈 배열 = 전체다.
+export type LaneFilter = Array<MemberLane | null>;
+
+export const UNSET_LANE_PARAM = "-";
+
+export function parseLaneFilter(value: string | undefined): LaneFilter {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const lanes: LaneFilter = [];
+  for (const raw of value.split(",")) {
+    const token = raw.trim();
+    if (token === "" || seen.has(token)) continue;
+    seen.add(token);
+    if (token === UNSET_LANE_PARAM) lanes.push(null);
+    else if (isMemberLane(token)) lanes.push(token);
+  }
+  return lanes;
+}
+
+export function serializeLaneFilter(lanes: LaneFilter): string {
+  return lanes.map((lane) => lane ?? UNSET_LANE_PARAM).join(",");
+}
+
 export interface ModeRecord {
   // 화면용 점수. 판이 0이면 저장값(기본 1000)과 무관하게 0 — /rift, /aram과 같은 규칙
   // (displayedRating).
@@ -55,6 +79,8 @@ export interface MemberInfoRow {
   realName: string;
   kakaoNickname: string;
   tier: MemberTier;
+  primaryLane: MemberLane | null;
+  secondaryLane: MemberLane | null;
   rift: ModeRecord;
   aram: ModeRecord;
   note: string | null;
@@ -211,6 +237,8 @@ export async function getMemberInfoListData(
   query: string,
   sort: MemberInfoSort = "realName",
   dir: SortDirection = "asc",
+  primaryLanes: LaneFilter = [],
+  secondaryLanes: LaneFilter = [],
 ): Promise<MemberInfoRow[]> {
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
@@ -229,6 +257,12 @@ export async function getMemberInfoListData(
     );
   }
 
+  // 빈 목록은 "고른 것이 없다" = 전체다. 아무것도 고르지 않은 필터가 모두를 걸러내면
+  // 화면이 이유 없이 비어 보인다.
+  function matchesLane(lane: MemberLane | null, selected: LaneFilter): boolean {
+    return selected.length === 0 || selected.includes(lane);
+  }
+
   const rows: MemberInfoRow[] = members
     .map((m) => {
       const realName = m.realName ?? "-";
@@ -244,13 +278,19 @@ export async function getMemberInfoListData(
           realName,
           kakaoNickname: displayKakaoNickname(m),
           tier: m.tier,
+          primaryLane: m.primaryLane,
+          secondaryLane: m.secondaryLane,
           rift: record.rift,
           aram: record.aram,
           note: m.note,
         },
       };
     })
-    .filter(({ m, realName }) => matchesQuery(m, realName))
+    .filter(({ m, realName, row }) => {
+      if (!matchesLane(row.primaryLane, primaryLanes)) return false;
+      if (!matchesLane(row.secondaryLane, secondaryLanes)) return false;
+      return matchesQuery(m, realName);
+    })
     .map(({ row }) => row);
 
   return rows.sort((a, b) => compareRows(a, b, sort, dir));

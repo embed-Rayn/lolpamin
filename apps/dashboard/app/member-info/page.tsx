@@ -5,8 +5,10 @@ import { StatCard } from "@/components/StatCard";
 import {
   getMemberInfoListData,
   getMemberInfoSummary,
+  parseLaneFilter,
   parseMemberInfoSort,
   parseSortDirection,
+  serializeLaneFilter,
 } from "@/lib/queries/member-info";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
@@ -16,13 +18,15 @@ export const dynamic = "force-dynamic";
 export default async function MemberInfoPage({
   searchParams,
 }: {
-  searchParams: { q?: string; sort?: string; dir?: string };
+  searchParams: { q?: string; sort?: string; dir?: string; lane?: string; sublane?: string };
 }) {
   const query = searchParams.q ?? "";
   const sort = parseMemberInfoSort(searchParams.sort);
   const dir = parseSortDirection(searchParams.dir);
+  const primaryLanes = parseLaneFilter(searchParams.lane);
+  const secondaryLanes = parseLaneFilter(searchParams.sublane);
   const [rows, summary, currentAdmin] = await Promise.all([
-    getMemberInfoListData(query, sort, dir),
+    getMemberInfoListData(query, sort, dir, primaryLanes, secondaryLanes),
     getMemberInfoSummary(),
     getCurrentAdmin(),
   ]);
@@ -60,7 +64,15 @@ export default async function MemberInfoPage({
         </div>
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberInfoSearch query={query} sort={sort} dir={dir} />
-          <MemberInfoTable rows={rows} isAdmin={currentAdmin !== null} sort={sort} dir={dir} query={query} />
+          <MemberInfoTable
+            rows={rows}
+            isAdmin={currentAdmin !== null}
+            sort={sort}
+            dir={dir}
+            query={query}
+            laneTokens={primaryLanes.length > 0 ? serializeLaneFilter(primaryLanes).split(",") : []}
+            sublaneTokens={secondaryLanes.length > 0 ? serializeLaneFilter(secondaryLanes).split(",") : []}
+          />
         </section>
       </div>
     </AppShell>

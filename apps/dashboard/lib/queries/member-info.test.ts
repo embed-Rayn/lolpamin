@@ -16,8 +16,14 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: new Client({ datasourceUrl: process.env.DATABASE_URL_TEST }) };
 });
 
-const { getMemberInfoListData, getMemberInfoSummary, parseMemberInfoSort, parseSortDirection } =
-  await import("./member-info");
+const {
+  getMemberInfoListData,
+  getMemberInfoSummary,
+  parseMemberInfoSort,
+  parseSortDirection,
+  parseLaneFilter,
+  serializeLaneFilter,
+} = await import("./member-info");
 
 async function playGame(options: {
   blue: string[];
@@ -70,6 +76,91 @@ describe("parseMemberInfoSort / parseSortDirection", () => {
     expect(parseMemberInfoSort("aramGames")).toBe("aramGames");
     expect(parseMemberInfoSort("tier")).toBe("tier");
     expect(parseSortDirection("desc")).toBe("desc");
+  });
+});
+
+describe("parseLaneFilter / serializeLaneFilter", () => {
+  it("reads an empty filter as no selection", () => {
+    expect(parseLaneFilter(undefined)).toEqual([]);
+    expect(parseLaneFilter("")).toEqual([]);
+  });
+
+  it("reads a multi-select list", () => {
+    expect(parseLaneFilter("TOP,JUNGLE")).toEqual(["TOP", "JUNGLE"]);
+  });
+
+  it("reads the 미지정 token as null", () => {
+    expect(parseLaneFilter("-")).toEqual([null]);
+    expect(parseLaneFilter("ADC,-")).toEqual(["ADC", null]);
+  });
+
+  it("drops unknown tokens and duplicates", () => {
+    expect(parseLaneFilter("TOP,정글,TOP,,MID")).toEqual(["TOP", "MID"]);
+  });
+
+  it("round-trips through serialize", () => {
+    expect(serializeLaneFilter(parseLaneFilter("SUPPORT,-"))).toBe("SUPPORT,-");
+  });
+});
+
+describe("getMemberInfoListData lane filter", () => {
+  beforeEach(async () => {
+    await prisma.member.create({ data: { realName: "탑주정글부", primaryLane: "TOP", secondaryLane: "JUNGLE" } });
+    await prisma.member.create({ data: { realName: "정글주미드부", primaryLane: "JUNGLE", secondaryLane: "MID" } });
+    await prisma.member.create({ data: { realName: "원딜주", primaryLane: "ADC" } });
+    await prisma.member.create({ data: { realName: "미지정" } });
+  });
+
+  // 아무것도 고르지 않은 필터가 모두를 걸러내면 화면이 이유 없이 빈다.
+  it("treats an empty selection as everyone", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", [], []);
+
+    expect(rows).toHaveLength(4);
+  });
+
+  it("filters by one primary lane", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", ["ADC"], []);
+
+    expect(rows.map((r) => r.realName)).toEqual(["원딜주"]);
+  });
+
+  it("filters by several primary lanes at once", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", ["TOP", "ADC"], []);
+
+    expect(rows.map((r) => r.realName).sort()).toEqual(["원딜주", "탑주정글부"]);
+  });
+
+  it("filters members with no lane set", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", [null], []);
+
+    expect(rows.map((r) => r.realName)).toEqual(["미지정"]);
+  });
+
+  it("filters the secondary lane independently", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", [], ["MID"]);
+
+    expect(rows.map((r) => r.realName)).toEqual(["정글주미드부"]);
+  });
+
+  // 두 필터는 AND다 — 주 라인이 정글이면서 부 라인이 미드인 사람.
+  it("combines the two lane filters", async () => {
+    const both = await getMemberInfoListData("", "realName", "asc", ["JUNGLE"], ["MID"]);
+    expect(both.map((r) => r.realName)).toEqual(["정글주미드부"]);
+
+    const none = await getMemberInfoListData("", "realName", "asc", ["JUNGLE"], ["SUPPORT"]);
+    expect(none).toHaveLength(0);
+  });
+
+  it("combines with the search box", async () => {
+    const rows = await getMemberInfoListData("주", "realName", "asc", ["TOP", "ADC"], []);
+
+    expect(rows.map((r) => r.realName).sort()).toEqual(["원딜주", "탑주정글부"]);
+  });
+
+  it("carries the lanes onto the row", async () => {
+    const rows = await getMemberInfoListData("탑주정글부");
+
+    expect(rows[0]).toMatchObject({ primaryLane: "TOP", secondaryLane: "JUNGLE" });
   });
 });
 
