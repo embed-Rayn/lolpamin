@@ -216,6 +216,30 @@ page is always opened on arrival. Icons are inline SVG paths in
 `components/nav-icons.tsx` named by string so the nav config survives the
 server → client boundary.
 
+## Mobile
+
+Five read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/inactive`) work down to a 375px phone; the eight operator
+screens (`matches`, `replay-import`, `team-builder`, `kakao-import`,
+`link-accounts`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
+이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
+content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
+mode still reaches it.
+
+One breakpoint, Tailwind's default `md` (768px). Every table component renders
+both views in the same server component: the desktop grid wrapped in
+`hidden md:block`, and a `md:hidden` card list (`MemberCard`, `MemberInfoCard`,
+`InactiveCard`) fed the same `rows`. Sorting is a URL param either way, so a
+`SortSelect` on mobile (`components/SortSelect.tsx`, a plain `<select>` encoding
+`"sort:dir"`) writes the same `sort`/`dir` query params the desktop header links
+do — switching viewport width mid-session never loses the current order.
+
+Navigation is `MobileDrawer`: a client component owning only its own open
+state, wrapping the unmodified `SidebarNav` so fold state, groups and the
+active-item highlight all carry over unchanged. It stays mounted and slides via
+`translate-x` + `motion-safe:` classes rather than conditional mounting, so the
+transition actually plays.
+
 ## Deployment
 
 The OCI instance runs `docker-compose.prod.yml`: a Postgres container with no
