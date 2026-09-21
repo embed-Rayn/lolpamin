@@ -27,8 +27,8 @@ export default async function MatchHistoryPage({
       pageTitle="내전 상세 기록"
       pageDesc="입력한 순서대로 보기 · 모드별로 가장 최근 한 판만 되돌릴 수 있습니다"
     >
-      <div className="flex flex-col gap-4 px-7 pb-10 pt-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:px-7 md:pb-10 md:pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <GameHistoryModeFilter mode={history.mode} />
           <div className="font-mono text-[13px] text-muted">
             살아 있는 경기 {history.liveCount} / 전체 {history.totalCount}

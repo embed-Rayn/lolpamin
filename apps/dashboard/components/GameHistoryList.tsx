@@ -73,7 +73,7 @@ export function GameHistoryList({
               : "border-ink/[.07] bg-surface-2"
           }`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className="font-mono text-[13px] text-muted">{formatPlayedAt(row.playedAt)}</span>
             {showMode && (
               <span

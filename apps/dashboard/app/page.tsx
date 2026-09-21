@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default function HomePage() {
   return (
     <AppShell activeNav="home" pageTitle="롤파민" pageDesc="롤파민 내전 운영 공간">
-      <div className="flex flex-col items-center px-7 pb-10 pt-6">
+      <div className="flex flex-col items-center px-4 pb-8 pt-4 md:px-7 md:pb-10 md:pt-6">
         <img
           src="/banner.png"
           alt="롤파민"
