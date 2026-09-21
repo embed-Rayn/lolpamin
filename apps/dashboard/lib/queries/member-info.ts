@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Member, MemberTier } from "@lolpamin/db";
-import { tierScore } from "@lolpamin/core";
+import { displayedRating, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
 type MemberWithAbsorbed = Member & {
@@ -11,8 +11,10 @@ export type MemberInfoSort =
   | "realName"
   | "kakaoNickname"
   | "tier"
+  | "riftMmr"
   | "riftGames"
   | "riftWinRate"
+  | "aramMmr"
   | "aramGames"
   | "aramWinRate";
 export type SortDirection = "asc" | "desc";
@@ -21,8 +23,10 @@ const MEMBER_INFO_SORTS: MemberInfoSort[] = [
   "realName",
   "kakaoNickname",
   "tier",
+  "riftMmr",
   "riftGames",
   "riftWinRate",
+  "aramMmr",
   "aramGames",
   "aramWinRate",
 ];
@@ -36,6 +40,9 @@ export function parseSortDirection(value: string | undefined): SortDirection {
 }
 
 export interface ModeRecord {
+  // 화면용 점수. 판이 0이면 저장값(기본 1000)과 무관하게 0 — /rift, /aram과 같은 규칙
+  // (displayedRating).
+  mmr: number;
   games: number;
   wins: number;
   losses: number;
@@ -64,9 +71,47 @@ function displayKakaoNickname(m: MemberWithAbsorbed): string {
   );
 }
 
-function toModeRecord(wins: number, losses: number): ModeRecord {
+function toModeRecord(rating: number, wins: number, losses: number): ModeRecord {
   const games = wins + losses;
-  return { games, wins, losses, winRate: games === 0 ? null : Math.round((wins / games) * 100) };
+  return {
+    mmr: displayedRating(rating, games),
+    games,
+    wins,
+    losses,
+    winRate: games === 0 ? null : Math.round((wins / games) * 100),
+  };
+}
+
+export interface MemberInfoSummary {
+  totalCount: number;
+  // 그 모드에서 집계된 판이 있는 회원의 저장 점수 평균. 한 판도 안 뛴 회원은 화면에서
+  // 0점이라 평균에 넣으면(0으로든 1000으로든) 숫자가 실제 판 뛴 사람들과 어긋난다.
+  // 판 뛴 회원이 없으면 0.
+  averageRiftMmr: number;
+  averageAramMmr: number;
+}
+
+function averageOf(values: number[]): number {
+  if (values.length === 0) return 0;
+  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+}
+
+/** 상단 카드용 집계. 검색어와 무관하게 전체 회원을 본다. */
+export async function getMemberInfoSummary(): Promise<MemberInfoSummary> {
+  const members = await prisma.member.findMany({
+    where: { mergedIntoId: null },
+    include: { absorbed: { select: { id: true, kakaoNickname: true } } },
+  });
+  const records = await tallyByMode(members);
+
+  const played = (pick: (r: { rift: ModeRecord; aram: ModeRecord }) => ModeRecord, field: "mmr" | "aramMmr") =>
+    members.filter((m) => (pick(records.get(m.id)!)?.games ?? 0) > 0).map((m) => m[field]);
+
+  return {
+    totalCount: members.length,
+    averageRiftMmr: averageOf(played((r) => r.rift, "mmr")),
+    averageAramMmr: averageOf(played((r) => r.aram, "aramMmr")),
+  };
 }
 
 /**
@@ -85,6 +130,7 @@ async function tallyByMode(
   const tallies = new Map<string, { rift: { wins: number; losses: number }; aram: { wins: number; losses: number } }>(
     members.map((m) => [m.id, { rift: { wins: 0, losses: 0 }, aram: { wins: 0, losses: 0 } }]),
   );
+  const ratingOf = new Map(members.map((m) => [m.id, { rift: m.mmr, aram: m.aramMmr }]));
   if (ownerOf.size === 0) return new Map();
 
   const countedGame = await getCountedGameFilter(prisma);
@@ -102,7 +148,16 @@ async function tallyByMode(
   }
 
   return new Map(
-    [...tallies].map(([id, t]) => [id, { rift: toModeRecord(t.rift.wins, t.rift.losses), aram: toModeRecord(t.aram.wins, t.aram.losses) }]),
+    [...tallies].map(([id, t]) => {
+      const rating = ratingOf.get(id)!;
+      return [
+        id,
+        {
+          rift: toModeRecord(rating.rift, t.rift.wins, t.rift.losses),
+          aram: toModeRecord(rating.aram, t.aram.wins, t.aram.losses),
+        },
+      ];
+    }),
   );
 }
 
@@ -135,6 +190,10 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
       const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
     }
+    case "riftMmr":
+      return (a.rift.mmr - b.rift.mmr) * sign || a.id.localeCompare(b.id);
+    case "aramMmr":
+      return (a.aram.mmr - b.aram.mmr) * sign || a.id.localeCompare(b.id);
     case "riftGames":
       return (a.rift.games - b.rift.games) * sign || a.id.localeCompare(b.id);
     case "aramGames":
@@ -174,8 +233,8 @@ export async function getMemberInfoListData(
     .map((m) => {
       const realName = m.realName ?? "-";
       const record = records.get(m.id) ?? {
-        rift: toModeRecord(0, 0),
-        aram: toModeRecord(0, 0),
+        rift: toModeRecord(m.mmr, 0, 0),
+        aram: toModeRecord(m.aramMmr, 0, 0),
       };
       return {
         m,

@@ -3,7 +3,13 @@ import type { MemberInfoRow, MemberInfoSort, ModeRecord, SortDirection } from "@
 import { MemberTierCell } from "@/components/MemberTierCell";
 import { MemberNoteCell } from "@/components/MemberNoteCell";
 
-const GRID = "grid-cols-[40px_1fr_1.3fr_38px_34px_34px_54px_38px_34px_34px_54px_112px_1.3fr]";
+// 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임과 비고가 가져간다.
+const GRID = "grid-cols-[40px_72px_1.3fr_58px_38px_34px_34px_54px_58px_38px_34px_34px_54px_112px_1.3fr]";
+
+function mmrClassName(mmr: number): string {
+  if (mmr === 0) return "text-[#5C6577]";
+  return mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]";
+}
 
 // 이름은 오름차순, 숫자는 내림차순으로 시작한다 — 가나다순으로 찾는 칸과 "가장 많이/잘한
 // 사람"을 찾는 칸의 기대가 서로 반대다. 같은 칸을 다시 누르면 방향만 뒤집는다.
@@ -56,8 +62,8 @@ export function MemberInfoTable({
         <div />
         <div />
         <div />
-        <div className="col-span-4 text-center text-[#8FB4F5]">협곡</div>
-        <div className="col-span-4 text-center text-[#F2985C]">칼바람</div>
+        <div className="col-span-5 text-center text-[#8FB4F5]">협곡</div>
+        <div className="col-span-5 text-center text-[#F2985C]">칼바람</div>
         <div />
         <div />
       </div>
@@ -67,10 +73,12 @@ export function MemberInfoTable({
         <div className="text-right">NO.</div>
         <SortLink sortKey="realName" label="이름" />
         <SortLink sortKey="kakaoNickname" label="닉네임" />
+        <SortLink sortKey="riftMmr" label="MMR" align="right" />
         <SortLink sortKey="riftGames" label="판" align="right" />
         <div className="text-right">승</div>
         <div className="text-right">패</div>
         <SortLink sortKey="riftWinRate" label="승률" align="right" />
+        <SortLink sortKey="aramMmr" label="MMR" align="right" />
         <SortLink sortKey="aramGames" label="판" align="right" />
         <div className="text-right">승</div>
         <div className="text-right">패</div>
@@ -94,6 +102,7 @@ export function MemberInfoTable({
             {m.kakaoNickname}
           </div>
 
+          <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
           <div className="text-right font-mono text-[13px] text-[#8A94A6]">{m.rift.games}</div>
           <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
             {m.rift.wins}
@@ -107,6 +116,7 @@ export function MemberInfoTable({
             {winRateLabel(m.rift)}
           </div>
 
+          <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
           <div className="text-right font-mono text-[13px] text-[#8A94A6]">{m.aram.games}</div>
           <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-[#7FD1A0]" : "text-[#5C6577]"}`}>
             {m.aram.wins}

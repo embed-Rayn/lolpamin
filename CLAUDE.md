@@ -68,7 +68,10 @@ the shown value diverges from the column, the MMR sort happens in JS after the
 query (`sortByDisplayedMmr`), not in `orderBy`. The board's only filters are
 전체 / 유저만 (counted games > 0) / 언랭만 (0); link state and inactivity live on
 their own pages. The Discord bot still shows stored ratings. `/members` is a
-permanent redirect to `/rift`.
+permanent redirect to `/rift`. `/member-info` shows the same displayed rating
+per mode beside each 판 column, and its 평균 MMR cards average the **stored**
+rating over members with counted games in that mode (`getMemberInfoSummary`),
+so an untouched 1000 neither drags the mean nor shows up as 0 in it.
 
 Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
 behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**

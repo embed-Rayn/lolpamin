@@ -16,7 +16,8 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: new Client({ datasourceUrl: process.env.DATABASE_URL_TEST }) };
 });
 
-const { getMemberInfoListData, parseMemberInfoSort, parseSortDirection } = await import("./member-info");
+const { getMemberInfoListData, getMemberInfoSummary, parseMemberInfoSort, parseSortDirection } =
+  await import("./member-info");
 
 async function playGame(options: {
   blue: string[];
@@ -95,6 +96,20 @@ describe("getMemberInfoListData records", () => {
 
     expect(row.rift).toMatchObject({ games: 0, wins: 0, losses: 0, winRate: null });
     expect(row.aram.winRate).toBeNull();
+  });
+
+  // /rift, /aram과 같은 규칙: 판이 0이면 저장값이 얼마든 0점으로 보인다. 모드별로 따로
+  // 판정하므로 협곡만 뛴 회원의 칼바람 점수는 0이다.
+  it("shows the stored rating only for the mode with counted games", async () => {
+    const a = await prisma.member.create({ data: { realName: "협곡만", mmr: 1300, aramMmr: 1400 } });
+    const b = await prisma.member.create({ data: { realName: "상대", mmr: 1200, aramMmr: 1100 } });
+    await playGame({ blue: [a.id], red: [b.id], winner: "BLUE", mode: "RIFT" });
+
+    const rows = await getMemberInfoListData("");
+    const row = rows.find((r) => r.realName === "협곡만")!;
+
+    expect(row.rift.mmr).toBe(1300);
+    expect(row.aram.mmr).toBe(0);
   });
 
   it("rounds the win rate", async () => {
@@ -233,6 +248,14 @@ describe("getMemberInfoListData sorting", () => {
     expect(descending.map((r) => r.rift.games)).toEqual([3, 3, 0]);
   });
 
+  it("sorts by 협곡 MMR with unplayed members shown as 0 and last", async () => {
+    await prisma.member.update({ where: { id: (await prisma.member.findFirstOrThrow({ where: { realName: "나회원" } })).id }, data: { mmr: 1100 } });
+
+    const descending = await getMemberInfoListData("", "riftMmr", "desc");
+
+    expect(descending.map((r) => r.rift.mmr)).toEqual([1100, 1000, 0]);
+  });
+
   it("sorts by 협곡 승률 and keeps members without games last in both directions", async () => {
     const descending = await getMemberInfoListData("", "riftWinRate", "desc");
     expect(descending.map((r) => r.rift.winRate)).toEqual([67, 33, null]);
@@ -246,5 +269,26 @@ describe("getMemberInfoListData sorting", () => {
 
     expect(rows.every((r) => r.aram.winRate === null)).toBe(true);
     expect(rows).toHaveLength(3);
+  });
+});
+
+describe("getMemberInfoSummary", () => {
+  it("counts every surviving member and averages ratings over members who played", async () => {
+    const a = await prisma.member.create({ data: { realName: "가", mmr: 1200, aramMmr: 1500 } });
+    const b = await prisma.member.create({ data: { realName: "나", mmr: 1000, aramMmr: 900 } });
+    const idle = await prisma.member.create({ data: { realName: "다", mmr: 1000, aramMmr: 1000 } });
+    await prisma.member.create({ data: { kakaoNickname: "묘비", mergedIntoId: idle.id } });
+    await playGame({ blue: [a.id], red: [b.id], winner: "BLUE", mode: "RIFT" });
+    await playGame({ blue: [a.id], red: [b.id], winner: "RED", mode: "ARAM" });
+
+    const summary = await getMemberInfoSummary();
+
+    expect(summary).toEqual({ totalCount: 3, averageRiftMmr: 1100, averageAramMmr: 1200 });
+  });
+
+  it("reports 0 averages when nobody has played", async () => {
+    await prisma.member.create({ data: { realName: "가" } });
+
+    expect(await getMemberInfoSummary()).toEqual({ totalCount: 1, averageRiftMmr: 0, averageAramMmr: 0 });
   });
 });
