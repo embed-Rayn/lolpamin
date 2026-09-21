@@ -60,6 +60,16 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 MMR is team-average Elo, K=40, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant gains a flat bonus — `WIN_POINT` (3) for the winning team, `LOSS_POINT` (1) for the losing one — so a game is worth +23/-19 between even teams and the rating pool inflates. That is deliberate: showing up is always worth something, winning a little more.
 
+The two dashboards (`/rift`, `/aram`) show **0** for a member whose counted game
+count in that mode is 0, whatever `Member.mmr`/`aramMmr` holds (`displayedRating`
+in `packages/core`). The stored 1000 is untouched and still seeds the first game;
+the board just refuses to rank an untouched 1000 above someone who lost. Because
+the shown value diverges from the column, the MMR sort happens in JS after the
+query (`sortByDisplayedMmr`), not in `orderBy`. The board's only filters are
+전체 / 유저만 (counted games > 0) / 언랭만 (0); link state and inactivity live on
+their own pages. The Discord bot still shows stored ratings. `/members` is a
+permanent redirect to `/rift`.
+
 Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
 behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**
 reset (`applySoftReset`) pulls every active member's rating halfway back to 1000, so
@@ -171,7 +181,7 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 `queries/members.ts`의 `isHalfMember`는 `saveGameResult`·`getLinkedMembers`의 완화 조건
 ("PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음")을 따르지 않는다 — 둘은 서로 다른 질문이다.
 `saveGameResult`는 "이 경기를 뛰어도 되는가"를 묻고 리플레이가 그 증거가 된다. `isHalfMember`는
-`/members` 화면의 반쪽 배지를 위해 "아직 연결할 일이 남았는가"를 묻고, 라이엇 계정은 디스코드
+`/rift` 화면의 반쪽 배지를 위해 "아직 연결할 일이 남았는가"를 묻고, 라이엇 계정은 디스코드
 연결의 필요를 없애지 않는다 — 그래서 라이엇 계정으로 경기를 뛰는 회원도 디코나 카톡 한쪽이
 비어 있으면 여전히 반쪽으로 집계된다. 의도적인 차이이고 버그가 아니다.
 

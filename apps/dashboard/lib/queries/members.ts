@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { GameMode, Member, MemberTier, Prisma } from "@lolpamin/db";
-import { tierScore } from "@lolpamin/core";
+import { displayedRating, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 import { ratingField } from "../rating-field";
 
@@ -45,9 +45,12 @@ function displayKakaoNickname(m: MemberWithCounts): string {
   );
 }
 
-export type MemberFilter = "all" | "linked" | "kakaoOnly" | "discordOnly" | "inactive";
+// "played"는 해당 모드에서 집계된 판수가 있는 회원(점수가 보이는 사람), "unranked"는 판수
+// 0인 회원(0점으로 보이는 사람). 연결 상태·미활동 필터는 /link-accounts와 /inactive가
+// 각자 맡는다.
+export type MemberFilter = "all" | "played" | "unranked";
 
-const MEMBER_FILTERS: MemberFilter[] = ["all", "linked", "kakaoOnly", "discordOnly", "inactive"];
+const MEMBER_FILTERS: MemberFilter[] = ["all", "played", "unranked"];
 
 export function parseMemberFilter(value: string | undefined): MemberFilter {
   return MEMBER_FILTERS.includes(value as MemberFilter) ? (value as MemberFilter) : "all";
@@ -68,8 +71,12 @@ export function parseSortDirection(value: string | undefined): SortDirection {
 
 // 값이 비어 있는 행은 방향과 무관하게 마지막에 둔다 — 실명 없는 회원이 목록 맨 위를
 // 차지하면 정렬이 쓸모없어진다. id 2차 정렬은 동점일 때 순서를 고정하기 위한 것이다.
-function orderByFor(sort: MemberSort, dir: SortDirection, mode: GameMode): Prisma.MemberOrderByWithRelationInput[] {
-  if (sort === "mmr") return [{ [ratingField(mode)]: dir }, { id: "asc" }];
+//
+// MMR은 화면에 띄우는 값(displayedRating — 판수 0이면 0)으로 정렬해야 하므로 DB 정렬은
+// 순서만 고정하고 실제 정렬은 조회 뒤 sortByDisplayedMmr가 한다. 저장된 값으로 정렬하면
+// 한 판도 안 뛴 회원이 0점을 달고 1000점 사이에 끼어 있게 된다.
+function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByWithRelationInput[] {
+  if (sort === "mmr") return [{ id: "asc" }];
   if (sort === "realName") return [{ realName: { sort: dir, nulls: "last" } }, { id: "asc" }];
   // 티어는 점수 순으로 정렬해야 하는데 Postgres는 enum을 선언 순서로 정렬한다. 지금은
   // 두 순서가 우연히 같지만 그 우연에 기대면 enum 순서를 바꾸는 순간 정렬이 조용히
@@ -88,12 +95,21 @@ function sortByTierScore(rows: MemberRow[], dir: SortDirection): MemberRow[] {
   });
 }
 
+function sortByDisplayedMmr(rows: MemberRow[], dir: SortDirection): MemberRow[] {
+  const sign = dir === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const byMmr = (a.mmr - b.mmr) * sign;
+    return byMmr !== 0 ? byMmr : a.id.localeCompare(b.id);
+  });
+}
+
 export interface MemberRow {
   id: string;
   realName: string;
   kakaoNickname: string;
   // 서버 별명. 카톡과 연결되지 않은 계정은 "-"다 — displayDiscordName 참고.
   discordName: string;
+  // 화면용 점수. 판수가 0이면 저장된 값(기본 1000)과 무관하게 0이다 — displayedRating 참고.
   mmr: number;
   tier: MemberTier;
   riotId: string | null;
@@ -116,10 +132,6 @@ export interface MemberRow {
 }
 
 export interface MemberListData {
-  totalCount: number;
-  halfCount: number;
-  unassignedCount: number;
-  averageMmr: number;
   rows: MemberRow[];
 }
 
@@ -143,17 +155,18 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameM
   // 쌓인다. 생존자 자기 _count만 보면 "0건"이라 안내하고 실제로는 수십 건을 지우게 된다.
   const mentionCount = m.absorbed.reduce((sum, a) => sum + a._count.mentionLogs, m._count.mentionLogs);
   const gameCount = m.absorbed.reduce((sum, a) => sum + a._count.participants, m._count.participants);
+  const playedCount = record.wins + record.losses;
   return {
     id: m.id,
     realName: m.realName ?? "-",
     kakaoNickname: displayKakaoNickname(m),
     discordName: displayDiscordName(m),
-    mmr: m[ratingField(mode)],
+    mmr: displayedRating(m[ratingField(mode)], playedCount),
     tier: m.tier,
     riotId: m.riotId,
     wins: record.wins,
     losses: record.losses,
-    playedCount: record.wins + record.losses,
+    playedCount,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
     isHalf: isHalfMember(m),
@@ -214,7 +227,7 @@ export async function getMemberListData(
   const now = new Date();
   const allMembers = await prisma.member.findMany({
     where: { mergedIntoId: null },
-    orderBy: orderByFor(sort, dir, mode),
+    orderBy: orderByFor(sort, dir),
     include: {
       _count: { select: { mentionLogs: true, participants: true } },
       // 삭제 확인창 숫자용. 묘비의 활동 기록도 함께 지워지므로 같이 세어 온다.
@@ -228,14 +241,6 @@ export async function getMemberListData(
   });
 
   const record = await tallyRecords(allMembers, mode);
-
-  const totalCount = allMembers.length;
-  const halfCount = allMembers.filter(isHalfMember).length;
-  const unassignedCount = halfCount;
-  const field = ratingField(mode);
-  const averageMmr = totalCount === 0
-    ? 0
-    : Math.round(allMembers.reduce((sum, m) => sum + m[field], 0) / totalCount);
 
   const trimmedQuery = query.trim().toLowerCase();
   // 검색은 화면에 안 띄우는 값까지 훑는다. 미연결 디스코드 계정은 실명도 카톡 닉네임도
@@ -256,15 +261,14 @@ export async function getMemberListData(
   const rows = allMembers
     .map((m) => ({ m, row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }, mode) }))
     .filter(({ m, row }) => {
-      if (filter === "linked" && !(row.hasDiscord && row.hasKakao)) return false;
-      if (filter === "kakaoOnly" && (row.hasDiscord || !row.hasKakao)) return false;
-      if (filter === "discordOnly" && (!row.hasDiscord || row.hasKakao)) return false;
-      if (filter === "inactive" && (row.daysSinceActive === null || row.daysSinceActive < 14)) return false;
+      if (filter === "played" && row.playedCount === 0) return false;
+      if (filter === "unranked" && row.playedCount > 0) return false;
       return matchesQuery(m, row);
     })
     .map(({ row }) => row);
 
-  const sortedRows = sort === "tier" ? sortByTierScore(rows, dir) : rows;
+  const sortedRows =
+    sort === "tier" ? sortByTierScore(rows, dir) : sort === "mmr" ? sortByDisplayedMmr(rows, dir) : rows;
 
-  return { totalCount, halfCount, unassignedCount, averageMmr, rows: sortedRows };
+  return { rows: sortedRows };
 }

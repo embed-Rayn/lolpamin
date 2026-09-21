@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateMemberRealNameAction } from "@/app/members/actions";
+import { updateMemberRealNameAction } from "@/app/rift/actions";
 
 export function MemberRealNameCell({
   memberId,

@@ -3,17 +3,24 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MemberFilter } from "@/lib/queries/members";
 
-// "미연결만"은 카톡만 + 디코만이라 한 덩어리로 묶여 있었다. 어느 쪽이 비었는지가
-// 연결 작업에서는 정작 중요한 정보라 둘로 나눴다.
+// 점수판이라 판수 기준으로만 가른다 — 연결 상태는 /link-accounts, 미활동은 /inactive.
 const FILTERS: Array<{ key: MemberFilter; label: string }> = [
   { key: "all", label: "전체" },
-  { key: "linked", label: "연결됨" },
-  { key: "kakaoOnly", label: "카톡만" },
-  { key: "discordOnly", label: "디코만" },
-  { key: "inactive", label: "미활동만" },
+  { key: "played", label: "유저만" },
+  { key: "unranked", label: "언랭만" },
 ];
 
-export function MemberFilters({ activeFilter, query }: { activeFilter: MemberFilter; query: string }) {
+export function MemberFilters({
+  activeFilter,
+  query,
+  basePath,
+}: {
+  activeFilter: MemberFilter;
+  query: string;
+  // 이 표가 놓인 페이지("/rift" 또는 "/aram"). 협곡과 칼바람이 같은 표를 쓰므로 고정하면
+  // 칼바람에서 필터를 누를 때 협곡으로 넘어간다.
+  basePath: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,7 +31,7 @@ export function MemberFilters({ activeFilter, query }: { activeFilter: MemberFil
       if (next.q) params.set("q", next.q);
       else params.delete("q");
     }
-    router.push(`/members?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   }
 
   return (

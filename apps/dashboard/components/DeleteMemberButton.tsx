@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteMemberAction } from "@/app/members/actions";
+import { deleteMemberAction } from "@/app/rift/actions";
 
 export interface DeleteMemberButtonProps {
   memberId: string;

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MemberTier } from "@lolpamin/db";
 import { TIER_OPTIONS, tierLabel, tierScore } from "@lolpamin/core";
-import { updateMemberTierAction } from "@/app/members/actions";
+import { updateMemberTierAction } from "@/app/rift/actions";
 
 export function MemberTierCell({
   memberId,

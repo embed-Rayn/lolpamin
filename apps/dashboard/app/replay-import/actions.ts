@@ -39,7 +39,7 @@ export async function saveReplayImportAction(input: SaveReplayImportActionInput)
   revalidatePath("/replay-import");
   revalidatePath("/match-history");
   revalidatePath("/matches");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   return result;
 }

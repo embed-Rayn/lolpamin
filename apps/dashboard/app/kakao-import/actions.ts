@@ -9,7 +9,7 @@ export async function importKakaoExportAction(exportText: string): Promise<Proce
   await requireAdmin();
   const result = await processKakaoExport(prisma, exportText);
   revalidatePath("/kakao-import");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   return result;
 }

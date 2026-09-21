@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateMemberRiotIdAction } from "@/app/members/actions";
+import { updateMemberRiotIdAction } from "@/app/rift/actions";
 
 export function MemberRiotIdCell({
   memberId,

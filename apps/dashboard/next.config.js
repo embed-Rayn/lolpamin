@@ -16,6 +16,11 @@ const nextConfig = {
       bodySizeLimit: "20mb",
     },
   },
+  // The member dashboard lived at /members until the aram board arrived; old
+  // bookmarks and chat links keep working.
+  async redirects() {
+    return [{ source: "/members", destination: "/rift", permanent: true }];
+  },
 };
 
 module.exports = nextConfig;

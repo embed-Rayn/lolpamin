@@ -19,6 +19,7 @@ export function MemberTable({
   dir,
   filter,
   query,
+  basePath,
 }: {
   rows: MemberRow[];
   isAdmin: boolean;
@@ -26,13 +27,15 @@ export function MemberTable({
   dir: SortDirection;
   filter: MemberFilter;
   query: string;
+  // 정렬 링크가 돌아올 페이지 — MemberFilters의 basePath와 같은 이유다.
+  basePath: string;
 }) {
   function sortHref(key: MemberSort): string {
     // 같은 기준을 다시 누르면 방향을 뒤집고, 다른 기준으로 바꾸면 내림차순부터 시작한다.
     const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
     const params = new URLSearchParams({ filter, sort: key, dir: nextDir });
     if (query) params.set("q", query);
-    return `/members?${params.toString()}`;
+    return `${basePath}?${params.toString()}`;
   }
 
   function sortMark(key: MemberSort): string {
@@ -77,7 +80,11 @@ export function MemberTable({
           </div>
           <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
           <MemberRiotIdCell memberId={m.id} riotId={m.riotId} isAdmin={isAdmin} />
-          <div className={`text-right font-mono text-[15.5px] font-bold ${m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"}`}>
+          <div
+            className={`text-right font-mono text-[15.5px] font-bold ${
+              m.mmr === 0 ? "text-[#5C6577]" : m.mmr >= 1600 ? "text-[#F2C75C]" : "text-[#E6EAF2]"
+            }`}
+          >
             {m.mmr}
           </div>
           <div className="text-right font-mono text-[13.5px] text-[#8A94A6]">{m.playedCount}</div>

@@ -12,6 +12,6 @@ export async function saveGameResultAction(input: SaveGameResultInput) {
   const result = await saveGameResult(prisma, { ...input, createdById: admin.id });
   revalidatePath("/matches");
   revalidatePath("/match-history");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   return result;
 }

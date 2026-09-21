@@ -16,7 +16,7 @@ export async function deleteMemberAction(memberId: string): Promise<DeleteMember
     throw new Error("memberId is required");
   }
   const result = await deleteMember(prisma, memberId);
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   revalidatePath("/link-accounts");
   revalidatePath("/matches");
@@ -35,7 +35,7 @@ export async function updateMemberRealNameAction(
     return { error: "실명을 저장하지 못했습니다." };
   }
 
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   return { error: null };
 }
@@ -58,7 +58,7 @@ export async function updateMemberTierAction(
     return { error: "티어를 저장하지 못했습니다." };
   }
 
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/team-builder");
   return { error: null };
 }
@@ -75,7 +75,7 @@ export async function updateMemberRiotIdAction(
     return { error: "Riot ID를 저장하지 못했습니다." };
   }
 
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/team-builder");
   return { error: null };
 }

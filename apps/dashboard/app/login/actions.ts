@@ -43,7 +43,7 @@ export async function loginAction(
   const { token, expiresAt } = await createSession(prisma, admin.id);
   cookies().set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
 
-  redirect("/members");
+  redirect("/rift");
 }
 
 export async function logoutAction(): Promise<void> {
@@ -52,5 +52,5 @@ export async function logoutAction(): Promise<void> {
     await destroySession(prisma, token);
   }
   cookies().delete(SESSION_COOKIE_NAME);
-  redirect("/members");
+  redirect("/rift");
 }

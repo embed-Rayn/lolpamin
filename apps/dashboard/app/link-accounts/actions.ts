@@ -30,7 +30,7 @@ export async function absorbMemberAction(loserId: string, survivorId: string): P
 
   // 흡수/해제는 "연결 완료" 판정을 바꾸므로 매칭 후보 풀과 미활동 리포트도 함께 달라진다.
   revalidatePath("/link-accounts");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   revalidatePath("/matches");
   return { error: null };
@@ -51,7 +51,7 @@ export async function releaseMemberAction(tombstoneId: string): Promise<{ error:
   }
 
   revalidatePath("/link-accounts");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   revalidatePath("/matches");
   return { error: null };
@@ -75,7 +75,7 @@ export async function importDiscordMembersAction(): Promise<ImportDiscordMembers
     const members = await fetchGuildMembers(token, guildId);
     const result = await importDiscordMembers(prisma, members);
     revalidatePath("/link-accounts");
-    revalidatePath("/members");
+    revalidatePath("/rift");
     return { result, error: null };
   } catch (error) {
     return { result: null, error: error instanceof Error ? error.message : "디스코드 회원을 가져오지 못했습니다." };

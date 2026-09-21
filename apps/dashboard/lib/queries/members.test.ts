@@ -29,6 +29,34 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+async function playGame(
+  blueId: string,
+  redId: string,
+  winner: "BLUE" | "RED",
+  cancelled = false,
+  mode: "RIFT" | "ARAM" = "RIFT",
+) {
+  const game = await prisma.gameResult.create({
+    data: { playedAt: new Date(2026, 7, 3), winner, mode, cancelledAt: cancelled ? new Date() : null },
+  });
+  for (const [memberId, team] of [
+    [blueId, "BLUE"],
+    [redId, "RED"],
+  ] as const) {
+    await prisma.gameParticipant.create({
+      data: { gameResultId: game.id, memberId, team, mmrBefore: 1000, mmrAfter: 1000 },
+    });
+  }
+}
+
+async function idOf(realName: string): Promise<string> {
+  return (await prisma.member.findFirstOrThrow({ where: { realName } })).id;
+}
+
+function rowOf(rows: Awaited<ReturnType<typeof getMemberListData>>["rows"], realName: string) {
+  return rows.find((r) => r.realName === realName)!;
+}
+
 describe("parseMemberSort / parseSortDirection", () => {
   it("defaults to mmr descending", () => {
     expect(parseMemberSort(undefined)).toBe("mmr");
@@ -45,16 +73,22 @@ describe("parseMemberSort / parseSortDirection", () => {
 });
 
 describe("getMemberListData sorting", () => {
+  // 시드 회원 셋 중 둘에게만 경기를 준다. 한 판도 안 뛴 세 번째(디코만, 저장값 1000)는
+  // 화면에서 0점이라 정렬에서도 맨 아래(오름차순이면 맨 위)로 간다.
+  beforeEach(async () => {
+    await playGame(await idOf("나회원"), await idOf("가회원"), "BLUE");
+  });
+
   it("sorts by mmr descending by default", async () => {
     const data = await getMemberListData("all", "", "mmr", "desc");
 
-    expect(data.rows.map((r) => r.mmr)).toEqual([1500, 1200, 1000]);
+    expect(data.rows.map((r) => r.mmr)).toEqual([1500, 1200, 0]);
   });
 
   it("sorts by mmr ascending", async () => {
     const data = await getMemberListData("all", "", "mmr", "asc");
 
-    expect(data.rows.map((r) => r.mmr)).toEqual([1000, 1200, 1500]);
+    expect(data.rows.map((r) => r.mmr)).toEqual([0, 1200, 1500]);
   });
 
   it("sorts by realName and puts members without one last in both directions", async () => {
@@ -109,7 +143,6 @@ describe("getMemberListData sorting", () => {
 
     expect(data.rows).toHaveLength(1);
     expect(data.rows[0].id).toBe(survivor.id);
-    expect(data.totalCount).toBe(1);
   });
 });
 
@@ -295,24 +328,6 @@ describe("tier and riot id", () => {
 });
 
 describe("getMemberListData 전적", () => {
-  async function playGame(blueId: string, redId: string, winner: "BLUE" | "RED", cancelled = false) {
-    const game = await prisma.gameResult.create({
-      data: { playedAt: new Date(2026, 7, 3), winner, cancelledAt: cancelled ? new Date() : null },
-    });
-    for (const [memberId, team] of [
-      [blueId, "BLUE"],
-      [redId, "RED"],
-    ] as const) {
-      await prisma.gameParticipant.create({
-        data: { gameResultId: game.id, memberId, team, mmrBefore: 1000, mmrAfter: 1000 },
-      });
-    }
-  }
-
-  function rowOf(rows: Awaited<ReturnType<typeof getMemberListData>>["rows"], realName: string) {
-    return rows.find((r) => r.realName === realName)!;
-  }
-
   it("counts wins and losses per member", async () => {
     const a = await prisma.member.create({ data: { realName: "전적가", kakaoNickname: "전적가", mmr: 1000 } });
     const b = await prisma.member.create({ data: { realName: "전적나", kakaoNickname: "전적나", mmr: 1000 } });
@@ -380,17 +395,61 @@ describe("getMemberListData 전적", () => {
   });
 });
 
+// 한 판도 안 뛴 회원은 저장된 점수(기본 1000)와 무관하게 0점으로 보여 준다. 점수는
+// 그대로라 첫 경기는 1000에서 계산되지만, 뛰지 않은 1000점이 진 사람 위에 서면 안 된다.
+describe("getMemberListData 판수 0", () => {
+  it("shows 0 for a member with no counted game and keeps the stored rating untouched", async () => {
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "가회원")).toMatchObject({ mmr: 0, playedCount: 0 });
+    expect((await prisma.member.findFirstOrThrow({ where: { realName: "가회원" } })).mmr).toBe(1500);
+  });
+
+  it("shows the rating again once a game is counted, and 0 again after a cancel", async () => {
+    const a = await idOf("가회원");
+    const b = await idOf("나회원");
+    await playGame(a, b, "BLUE");
+    expect(rowOf((await getMemberListData("all", "", "mmr", "desc")).rows, "가회원").mmr).toBe(1500);
+
+    await prisma.gameResult.updateMany({ data: { cancelledAt: new Date() } });
+    expect(rowOf((await getMemberListData("all", "", "mmr", "desc")).rows, "가회원").mmr).toBe(0);
+  });
+
+  it("judges the game count per mode — rift games do not light up the aram rating", async () => {
+    await resetDatabase(prisma);
+    const a = await prisma.member.create({ data: { realName: "가", discordUserId: "d-a", mmr: 1300, aramMmr: 1400 } });
+    const b = await prisma.member.create({ data: { realName: "나", discordUserId: "d-b", mmr: 1200, aramMmr: 1100 } });
+    await playGame(a.id, b.id, "BLUE");
+
+    const rift = await getMemberListData("all", "", "mmr", "desc");
+    const aram = await getMemberListData("all", "", "mmr", "desc", "ARAM");
+
+    expect(rift.rows.map((r) => r.mmr)).toEqual([1300, 1200]);
+    expect(aram.rows.map((r) => r.mmr)).toEqual([0, 0]);
+  });
+
+  it("splits the board into played and unranked", async () => {
+    await playGame(await idOf("가회원"), await idOf("나회원"), "BLUE");
+
+    const played = await getMemberListData("played", "", "mmr", "desc");
+    const unranked = await getMemberListData("unranked", "", "mmr", "desc");
+
+    expect(played.rows.map((r) => r.realName)).toEqual(["가회원", "나회원"]);
+    expect(unranked.rows.map((r) => r.realName)).toEqual(["-"]);
+  });
+});
+
 describe("getMemberListData mode", () => {
   it("sorts and counts by aramMmr when mode is ARAM", async () => {
     await resetDatabase(prisma);
-    await prisma.member.create({ data: { realName: "가", discordUserId: "d-a", mmr: 1000, aramMmr: 1400 } });
-    await prisma.member.create({ data: { realName: "나", discordUserId: "d-b", mmr: 2000, aramMmr: 1100 } });
+    const a = await prisma.member.create({ data: { realName: "가", discordUserId: "d-a", mmr: 1000, aramMmr: 1400 } });
+    const b = await prisma.member.create({ data: { realName: "나", discordUserId: "d-b", mmr: 2000, aramMmr: 1100 } });
+    await playGame(a.id, b.id, "BLUE", false, "ARAM");
 
     const data = await getMemberListData("all", "", "mmr", "desc", "ARAM");
 
     expect(data.rows.map((r) => r.realName)).toEqual(["가", "나"]);
     expect(data.rows.map((r) => r.mmr)).toEqual([1400, 1100]);
-    expect(data.averageMmr).toBe(1250);
   });
 
   it("only counts games of the requested mode in wins/losses", async () => {

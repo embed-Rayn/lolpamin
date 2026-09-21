@@ -22,6 +22,6 @@ export async function updateMemberLastActiveAction(
     return { error: "저장하지 못했습니다." };
   }
   revalidatePath("/inactive");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   return { error: null };
 }

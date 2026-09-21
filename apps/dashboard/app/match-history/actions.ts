@@ -25,7 +25,7 @@ export async function cancelGameResultAction(gameResultId: string): Promise<{ er
 
   // 취소는 mmr을 되돌리고 내전 횟수를 바꾸므로 점수를 보여주는 화면이 모두 달라진다.
   revalidatePath("/match-history");
-  revalidatePath("/members");
+  revalidatePath("/rift");
   revalidatePath("/inactive");
   revalidatePath("/matches");
   return { error: null };
