@@ -51,7 +51,7 @@ export default async function AdminsPage() {
     : null;
 
   return (
-    <AppShell activeNav="admins" pageTitle="관리자 · 설정" pageDesc="계정, 스킨, MMR 계산식, 시즌 리셋">
+    <AppShell activeNav="admins" pageTitle="관리자 · 설정" pageDesc="계정, 스킨, MMR 계산식, 시즌 리셋" desktopOnly>
       <div className="flex flex-col gap-5 px-7 pb-10 pt-6">
         <ThemePanel current={theme} updatedLabel={themeUpdatedLabel} />
         <AdminPanel rows={rows} />

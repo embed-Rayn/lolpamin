@@ -26,6 +26,7 @@ export default async function LinkAccountsPage() {
       activeNav="link-accounts"
       pageTitle="계정 연결"
       pageDesc="Discord · 카카오톡 계정을 하나의 회원으로 연결"
+      desktopOnly
     >
       <div className="px-7 pb-10 pt-6">
         <AccountMappingPanel

@@ -21,6 +21,7 @@ export default async function TeamBuilderPage() {
       activeNav="team-builder"
       pageTitle="수동 팀짜기"
       pageDesc="티어 점수를 보며 손으로 양 팀을 맞춥니다"
+      desktopOnly
     >
       <div className="px-7 pb-10 pt-6">
         <TeamBuilder pool={pool} isAdmin={true} />

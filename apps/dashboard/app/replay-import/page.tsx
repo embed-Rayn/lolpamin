@@ -17,6 +17,7 @@ export default async function ReplayImportPage() {
       activeNav="replay-import"
       pageTitle="리플레이 불러오기"
       pageDesc="롤 클라이언트의 .rofl 파일 업로드 → 참가자 매칭 → 내전 결과 저장"
+      desktopOnly
     >
       <div className="flex flex-col gap-5 px-7 pb-10 pt-6">
         <ReplayImportForm isAdmin={true} />

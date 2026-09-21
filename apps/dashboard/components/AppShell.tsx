@@ -26,10 +26,14 @@ export interface AppShellProps {
     | "draw-plinko";
   pageTitle: string;
   pageDesc: string;
+  // 이 화면은 폭이 넓어야 쓸 수 있다(경기 입력, 리플레이, 팀짜기, 카톡 불러오기, 계정
+  // 연결, 관리자, 뽑기 두 개). 폰에서는 children 대신 안내 카드를 보여주고, children은
+  // DOM에 남겨(hidden md:block) "데스크톱 사이트 보기"로는 계속 볼 수 있게 한다.
+  desktopOnly?: boolean;
   children: React.ReactNode;
 }
 
-export async function AppShell({ activeNav, pageTitle, pageDesc, children }: AppShellProps) {
+export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, children }: AppShellProps) {
   const [totalCount, allMembersForInactivity, currentAdmin] = await Promise.all([
     prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
@@ -157,7 +161,38 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
           </div>
         </header>
 
-        {children}
+        {desktopOnly ? (
+          <>
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center md:hidden">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-tint text-accent">
+                <NavIcon name="gear" size={28} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[16px] font-bold text-fg">이 화면은 PC에서 이용해 주세요</div>
+                <div className="max-w-xs text-[13px] leading-relaxed text-faint">
+                  경기 입력·리플레이·계정 연결·뽑기는 화면이 넓어야 합니다.
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href="/"
+                  className="rounded-lg border border-ink/[.1] px-3.5 py-2 text-[13px] font-bold text-fg-2 hover:bg-hover"
+                >
+                  홈으로
+                </Link>
+                <Link
+                  href="/rift"
+                  className="rounded-lg bg-accent px-3.5 py-2 text-[13px] font-bold text-white hover:bg-accent-hover"
+                >
+                  협곡 랭킹
+                </Link>
+              </div>
+            </div>
+            <div className="hidden md:block">{children}</div>
+          </>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );
