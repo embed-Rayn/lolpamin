@@ -4,6 +4,7 @@ import { getInactiveMembers } from "@lolpamin/core";
 import { effectiveKakaoNickname } from "@/lib/queries/inactive";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { HeaderAuth } from "./HeaderAuth";
+import { MobileDrawer } from "./MobileDrawer";
 import { NavIcon } from "./nav-icons";
 import { SidebarNav, type SidebarNavGroup } from "./SidebarNav";
 
@@ -105,7 +106,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
 
   return (
     <div className="flex min-h-screen bg-page font-sans text-fg">
-      <aside className="sticky top-0 flex h-screen w-[260px] flex-none flex-col gap-5 overflow-y-auto border-r border-ink/[.07] bg-[rgb(var(--sidebar-bg))] px-3.5 py-5">
+      <aside className="sticky top-0 hidden h-screen w-[260px] flex-none flex-col gap-5 overflow-y-auto border-r border-ink/[.07] bg-[rgb(var(--sidebar-bg))] px-3.5 py-5 md:flex">
         <Link href="/" className="flex items-center gap-3 px-2">
           <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-accent-tint text-accent">
             <NavIcon name="gamepad" size={22} />
@@ -130,10 +131,11 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-[72px] flex-none items-center justify-between border-b border-ink/[.07] bg-[rgb(var(--header-bg)/0.9)] px-7 backdrop-blur">
-          <div className="flex flex-col gap-0.5">
-            <h1 className="m-0 text-[20px] font-extrabold tracking-tight">{pageTitle}</h1>
-            <div className="flex items-center gap-1.5 text-[12.5px] text-faint">
+        <header className="sticky top-0 z-10 flex h-14 flex-none items-center justify-between gap-3 border-b border-ink/[.07] bg-[rgb(var(--header-bg)/0.9)] px-3 backdrop-blur md:h-[72px] md:px-7">
+          <div className="flex min-w-0 items-center gap-2.5 md:flex-col md:items-stretch md:gap-0.5">
+            <MobileDrawer groups={groups} activeNav={activeNav} />
+            <h1 className="m-0 truncate text-[16px] font-extrabold tracking-tight md:text-[20px]">{pageTitle}</h1>
+            <div className="hidden items-center gap-1.5 text-[12.5px] text-faint md:flex">
               <Link href="/" className="hover:text-fg-2">
                 홈
               </Link>
@@ -147,8 +149,8 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, children }: App
               <span className="text-muted">{pageDesc}</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-[12.5px] text-muted">
+          <div className="flex flex-none items-center gap-4">
+            <div className="hidden text-[12.5px] text-muted md:block">
               회원 <span className="font-mono font-semibold text-fg">{totalCount}</span>명
             </div>
             <HeaderAuth username={currentAdmin?.username ?? null} />
