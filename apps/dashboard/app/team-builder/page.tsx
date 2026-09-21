@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { TeamBuilder } from "@/components/TeamBuilder";
 import { getLinkedMembers } from "@/lib/queries/linked-members";
@@ -8,7 +9,12 @@ import { getCurrentAdmin } from "@/lib/auth/current-admin";
 export const dynamic = "force-dynamic";
 
 export default async function TeamBuilderPage() {
-  const [pool, currentAdmin] = await Promise.all([getLinkedMembers(), getCurrentAdmin()]);
+  const currentAdmin = await getCurrentAdmin();
+  if (!currentAdmin) {
+    redirect("/login");
+  }
+
+  const pool = await getLinkedMembers();
 
   return (
     <AppShell
@@ -17,7 +23,7 @@ export default async function TeamBuilderPage() {
       pageDesc="티어 점수를 보며 손으로 양 팀을 맞춥니다"
     >
       <div className="px-7 pb-10 pt-6">
-        <TeamBuilder pool={pool} isAdmin={currentAdmin !== null} />
+        <TeamBuilder pool={pool} isAdmin={true} />
       </div>
     </AppShell>
   );

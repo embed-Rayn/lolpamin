@@ -73,3 +73,27 @@ describe("getLeaderboard", () => {
     expect(result.map((e) => e.name)).toEqual([first.realName, second.realName]);
   });
 });
+
+describe("getLeaderboard (aramMmr field)", () => {
+  it("ranks by aramMmr when the field is aramMmr", async () => {
+    // Both members have a high rift mmr but a low/mid aram one — if the field were
+    // ignored and mmr used instead, the ordering below would come out reversed.
+    await prisma.member.create({ data: { discordUserId: "d-1", realName: "낮음", mmr: 5000, aramMmr: 1000 } });
+    await prisma.member.create({ data: { discordUserId: "d-2", realName: "높음", mmr: 4000, aramMmr: 1500 } });
+
+    const result = await getLeaderboard(prisma, 10, "aramMmr");
+
+    expect(result).toEqual([
+      { rank: 1, name: "높음", mmr: 1500 },
+      { rank: 2, name: "낮음", mmr: 1000 },
+    ]);
+  });
+
+  it("still defaults to the mmr field when none is given", async () => {
+    await prisma.member.create({ data: { discordUserId: "d-1", realName: "A", mmr: 1000, aramMmr: 2000 } });
+
+    const result = await getLeaderboard(prisma, 10);
+
+    expect(result[0].mmr).toBe(1000);
+  });
+});

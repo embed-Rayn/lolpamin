@@ -28,7 +28,7 @@ export default async function AramPage({
   const isAdmin = currentAdmin !== null;
 
   return (
-    <AppShell activeNav="aram" pageTitle="칼바람 대시보드" pageDesc="칼바람 내전 전용 MMR과 전적">
+    <AppShell activeNav="aram" pageTitle="칼바람 MMR 랭킹" pageDesc="칼바람 내전 전용 MMR과 전적">
       <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
         <section className="overflow-hidden rounded-xl border border-white/[.06] bg-[#151A24]">
           <MemberFilters activeFilter={filter} query={query} basePath="/aram" />

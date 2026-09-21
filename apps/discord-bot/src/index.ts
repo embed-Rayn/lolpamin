@@ -1,8 +1,8 @@
 import { Client, Collection, Events, GatewayIntentBits, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "@lolpamin/db";
 import * as mmrCommand from "./commands/mmr";
-import * as mmrAramCommand from "./commands/mmr-aram";
 import * as leaderboardCommand from "./commands/leaderboard";
+import * as rankingAramCommand from "./commands/ranking-aram";
 import * as recordCommand from "./commands/record";
 
 const REQUIRED_ENV_VARS = ["DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_GUILD_ID"] as const;
@@ -19,7 +19,7 @@ interface Command {
 }
 
 const commands = new Collection<string, Command>();
-for (const command of [mmrCommand, mmrAramCommand, leaderboardCommand, recordCommand]) {
+for (const command of [mmrCommand, leaderboardCommand, rankingAramCommand, recordCommand]) {
   commands.set(command.data.name, command);
 }
 
