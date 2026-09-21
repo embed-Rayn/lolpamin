@@ -5,7 +5,26 @@ import { MemberNoteCell } from "@/components/MemberNoteCell";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
 
 // 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임과 비고가 가져간다.
-const GRID = "grid-cols-[40px_72px_1.3fr_58px_38px_34px_34px_54px_58px_38px_34px_34px_54px_112px_1.3fr]";
+// 협곡·칼바람 10칸은 예전엔 각자 그리드 트랙이었지만, 이제 한 덩어리(544px)로 묶고
+// 안에서 다시 같은 폭으로 나눈다 — METRIC_COLS 참고.
+const GRID = "grid-cols-[40px_72px_1.3fr_544px_112px_1.3fr]";
+
+// 협곡 5칸 + 칼바람 5칸의 원래 폭(58/38/34/34/54 × 2). Tailwind는 클래스 문자열을
+// 소스에서 정적으로 찾아 CSS를 만들기 때문에, 배열을 조립해 런타임에 만든 클래스는
+// 스캐너가 못 보고 그냥 버려진다 — 그래서 여기 리터럴로 못박는다. 위 GRID의 544px는
+// 이 10칸 합(436px) + 칸 사이 gap-3(12px) 9개(108px)와 손으로 맞춘 값이라, 폭을
+// 고치면 GRID의 544px도 같이 고쳐야 한다.
+const METRICS_GRID = "grid-cols-[58px_38px_34px_34px_54px_58px_38px_34px_34px_54px]";
+
+// 협곡·칼바람 블록을 하나의 그라데이션으로 칠한다. 칸마다 배경을 따로 칠하면 gap-3가
+// 흰 틈으로 보이고, 두 블록 사이에도 같은 gap이 끼어 파랑·주황이 맞닿지 않는다 —
+// 한 덩어리(544px) 위에 50:50 그라데이션을 얹으면 내부 칸 간격도, 두 블록의 경계도
+// 전부 이 배경 하나가 이어서 채운다. 두 절반은 실제로 정확히 5칸씩 같은 폭이라 50%가
+// 곧 그 경계다.
+const METRICS_BG = {
+  background:
+    "linear-gradient(90deg, rgb(var(--c-accent-tint)) 0%, rgb(var(--c-accent-tint)) 50%, rgb(var(--c-orange) / 0.16) 50%, rgb(var(--c-orange) / 0.16) 100%)",
+};
 
 function mmrClassName(mmr: number): string {
   if (mmr === 0) return "text-ghost";
@@ -19,13 +38,6 @@ const TEXT_SORTS: MemberInfoSort[] = ["realName", "kakaoNickname"];
 function winRateLabel(record: ModeRecord): string {
   return record.winRate === null ? "-" : `${record.winRate}%`;
 }
-
-// 협곡·칼바람 10칸(각 5칸)을 옅게 물들여 한눈에 구분되게 한다. 헤더 라벨과 같은 색
-// 계열(accent/orange)을 낮은 투명도로 쓴다. 그리드 컨테이너의 py-3가 셀이 아니라
-// 컨테이너 자체의 여백이라, 셀 배경이 위아래로 그 여백까지 덮게 하려면 -my-3 py-3로
-// 셀 상자를 그만큼 밀어냈다가 똑같이 되채운다 — 행 높이는 그대로고 배경만 꽉 찬다.
-const RIFT_CELL = "bg-accent-tint -my-3 py-3";
-const ARAM_CELL = "bg-orange/10 -my-3 py-3";
 
 export function MemberInfoTable({
   rows,
@@ -71,8 +83,12 @@ export function MemberInfoTable({
           <div />
           <div />
           <div />
-          <div className="col-span-5 text-center text-accent-soft">협곡</div>
-          <div className="col-span-5 text-center text-orange">칼바람</div>
+          {/* -mt-3 pt-3: 이 행은 위쪽 여백(pt-3)만 있다. 그 여백까지 배경이 닿게
+              밀어냈다가 되채운다 — 아래 데이터 행의 -my-3 py-3와 같은 이유다. */}
+          <div className="-mt-3 grid grid-cols-2 pt-3" style={METRICS_BG}>
+            <div className="text-center text-accent-soft">협곡</div>
+            <div className="text-center text-orange">칼바람</div>
+          </div>
           <div />
           <div />
         </div>
@@ -82,16 +98,21 @@ export function MemberInfoTable({
           <div className="text-right">NO.</div>
           <SortLink sortKey="realName" label="이름" />
           <SortLink sortKey="kakaoNickname" label="닉네임" />
-          <SortLink sortKey="riftMmr" label="MMR" align="right" />
-          <SortLink sortKey="riftGames" label="판" align="right" />
-          <div className="text-right">승</div>
-          <div className="text-right">패</div>
-          <SortLink sortKey="riftWinRate" label="승률" align="right" />
-          <SortLink sortKey="aramMmr" label="MMR" align="right" />
-          <SortLink sortKey="aramGames" label="판" align="right" />
-          <div className="text-right">승</div>
-          <div className="text-right">패</div>
-          <SortLink sortKey="aramWinRate" label="승률" align="right" />
+          {/* -mt-1.5 pt-1.5 -mb-3 pb-3: 이 행의 위·아래 여백이 서로 다르다(pt-1.5,
+              pb-3) — 양쪽 다 값이 다른 만큼 밀어내고 되채워야 배경이 정확히 여백까지
+              닿는다. */}
+          <div className={`-mb-3 -mt-1.5 grid ${METRICS_GRID} gap-3 pb-3 pt-1.5`} style={METRICS_BG}>
+            <SortLink sortKey="riftMmr" label="MMR" align="right" />
+            <SortLink sortKey="riftGames" label="판" align="right" />
+            <div className="text-right">승</div>
+            <div className="text-right">패</div>
+            <SortLink sortKey="riftWinRate" label="승률" align="right" />
+            <SortLink sortKey="aramMmr" label="MMR" align="right" />
+            <SortLink sortKey="aramGames" label="판" align="right" />
+            <div className="text-right">승</div>
+            <div className="text-right">패</div>
+            <SortLink sortKey="aramWinRate" label="승률" align="right" />
+          </div>
           <SortLink sortKey="tier" label="현재티어" />
           <div>비고</div>
         </div>
@@ -111,32 +132,37 @@ export function MemberInfoTable({
               {m.kakaoNickname}
             </div>
 
-            <div className={`text-right font-mono text-[13.5px] font-bold ${RIFT_CELL} ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
-            <div className={`text-right font-mono text-[13px] text-muted ${RIFT_CELL}`}>{m.rift.games}</div>
-            <div className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
-              {m.rift.wins}
-            </div>
-            <div className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
-              {m.rift.losses}
-            </div>
-            <div
-              className={`text-right font-mono text-[13px] ${RIFT_CELL} ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
-            >
-              {winRateLabel(m.rift)}
-            </div>
+            {/* -my-3 py-3: 그리드 컨테이너의 py-3는 이 셀이 아니라 컨테이너 자신의
+                여백이라, 셀 배경이 위아래로 그 여백까지 덮게 하려면 밀어냈다가(-my-3)
+                똑같이 되채워야(py-3) 한다 — 행 높이는 그대로고 배경만 꽉 찬다. */}
+            <div className={`-my-3 grid ${METRICS_GRID} items-center gap-3 py-3`} style={METRICS_BG}>
+              <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
+              <div className="text-right font-mono text-[13px] text-muted">{m.rift.games}</div>
+              <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+                {m.rift.wins}
+              </div>
+              <div className={`text-right font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+                {m.rift.losses}
+              </div>
+              <div
+                className={`text-right font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
+              >
+                {winRateLabel(m.rift)}
+              </div>
 
-            <div className={`text-right font-mono text-[13.5px] font-bold ${ARAM_CELL} ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
-            <div className={`text-right font-mono text-[13px] text-muted ${ARAM_CELL}`}>{m.aram.games}</div>
-            <div className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
-              {m.aram.wins}
-            </div>
-            <div className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
-              {m.aram.losses}
-            </div>
-            <div
-              className={`text-right font-mono text-[13px] ${ARAM_CELL} ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
-            >
-              {winRateLabel(m.aram)}
+              <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
+              <div className="text-right font-mono text-[13px] text-muted">{m.aram.games}</div>
+              <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+                {m.aram.wins}
+              </div>
+              <div className={`text-right font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+                {m.aram.losses}
+              </div>
+              <div
+                className={`text-right font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
+              >
+                {winRateLabel(m.aram)}
+              </div>
             </div>
 
             <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />

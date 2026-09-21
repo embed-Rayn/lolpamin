@@ -155,21 +155,39 @@ body {
   background: transparent;
 }
 
-/* /rift, /aram 1·2·3위 행. 왼쪽에서 오른쪽으로 옅어지는 금·은·동 물결에, 위로 살짝 지나가는
-   광택(shimmer)이 "빛나는" 느낌을 낸다. 테두리와 그림자는 같은 색조를 낮은 투명도로 쓴다. */
+/* /rift, /aram 1·2·3위 행. 진하게 물든 금·은·동 바탕에 위쪽 유리 하이라이트 + 아래쪽
+   속그림자로 눌린 카드 같은 입체감을 주고, 은은히 숨쉬는 후광(pulse)과 빠르게 스치는
+   광택(shimmer) 두 애니메이션을 겹쳐 생동감을 낸다. position: relative는 셀렉터에서
+   직접 준다 — 이 배경을 쓰는 자리가 데스크톱 행(MemberTable)과 폰 카드(MemberCard)
+   둘이라 호출부마다 relative를 안 잊게 하려고. */
 .rank-row-gold,
 .rank-row-silver,
 .rank-row-bronze {
+  position: relative;
   overflow: hidden;
   border-radius: 10px;
   /* 좌우 여백은 두지 않는다 — 셀이 헤더 컬럼과 어긋난다. */
   margin: 3px 0;
   border: 1px solid var(--rank-edge);
   background:
-    linear-gradient(90deg, var(--rank-tint) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 100%);
+    linear-gradient(
+      90deg,
+      var(--rank-tint) 0%,
+      var(--rank-tint) 20%,
+      rgba(255, 255, 255, 0.05) 55%,
+      transparent 100%
+    );
+  /* overflow: hidden은 shimmer가 카드 밖으로 새지 않게 자식(::after)을 자르지만,
+     엘리먼트 자신의 box-shadow는 자르지 않는다 — 그래서 후광 펄스는 별도 레이어 없이
+     이 셀렉터 자신의 box-shadow를 rank-pulse로 직접 애니메이션한다. 이 값은
+     0%/100% 키프레임과 같아야 한다 — reduced-motion에서 animation:none이 되면
+     이 정적 값이 그대로 보인다. */
   box-shadow:
-    inset 0 0 22px var(--rank-glow),
-    0 0 14px var(--rank-glow);
+    inset 0 1px 0 var(--rank-highlight),
+    inset 0 -16px 20px -14px rgba(0, 0, 0, 0.4),
+    0 6px 18px -6px var(--rank-glow),
+    0 0 16px -4px var(--rank-glow);
+  animation: rank-pulse 2.2s ease-in-out infinite;
 }
 .rank-row-gold::after,
 .rank-row-silver::after,
@@ -180,41 +198,68 @@ body {
   pointer-events: none;
   background: linear-gradient(
     110deg,
-    transparent 30%,
+    transparent 25%,
     var(--rank-shine) 50%,
-    transparent 70%
+    transparent 75%
   );
   transform: translateX(-100%);
-  animation: rank-shimmer 4.5s ease-in-out infinite;
+  animation: rank-shimmer 2.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
+  .rank-row-gold,
+  .rank-row-silver,
+  .rank-row-bronze,
   .rank-row-gold::after,
   .rank-row-silver::after,
   .rank-row-bronze::after {
     animation: none;
   }
 }
+/* 숨쉬는 후광: 그림자 세트를 통째로 두 상태(옅게/진하게) 사이로 보간한다 — 레이어
+   개수·순서가 양쪽 키프레임에서 같아야 브라우저가 부드럽게 보간한다. */
+@keyframes rank-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 var(--rank-highlight),
+      inset 0 -16px 20px -14px rgba(0, 0, 0, 0.4),
+      0 6px 18px -6px var(--rank-glow),
+      0 0 16px -4px var(--rank-glow);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 var(--rank-highlight),
+      inset 0 -16px 20px -14px rgba(0, 0, 0, 0.46),
+      0 10px 28px -4px var(--rank-glow-strong),
+      0 0 34px -2px var(--rank-glow-strong);
+  }
+}
 @keyframes rank-shimmer {
-  0%, 60% { transform: translateX(-100%); }
+  0%, 40% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
 .rank-row-gold {
-  --rank-tint: rgba(242, 199, 92, 0.22);
-  --rank-edge: rgba(242, 199, 92, 0.55);
-  --rank-glow: rgba(242, 199, 92, 0.18);
-  --rank-shine: rgba(255, 236, 170, 0.14);
+  --rank-tint: rgba(242, 199, 92, 0.4);
+  --rank-edge: rgba(242, 199, 92, 0.8);
+  --rank-glow: rgba(242, 199, 92, 0.38);
+  --rank-glow-strong: rgba(242, 199, 92, 0.55);
+  --rank-shine: rgba(255, 236, 170, 0.28);
+  --rank-highlight: rgba(255, 246, 214, 0.55);
 }
 .rank-row-silver {
-  --rank-tint: rgba(196, 206, 224, 0.18);
-  --rank-edge: rgba(196, 206, 224, 0.5);
-  --rank-glow: rgba(196, 206, 224, 0.14);
-  --rank-shine: rgba(235, 240, 250, 0.12);
+  --rank-tint: rgba(196, 206, 224, 0.36);
+  --rank-edge: rgba(196, 206, 224, 0.75);
+  --rank-glow: rgba(196, 206, 224, 0.32);
+  --rank-glow-strong: rgba(196, 206, 224, 0.5);
+  --rank-shine: rgba(235, 240, 250, 0.26);
+  --rank-highlight: rgba(255, 255, 255, 0.55);
 }
 .rank-row-bronze {
-  --rank-tint: rgba(214, 133, 74, 0.2);
-  --rank-edge: rgba(214, 133, 74, 0.55);
-  --rank-glow: rgba(214, 133, 74, 0.16);
-  --rank-shine: rgba(255, 200, 150, 0.12);
+  --rank-tint: rgba(214, 133, 74, 0.38);
+  --rank-edge: rgba(214, 133, 74, 0.8);
+  --rank-glow: rgba(214, 133, 74, 0.35);
+  --rank-glow-strong: rgba(214, 133, 74, 0.55);
+  --rank-shine: rgba(255, 200, 150, 0.26);
+  --rank-highlight: rgba(255, 224, 194, 0.5);
 }
 
 /* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
