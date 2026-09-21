@@ -92,6 +92,12 @@ cannot import the dashboard's lib. Deliberately **not** watermarked:
 `queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
 about to destroy, not a record.
 
+`/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and pages
+20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
+page). `canCancel` is decided **per mode** across the whole table, not the
+current page or filter, because `cancelGameResult` accepts the newest live game
+of the game's own mode — so 협곡 and 칼바람 each have one cancellable row.
+
 A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
 member's old score. Right after a reset nothing is cancellable, which is correct.

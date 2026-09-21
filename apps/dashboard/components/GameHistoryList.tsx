@@ -24,20 +24,29 @@ function PlayerLine({ player, up }: { player: GameHistoryPlayer; up: boolean }) 
   );
 }
 
-export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isAdmin: boolean }) {
+export function GameHistoryList({
+  rows,
+  isAdmin,
+  showMode,
+}: {
+  rows: GameHistoryRow[];
+  isAdmin: boolean;
+  // 전체 보기에서만 협곡/칼바람 배지를 붙인다. 한 모드로 걸러 놓으면 배지가 전부 같아 소음이다.
+  showMode: boolean;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/[.07] bg-[#12161F] px-5 py-12 text-center text-[13.5px] text-[#5C6577]">
-        아직 입력된 경기가 없습니다.
+        조건에 맞는 경기가 없습니다.
       </div>
     );
   }
 
   function handleCancel(id: string) {
-    if (!window.confirm("가장 최근 경기를 되돌립니다. 참가자들의 MMR이 경기 전 값으로 돌아갑니다.\n\n되돌린 경기는 다시 살릴 수 없습니다. 진행할까요?")) {
+    if (!window.confirm("이 모드의 가장 최근 경기를 되돌립니다. 참가자들의 MMR이 경기 전 값으로 돌아갑니다.\n\n되돌린 경기는 다시 살릴 수 없습니다. 진행할까요?")) {
       return;
     }
     setError(null);
@@ -66,6 +75,15 @@ export function GameHistoryList({ rows, isAdmin }: { rows: GameHistoryRow[]; isA
         >
           <div className="flex items-center gap-3">
             <span className="font-mono text-[13px] text-[#8A94A6]">{formatPlayedAt(row.playedAt)}</span>
+            {showMode && (
+              <span
+                className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${
+                  row.mode === "ARAM" ? "bg-[#F2985C]/15 text-[#F2985C]" : "bg-[#8FB4F5]/15 text-[#8FB4F5]"
+                }`}
+              >
+                {row.mode === "ARAM" ? "칼바람" : "협곡"}
+              </span>
+            )}
             {row.isCancelled ? (
               <span className="rounded-md bg-[#2A2033] px-2 py-0.5 text-[12px] font-bold text-[#C79BE5]">
                 취소됨
