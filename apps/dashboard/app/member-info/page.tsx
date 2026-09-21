@@ -29,8 +29,8 @@ export default async function MemberInfoPage({
 
   return (
     <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어">
-      <div className="flex flex-col gap-6 px-7 pb-10 pt-6">
-        <div className="grid grid-cols-3 gap-4">
+      <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:gap-6 md:px-7 md:pb-10 md:pt-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
           <StatCard label="전체 회원" value={summary.totalCount} unit="명" colorClassName="text-fg" icon="users" />
           <StatCard
             label="평균 협곡 MMR"
@@ -49,7 +49,7 @@ export default async function MemberInfoPage({
           />
         </div>
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
-          <MemberInfoSearch query={query} />
+          <MemberInfoSearch query={query} sort={sort} dir={dir} />
           <MemberInfoTable rows={rows} isAdmin={currentAdmin !== null} sort={sort} dir={dir} query={query} />
         </section>
       </div>

@@ -26,19 +26,21 @@ export function StatCard({ label, value, unit, colorClassName, icon, iconClassNa
   }
 
   return (
-    <div className="flex items-center gap-5 rounded-2xl border border-ink/[.06] bg-surface px-6 py-5 shadow-[0_1px_2px_rgb(var(--c-ink)/0.04)]">
+    <div className="flex items-center gap-4 rounded-2xl border border-ink/[.06] bg-surface px-4 py-4 shadow-[0_1px_2px_rgb(var(--c-ink)/0.04)] md:gap-5 md:px-6 md:py-5">
       <div
-        className={`flex h-[72px] w-[72px] flex-none items-center justify-center rounded-2xl bg-accent-tint ${
+        className={`flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-accent-tint md:h-[72px] md:w-[72px] ${
           iconClassName ?? "text-accent"
         }`}
       >
         <NavIcon name={icon} size={34} />
       </div>
       <div className="flex flex-col gap-1">
-        <div className="text-[14px] font-medium text-muted">{label}</div>
+        <div className="text-[13px] font-medium text-muted md:text-[14px]">{label}</div>
         <div className="flex items-baseline gap-2">
-          <span className={`font-mono text-[36px] font-extrabold leading-none tracking-tight ${colorClassName}`}>{value}</span>
-          <span className="text-[14px] text-faint">{unit}</span>
+          <span className={`font-mono text-[28px] font-extrabold leading-none tracking-tight md:text-[36px] ${colorClassName}`}>
+            {value}
+          </span>
+          <span className="text-[13px] text-faint md:text-[14px]">{unit}</span>
         </div>
       </div>
     </div>
