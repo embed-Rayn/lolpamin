@@ -29,3 +29,102 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* /rift, /aram 1·2·3위 행. 왼쪽에서 오른쪽으로 옅어지는 금·은·동 물결에, 위로 살짝 지나가는
+   광택(shimmer)이 "빛나는" 느낌을 낸다. 테두리와 그림자는 같은 색조를 낮은 투명도로 쓴다. */
+.rank-row-gold,
+.rank-row-silver,
+.rank-row-bronze {
+  overflow: hidden;
+  border-radius: 10px;
+  /* 좌우 여백은 두지 않는다 — 셀이 헤더 컬럼과 어긋난다. */
+  margin: 3px 0;
+  border: 1px solid var(--rank-edge);
+  background:
+    linear-gradient(90deg, var(--rank-tint) 0%, rgba(255, 255, 255, 0.02) 45%, transparent 100%);
+  box-shadow:
+    inset 0 0 22px var(--rank-glow),
+    0 0 14px var(--rank-glow);
+}
+.rank-row-gold::after,
+.rank-row-silver::after,
+.rank-row-bronze::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    var(--rank-shine) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: rank-shimmer 4.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-row-gold::after,
+  .rank-row-silver::after,
+  .rank-row-bronze::after {
+    animation: none;
+  }
+}
+@keyframes rank-shimmer {
+  0%, 60% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.rank-row-gold {
+  --rank-tint: rgba(242, 199, 92, 0.22);
+  --rank-edge: rgba(242, 199, 92, 0.55);
+  --rank-glow: rgba(242, 199, 92, 0.18);
+  --rank-shine: rgba(255, 236, 170, 0.14);
+}
+.rank-row-silver {
+  --rank-tint: rgba(196, 206, 224, 0.18);
+  --rank-edge: rgba(196, 206, 224, 0.5);
+  --rank-glow: rgba(196, 206, 224, 0.14);
+  --rank-shine: rgba(235, 240, 250, 0.12);
+}
+.rank-row-bronze {
+  --rank-tint: rgba(214, 133, 74, 0.2);
+  --rank-edge: rgba(214, 133, 74, 0.55);
+  --rank-glow: rgba(214, 133, 74, 0.16);
+  --rank-shine: rgba(255, 200, 150, 0.12);
+}
+
+/* 순위 배지: 월계관 대신 금속 광택의 원. 안쪽 하이라이트로 입체감을 준다. */
+.rank-badge {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 800;
+  color: #10141c;
+  background: radial-gradient(circle at 35% 30%, var(--badge-hi) 0%, var(--badge-mid) 45%, var(--badge-lo) 100%);
+  box-shadow:
+    0 0 0 2px var(--badge-ring),
+    0 0 12px var(--badge-ring),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+}
+.rank-badge-gold {
+  --badge-hi: #fff0b3;
+  --badge-mid: #f2c75c;
+  --badge-lo: #a8791b;
+  --badge-ring: rgba(242, 199, 92, 0.45);
+}
+.rank-badge-silver {
+  --badge-hi: #ffffff;
+  --badge-mid: #d5dce8;
+  --badge-lo: #7d8899;
+  --badge-ring: rgba(213, 220, 232, 0.4);
+}
+.rank-badge-bronze {
+  --badge-hi: #ffd9bd;
+  --badge-mid: #d6854a;
+  --badge-lo: #7f4a22;
+  --badge-ring: rgba(214, 133, 74, 0.45);
+}

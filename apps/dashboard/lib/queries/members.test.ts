@@ -428,6 +428,21 @@ describe("getMemberListData 판수 0", () => {
     expect(aram.rows.map((r) => r.mmr)).toEqual([0, 0]);
   });
 
+  // 순위는 필터·정렬·검색과 무관하게 전체 회원 기준이다. 이름순으로 봐도 1위는 1위다.
+  it("ranks played members by displayed MMR regardless of sort or filter", async () => {
+    await playGame(await idOf("가회원"), await idOf("나회원"), "BLUE");
+
+    const byName = await getMemberListData("all", "", "realName", "asc");
+    const unranked = await getMemberListData("unranked", "", "mmr", "desc");
+
+    expect(byName.rows.map((r) => [r.realName, r.rank])).toEqual([
+      ["가회원", 1],
+      ["나회원", 2],
+      ["-", null],
+    ]);
+    expect(unranked.rows.map((r) => r.rank)).toEqual([null]);
+  });
+
   it("splits the board into played and unranked", async () => {
     await playGame(await idOf("가회원"), await idOf("나회원"), "BLUE");
 

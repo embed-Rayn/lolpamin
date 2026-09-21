@@ -111,6 +111,9 @@ export interface MemberRow {
   discordName: string;
   // 화면용 점수. 판수가 0이면 저장된 값(기본 1000)과 무관하게 0이다 — displayedRating 참고.
   mmr: number;
+  // 이 모드의 MMR 순위(1부터). 정렬·필터·검색과 무관하게 전체 회원 기준이라, 이름순으로
+  // 보거나 검색으로 좁혀도 같은 사람에게 같은 순위가 붙어 있다. 0점(판수 0)은 순위 밖(null).
+  rank: number | null;
   tier: MemberTier;
   riotId: string | null;
   // 되돌린 경기와 마지막 리셋 이전 경기를 뺀 전적. gameCount와 다른 숫자다 — gameCount는
@@ -162,6 +165,7 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameM
     kakaoNickname: displayKakaoNickname(m),
     discordName: displayDiscordName(m),
     mmr: displayedRating(m[ratingField(mode)], playedCount),
+    rank: null,
     tier: m.tier,
     riotId: m.riotId,
     wins: record.wins,
@@ -258,8 +262,20 @@ export async function getMemberListData(
     ].some((v) => v !== null && v.toLowerCase().includes(trimmedQuery));
   }
 
-  const rows = allMembers
-    .map((m) => ({ m, row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }, mode) }))
+  const allRows = allMembers.map((m) => ({
+    m,
+    row: toRow(m, now, record.get(m.id) ?? { wins: 0, losses: 0 }, mode),
+  }));
+  // 순위는 필터를 적용하기 전, 전체 회원 위에서 매긴다. 동점은 MMR 정렬과 같은 기준
+  // (id)으로 가른다 — 정렬해서 보이는 순서와 순위 번호가 어긋나면 안 된다.
+  sortByDisplayedMmr(
+    allRows.map(({ row }) => row).filter((row) => row.mmr > 0),
+    "desc",
+  ).forEach((row, i) => {
+    row.rank = i + 1;
+  });
+
+  const rows = allRows
     .filter(({ m, row }) => {
       if (filter === "played" && row.playedCount === 0) return false;
       if (filter === "unranked" && row.playedCount > 0) return false;
