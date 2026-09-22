@@ -46,7 +46,20 @@ export function MemberInfoCard({ row, index }: { row: MemberInfoRow; index: numb
         <ModeLine label="협곡" labelClassName="text-accent-soft" record={row.rift} />
         <ModeLine label="칼바람" labelClassName="text-orange" record={row.aram} />
       </div>
-      {row.note && <div className="mt-1 truncate pl-8 text-[12px] text-faint">비고: {row.note}</div>}
+      {/* 폰에서는 보기만 한다 — 편집은 다른 셀들과 같이 데스크톱 표에서만. */}
+      {row.riotAccounts.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1 pl-8">
+          {row.riotAccounts.map((a) => (
+            <span
+              key={a.id}
+              className="rounded-md border border-ink/[.09] bg-inset px-1.5 py-0.5 font-mono text-[11.5px] text-success-soft"
+            >
+              {a.gameName}#{a.tagLine}
+            </span>
+          ))}
+        </div>
+      )}
+      {row.note &&<div className="mt-1 truncate pl-8 text-[12px] text-faint">비고: {row.note}</div>}
     </div>
   );
 }
