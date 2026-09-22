@@ -233,6 +233,16 @@ model RiotAccount {
 model SiteSetting {
   id          String   @id
   theme       String   @default("clean")
+  // 로고·홈 배너. 전부 null 허용 — null이면 기본값(게임패드 아이콘, "롤파민",
+  // "함께라서 더 즐거운 게임", public/banner.png)을 쓴다. lib/queries/branding.ts가
+  // 이 기본값 적용을 맡는다.
+  logoSvg               String?
+  siteName              String?
+  siteTagline           String?
+  homeBannerDesktop     Bytes?
+  homeBannerDesktopType String?
+  homeBannerMobile      Bytes?
+  homeBannerMobileType  String?
   updatedAt   DateTime @updatedAt
   updatedById String?
 }
