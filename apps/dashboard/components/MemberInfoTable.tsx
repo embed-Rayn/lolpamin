@@ -5,16 +5,12 @@ import { MemberNoteCell } from "@/components/MemberNoteCell";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
 
 // 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임과 비고가 가져간다.
-// 협곡·칼바람 10칸은 예전엔 각자 그리드 트랙이었지만, 이제 한 덩어리(544px)로 묶고
-// 안에서 다시 같은 폭으로 나눈다 — METRIC_COLS 참고.
-const GRID = "grid-cols-[40px_72px_1.3fr_544px_112px_1.3fr]";
+// 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 — METRICS_GRID 참고.
+const GRID = "grid-cols-[44px_80px_1.3fr_600px_120px_1fr]";
 
-// 협곡 5칸 + 칼바람 5칸의 원래 폭(58/38/34/34/54 × 2). Tailwind는 클래스 문자열을
-// 소스에서 정적으로 찾아 CSS를 만들기 때문에, 배열을 조립해 런타임에 만든 클래스는
-// 스캐너가 못 보고 그냥 버려진다 — 그래서 여기 리터럴로 못박는다. 위 GRID의 544px는
-// 이 10칸 합(436px) + 칸 사이 gap-3(12px) 9개(108px)와 손으로 맞춘 값이라, 폭을
-// 고치면 GRID의 544px도 같이 고쳐야 한다.
-const METRICS_GRID = "grid-cols-[58px_38px_34px_34px_54px_58px_38px_34px_34px_54px]";
+// 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
+// 곧 협곡·칼바람 경계다.
+const METRICS_GRID = "grid-cols-10";
 
 // 협곡·칼바람 블록을 하나의 그라데이션으로 칠한다. 칸마다 배경을 따로 칠하면 gap-3가
 // 흰 틈으로 보이고, 두 블록 사이에도 같은 gap이 끼어 파랑·주황이 맞닿지 않는다 —
@@ -76,18 +72,16 @@ export function MemberInfoTable({
 
   return (
     <>
-      <div className="hidden md:block">
-        <div
-          className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pt-3 text-[11.5px] font-bold tracking-wide text-ghost`}
-        >
+      <div className="hidden md:block md:pb-4">
+        <div className={`grid ${GRID} gap-3 bg-surface-2 px-5 pt-2 text-[12.5px] font-bold tracking-wide`}>
           <div />
           <div />
           <div />
-          {/* -mt-3 pt-3: 이 행은 위쪽 여백(pt-3)만 있다. 그 여백까지 배경이 닿게
-              밀어냈다가 되채운다 — 아래 데이터 행의 -my-3 py-3와 같은 이유다. */}
-          <div className="-mt-3 grid grid-cols-2 pt-3" style={METRICS_BG}>
-            <div className="text-center text-accent-soft">협곡</div>
-            <div className="text-center text-orange">칼바람</div>
+          {/* 협곡·칼바람 이름표는 서로 떨어진 두 상자다 — 아래 행들의 그라데이션과 달리
+              여기서만 둘 사이에 틈을 두고 위 모서리를 둥글린다. */}
+          <div className="grid grid-cols-2 gap-1">
+            <div className="rounded-t-lg bg-accent-tint py-2 text-center text-accent-soft">협곡</div>
+            <div className="rounded-t-lg bg-orange/[.16] py-2 text-center text-orange">칼바람</div>
           </div>
           <div />
           <div />
@@ -126,11 +120,9 @@ export function MemberInfoTable({
               index % 2 === 1 ? "bg-surface-2" : ""
             }`}
           >
-            <div className="text-center font-mono text-[12.5px] text-ghost">{index + 1}</div>
-            <div className={`truncate text-center font-semibold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
-            <div
-              className={`truncate font-mono text-[13px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-gold"}`}
-            >
+            <div className="text-center text-[13px] text-ghost">{index + 1}</div>
+            <div className={`truncate text-center font-bold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
+            <div className={`truncate text-[13.5px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-muted"}`}>
               {m.kakaoNickname}
             </div>
 
@@ -138,30 +130,30 @@ export function MemberInfoTable({
                 여백이라, 셀 배경이 위아래로 그 여백까지 덮게 하려면 밀어냈다가(-my-3)
                 똑같이 되채워야(py-3) 한다 — 행 높이는 그대로고 배경만 꽉 찬다. */}
             <div className={`-my-3 grid ${METRICS_GRID} items-center gap-3 py-3`} style={METRICS_BG}>
-              <div className={`text-center font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
-              <div className="text-center font-mono text-[13px] text-muted">{m.rift.games}</div>
-              <div className={`text-center font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+              <div className={`text-center text-[14px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
+              <div className="text-center text-[13.5px] text-muted">{m.rift.games}</div>
+              <div className={`text-center text-[13.5px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
                 {m.rift.wins}
               </div>
-              <div className={`text-center font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+              <div className={`text-center text-[13.5px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
                 {m.rift.losses}
               </div>
               <div
-                className={`text-center font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
+                className={`text-center text-[13.5px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
               >
                 {winRateLabel(m.rift)}
               </div>
 
-              <div className={`text-center font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
-              <div className="text-center font-mono text-[13px] text-muted">{m.aram.games}</div>
-              <div className={`text-center font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+              <div className={`text-center text-[14px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
+              <div className="text-center text-[13.5px] text-muted">{m.aram.games}</div>
+              <div className={`text-center text-[13.5px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
                 {m.aram.wins}
               </div>
-              <div className={`text-center font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+              <div className={`text-center text-[13.5px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
                 {m.aram.losses}
               </div>
               <div
-                className={`text-center font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
+                className={`text-center text-[13.5px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
               >
                 {winRateLabel(m.aram)}
               </div>

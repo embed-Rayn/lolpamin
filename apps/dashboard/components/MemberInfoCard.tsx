@@ -20,11 +20,11 @@ function ModeLine({ label, labelClassName, record }: { label: string; labelClass
   return (
     <div className={`grid ${MODE_LINE_GRID} items-center gap-1 text-[12.5px]`}>
       <span className={`font-bold ${labelClassName}`}>{label}</span>
-      <span className={`text-right font-mono font-bold ${mmrClassName(record.mmr)}`}>{record.mmr}</span>
-      <span className="text-right font-mono text-muted">{record.games}</span>
-      <span className={`text-right font-mono ${record.wins > 0 ? "text-success-soft" : "text-ghost"}`}>{record.wins}</span>
-      <span className={`text-right font-mono ${record.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>{record.losses}</span>
-      <span className="text-right font-mono text-faint">{winRateLabel(record)}</span>
+      <span className={`text-rightfont-bold ${mmrClassName(record.mmr)}`}>{record.mmr}</span>
+      <span className="text-righttext-muted">{record.games}</span>
+      <span className={`text-right${record.wins > 0 ? "text-success-soft" : "text-ghost"}`}>{record.wins}</span>
+      <span className={`text-right${record.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>{record.losses}</span>
+      <span className="text-righttext-faint">{winRateLabel(record)}</span>
     </div>
   );
 }
@@ -33,13 +33,13 @@ export function MemberInfoCard({ row, index }: { row: MemberInfoRow; index: numb
   return (
     <div className="border-b border-ink/[.04] px-4 py-3">
       <div className="flex items-baseline gap-2">
-        <span className="w-6 flex-none font-mono text-[12px] text-ghost">{index + 1}</span>
+        <span className="w-6 flex-none text-[12px] text-ghost">{index + 1}</span>
         <span className={`truncate text-[15px] font-bold ${row.realName === "-" ? "text-ghost" : ""}`}>{row.realName}</span>
         <span className={`ml-auto flex-none text-[12.5px] ${tierScore(row.tier) === 0 ? "text-ghost" : "text-fg-2"}`}>
           {tierLabel(row.tier)}
         </span>
       </div>
-      <div className={`truncate pl-8 font-mono text-[12px] ${row.kakaoNickname === "-" ? "text-ghost" : "text-gold"}`}>
+      <div className={`truncate pl-8 text-[12.5px] ${row.kakaoNickname === "-" ? "text-ghost" : "text-muted"}`}>
         {row.kakaoNickname}
       </div>
       <div className="mt-1.5 flex flex-col gap-0.5 pl-8">
