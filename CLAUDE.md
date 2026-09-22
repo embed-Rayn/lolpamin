@@ -143,10 +143,15 @@ header line (`@태그해서 작성해주세요`) becomes a member too. Idempoten
 의존성도 패치 종속성도 없다. 참가자 값은 전부 문자열이고 `NAME`은 비어 있다 — 신원은
 `PUUID`와 `RIOT_ID_GAME_NAME`/`RIOT_ID_TAG_LINE`에서 온다.
 
-`RiotAccount`는 **리플레이에서 관측된 계정으로만** 만든다. 카톡·디코 닉네임에 적힌 Riot
+`RiotAccount`는 **검증된 PUUID 소스로만** 만든다 — 리플레이 메타데이터, 그리고 Riot
+Account-V1 조회 응답(`lib/riot-api/account.ts`). 등록 경로는 셋: 리플레이 업로드,
+`/member-info`에서 "이름#태그" 입력(`registerRiotAccount`), `/link-accounts`의 배치
+(`registerRiotAccountsFromHints` — 디코 별명 → 카톡 닉네임 → `Member.riotId` 순으로 첫
+힌트 하나만 조회, 계정이 없는 회원만, 첫 `unauthorized`에서 중단). `RIOT_API_KEY`는
+`.env`; 개발 키는 24시간 만료라 "키 만료" 안내가 나면 갱신한다. 카톡·디코 닉네임에 적힌 Riot
 ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누락이 흔하고, 그대로 저장하면
-한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **매칭 힌트**이며
-`scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 그 위에 실명 조각 신호가 따로
+한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **조회의 입력이자 매칭
+힌트**이며 `scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 그 위에 실명 조각 신호가 따로
 더해진다 — 인게임 닉에 "우성정글"처럼 실명 조각이 남는 경우를 잡으려고, 회원 실명(없으면
 카톡 닉네임 첫 조각)의 전체와 첫 글자를 뗀 조각 둘 다로 게임 닉을 검사해 하나라도 포함되면
 `REAL_NAME_FRAGMENT`(45점)를 더한다 — 성을 빼고 짓는 게임 닉이 흔해서다. 포지션은 가산점
@@ -154,6 +159,8 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 `점수 >= 100 && 1위−2위 >= 40`일 때만 한다 — 100점은 손으로 적은 Riot ID가 정확히
 맞아떨어진 경우에만 단독으로 나오고, 실명 조각(45)과 포지션(25)은 그 문턱에 못 미쳐
 후보 화면에서 관리자 확인을 거치게 할 뿐 자동 배정을 트리거하지 않는다.
+`removeRiotAccount`는 행을 **삭제**한다 — `memberId = null`은 "외부인 확정"이라 잘못 붙인
+계정을 뗀 것과 구별되지 않는다.
 
 `RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
 "연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.
