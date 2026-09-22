@@ -21,7 +21,7 @@ export function MemberRealNameCell({
 
   if (!isAdmin) {
     return (
-      <div className={`truncate font-semibold ${realName === "-" ? "text-ghost" : ""}`}>{realName}</div>
+      <div className={`truncate text-center font-semibold ${realName === "-" ? "text-ghost" : ""}`}>{realName}</div>
     );
   }
 
@@ -54,7 +54,7 @@ export function MemberRealNameCell({
             setIsEditing(false);
           }
         }}
-        className="w-full rounded-md border border-accent/50 bg-inset px-1.5 py-1 text-[14px] text-fg outline-none"
+        className="w-full rounded-md border border-accent/50 bg-inset px-1.5 py-1 text-center text-[14px] text-fg outline-none"
       />
     );
   }
@@ -71,7 +71,7 @@ export function MemberRealNameCell({
       }}
       title="클릭해서 실명 수정"
       disabled={isPending}
-      className={`truncate text-left font-semibold hover:underline ${
+      className={`w-full truncate text-center font-semibold hover:underline ${
         realName === "-" ? "text-ghost" : ""
       }`}
     >

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { MemberFilter, MemberRow, MemberSort, SortDirection } from "@/lib/queries/members";
+import type { MemberActivityFilter, MemberFilter, MemberRow, MemberSort, SortDirection } from "@/lib/queries/members";
 import { DeleteMemberButton } from "@/components/DeleteMemberButton";
 import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 import { MemberTierCell } from "@/components/MemberTierCell";
@@ -38,6 +38,7 @@ export function MemberTable({
   sort,
   dir,
   filter,
+  activity,
   query,
   basePath,
 }: {
@@ -46,6 +47,7 @@ export function MemberTable({
   sort: MemberSort;
   dir: SortDirection;
   filter: MemberFilter;
+  activity: MemberActivityFilter;
   query: string;
   // 정렬 링크가 돌아올 페이지 — MemberFilters의 basePath와 같은 이유다.
   basePath: string;
@@ -54,6 +56,7 @@ export function MemberTable({
     // 같은 기준을 다시 누르면 방향을 뒤집고, 다른 기준으로 바꾸면 내림차순부터 시작한다.
     const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
     const params = new URLSearchParams({ filter, sort: key, dir: nextDir });
+    if (activity !== "all") params.set("activity", activity);
     if (query) params.set("q", query);
     return `${basePath}?${params.toString()}`;
   }
@@ -73,24 +76,24 @@ export function MemberTable({
           <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             순위
           </Link>
-          <Link href={sortHref("realName")} className="hover:text-fg-2">
+          <Link href={sortHref("realName")} className="text-center hover:text-fg-2">
             실명{sortMark("realName")}
           </Link>
           <Link href={sortHref("kakaoNickname")} className="hover:text-fg-2">
             카톡 닉네임{sortMark("kakaoNickname")}
           </Link>
           <div>디코 닉네임</div>
-          <Link href={sortHref("tier")} className="hover:text-fg-2">
+          <Link href={sortHref("tier")} className="text-center hover:text-fg-2">
             티어{sortMark("tier")}
           </Link>
-          <Link href={sortHref("mmr")} className="text-right hover:text-fg-2">
+          <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             MMR{sortMark("mmr")}
           </Link>
-          <div className="text-right">판</div>
-          <div className="text-right">승</div>
-          <div className="text-right">패</div>
-          <div className="text-right">마지막 활동</div>
-          <div className="text-right">관리</div>
+          <div className="text-center">판</div>
+          <div className="text-center">승</div>
+          <div className="text-center">패</div>
+          <div className="text-center">마지막 활동</div>
+          <div className="text-center">관리</div>
         </div>
         {rows.map((m) => {
           const podium = podiumOf(m.rank);
@@ -111,21 +114,21 @@ export function MemberTable({
               </div>
               <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
               <div
-                className={`text-right font-mono text-[15.5px] font-bold ${
+                className={`text-center font-mono text-[15.5px] font-bold ${
                   m.mmr === 0 ? "text-ghost" : m.mmr >= 1600 ? "text-gold" : "text-fg"
                 }`}
               >
                 {m.mmr}
               </div>
-              <div className="text-right font-mono text-[13.5px] text-muted">{m.playedCount}</div>
-              <div className={`text-right font-mono text-[13.5px] ${m.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+              <div className="text-center font-mono text-[13.5px] text-muted">{m.playedCount}</div>
+              <div className={`text-center font-mono text-[13.5px] ${m.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
                 {m.wins}
               </div>
-              <div className={`text-right font-mono text-[13.5px] ${m.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+              <div className={`text-center font-mono text-[13.5px] ${m.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
                 {m.losses}
               </div>
               <div
-                className={`text-right font-mono text-[13.5px] ${
+                className={`text-center font-mono text-[13.5px] ${
                   m.daysSinceActive !== null && m.daysSinceActive >= 30
                     ? "text-danger-soft"
                     : m.daysSinceActive !== null && m.daysSinceActive >= 14
@@ -136,13 +139,15 @@ export function MemberTable({
                 {m.lastActiveLabel}
               </div>
               {isAdmin ? (
-                <DeleteMemberButton
-                  memberId={m.id}
-                  label={displayLabel(m)}
-                  mentionCount={m.mentionCount}
-                  gameCount={m.gameCount}
-                  aliasCount={m.aliasCount}
-                />
+                <div className="flex justify-center">
+                  <DeleteMemberButton
+                    memberId={m.id}
+                    label={displayLabel(m)}
+                    mentionCount={m.mentionCount}
+                    gameCount={m.gameCount}
+                    aliasCount={m.aliasCount}
+                  />
+                </div>
               ) : (
                 <div />
               )}

@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: new Client({ datasourceUrl: process.env.DATABASE_URL_TEST }) };
 });
 
-const { getMemberListData, parseMemberSort, parseSortDirection } = await import("./members");
+const { getMemberListData, parseMemberActivityFilter, parseMemberSort, parseSortDirection } = await import("./members");
 
 beforeEach(async () => {
   await resetDatabase(prisma);
@@ -451,6 +451,47 @@ describe("getMemberListData 판수 0", () => {
 
     expect(played.rows.map((r) => r.realName)).toEqual(["가회원", "나회원"]);
     expect(unranked.rows.map((r) => r.realName)).toEqual(["-"]);
+  });
+});
+
+describe("getMemberListData activity filter", () => {
+  it("defaults to all and accepts active / inactive", () => {
+    expect(parseMemberActivityFilter(undefined)).toBe("all");
+    expect(parseMemberActivityFilter("nonsense")).toBe("all");
+    expect(parseMemberActivityFilter("active")).toBe("active");
+    expect(parseMemberActivityFilter("inactive")).toBe("inactive");
+  });
+
+  // 미활동은 /inactive와 같은 규칙이다 — 카톡 쪽이 있고 마지막 활동(없으면 가입일)이
+  // 7일 이상 지난 회원. 카톡이 없는 회원은 미활동일 수 없으므로 활동 쪽에 남는다.
+  it("splits the board by the /inactive rule", async () => {
+    const now = new Date();
+    const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000);
+    await prisma.member.update({ where: { id: await idOf("가회원") }, data: { lastActiveAt: daysAgo(10) } });
+    await prisma.member.update({ where: { id: await idOf("나회원") }, data: { lastActiveAt: daysAgo(2) } });
+    await prisma.member.create({
+      data: { realName: "다회원", kakaoNickname: "다회원/95/da#1", lastActiveAt: null, createdAt: daysAgo(20) },
+    });
+
+    const active = await getMemberListData("all", "", "realName", "asc", "RIFT", "active");
+    const inactive = await getMemberListData("all", "", "realName", "asc", "RIFT", "inactive");
+    const all = await getMemberListData("all", "", "realName", "asc", "RIFT", "all");
+
+    expect(active.rows.map((r) => r.realName)).toEqual(["나회원", "-"]);
+    expect(inactive.rows.map((r) => r.realName)).toEqual(["가회원", "다회원"]);
+    expect(all.rows).toHaveLength(4);
+  });
+
+  it("stacks on top of the played/unranked filter", async () => {
+    await playGame(await idOf("가회원"), await idOf("나회원"), "BLUE");
+    await prisma.member.update({
+      where: { id: await idOf("가회원") },
+      data: { lastActiveAt: new Date(Date.now() - 10 * 86_400_000) },
+    });
+
+    const rows = (await getMemberListData("played", "", "mmr", "desc", "RIFT", "inactive")).rows;
+
+    expect(rows.map((r) => r.realName)).toEqual(["가회원"]);
   });
 });
 

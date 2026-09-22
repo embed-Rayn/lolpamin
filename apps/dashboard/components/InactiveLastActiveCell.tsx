@@ -18,7 +18,7 @@ export function InactiveLastActiveCell({
   const [isPending, startTransition] = useTransition();
 
   if (!isAdmin) {
-    return <div className="text-right font-mono text-[12.5px] text-faint">{lastActiveDate}</div>;
+    return <div className="text-center font-mono text-[12.5px] text-faint">{lastActiveDate}</div>;
   }
 
   // 티어 셀처럼 편집기를 따로 열지 않는다 — date input은 그 자체가 한 번의 클릭으로
@@ -34,14 +34,14 @@ export function InactiveLastActiveCell({
   }
 
   return (
-    <div className="flex flex-col items-end gap-0.5">
+    <div className="flex flex-col items-center gap-0.5">
       <input
         type="date"
         value={lastActiveDate}
         disabled={isPending}
         onChange={(e) => save(e.target.value)}
         title="마지막 활동일 수정"
-        className="w-full cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-right font-mono text-[12.5px] text-fg-2 outline-none [color-scheme:dark] focus:border-accent disabled:opacity-40"
+        className="w-full cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-center font-mono text-[12.5px] text-fg-2 outline-none [color-scheme:dark] focus:border-accent disabled:opacity-40"
       />
       {error && <span className="text-[12px] text-danger-soft">{error}</span>}
     </div>

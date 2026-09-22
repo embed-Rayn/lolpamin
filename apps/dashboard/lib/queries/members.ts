@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { GameMode, Member, MemberTier, Prisma } from "@lolpamin/db";
-import { displayedRating, tierScore } from "@lolpamin/core";
+import { displayedRating, INACTIVITY_THRESHOLD_DAYS, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 import { ratingField } from "../rating-field";
 
@@ -54,6 +54,19 @@ const MEMBER_FILTERS: MemberFilter[] = ["all", "played", "unranked"];
 
 export function parseMemberFilter(value: string | undefined): MemberFilter {
   return MEMBER_FILTERS.includes(value as MemberFilter) ? (value as MemberFilter) : "all";
+}
+
+// 운영진 전용 두 번째 축. "inactive"는 /inactive 화면과 같은 집합(카톡 쪽이 있고 마지막
+// 활동이 7일 이상 지난 회원)이고 "active"는 그 나머지다 — 카톡이 없는 회원은 미활동일 수
+// 없으므로(getInactiveMembers) 활동 쪽에 남는다. 판수 필터와 독립이라 겹쳐 쓸 수 있다.
+export type MemberActivityFilter = "all" | "active" | "inactive";
+
+const MEMBER_ACTIVITY_FILTERS: MemberActivityFilter[] = ["all", "active", "inactive"];
+
+export function parseMemberActivityFilter(value: string | undefined): MemberActivityFilter {
+  return MEMBER_ACTIVITY_FILTERS.includes(value as MemberActivityFilter)
+    ? (value as MemberActivityFilter)
+    : "all";
 }
 
 export type MemberSort = "mmr" | "realName" | "kakaoNickname" | "tier";
@@ -123,6 +136,8 @@ export interface MemberRow {
   playedCount: number;
   lastActiveLabel: string;
   daysSinceActive: number | null;
+  // /inactive 리포트에 오르는 회원인지. 활동/미활동 필터의 기준이다.
+  isInactive: boolean;
   isHalf: boolean;
   // 연결 상태 필터용. isHalf 하나로는 "카톡만"과 "디코만"을 가를 수 없다.
   hasDiscord: boolean;
@@ -152,6 +167,13 @@ function displayDiscordName(m: MemberWithCounts): string {
   return m.discordDisplayName ?? m.discordHandle ?? m.discordUserId;
 }
 
+// getInactiveMembers와 같은 규칙. 마지막 활동이 없으면 가입일부터 센다 — 한 번도
+// 멘션되지 않은 카톡 회원이 영원히 "활동 중"으로 남지 않게.
+function isInactiveMember(m: MemberWithCounts, now: Date): boolean {
+  if (!hasKakao(m)) return false;
+  return daysSince(m.lastActiveAt ?? m.createdAt, now)! >= INACTIVITY_THRESHOLD_DAYS;
+}
+
 function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameMode): MemberRow {
   const days = daysSince(m.lastActiveAt, now);
   // 카톡 멘션은 닉네임을 가진 행에 붙으므로(processKakaoExport), 흡수한 뒤에는 묘비 쪽에
@@ -173,6 +195,7 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameM
     playedCount,
     lastActiveLabel: days === null ? "기록 없음" : days === 0 ? "오늘" : `${days}일 전`,
     daysSinceActive: days,
+    isInactive: isInactiveMember(m, now),
     isHalf: isHalfMember(m),
     hasDiscord: m.discordUserId !== null,
     hasKakao: hasKakao(m),
@@ -227,6 +250,7 @@ export async function getMemberListData(
   sort: MemberSort = "mmr",
   dir: SortDirection = "desc",
   mode: GameMode = "RIFT",
+  activity: MemberActivityFilter = "all",
 ): Promise<MemberListData> {
   const now = new Date();
   const allMembers = await prisma.member.findMany({
@@ -279,6 +303,8 @@ export async function getMemberListData(
     .filter(({ m, row }) => {
       if (filter === "played" && row.playedCount === 0) return false;
       if (filter === "unranked" && row.playedCount > 0) return false;
+      if (activity === "active" && row.isInactive) return false;
+      if (activity === "inactive" && !row.isInactive) return false;
       return matchesQuery(m, row);
     })
     .map(({ row }) => row);

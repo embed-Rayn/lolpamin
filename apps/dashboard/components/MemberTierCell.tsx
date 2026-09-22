@@ -23,7 +23,7 @@ export function MemberTierCell({
   const muted = tierScore(tier) === 0;
 
   if (!isAdmin) {
-    return <div className={`truncate ${muted ? "text-ghost" : "text-fg-2"}`}>{tierLabel(tier)}</div>;
+    return <div className={`truncate text-center ${muted ? "text-ghost" : "text-fg-2"}`}>{tierLabel(tier)}</div>;
   }
 
   function save(next: MemberTier) {
@@ -45,7 +45,7 @@ export function MemberTierCell({
         disabled={isPending}
         onChange={(e) => save(e.target.value as MemberTier)}
         title="티어 수정"
-        className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-[13.5px] outline-none focus:border-accent disabled:opacity-40 ${
+        className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-center text-[13.5px] outline-none focus:border-accent disabled:opacity-40 ${
           muted ? "text-ghost" : "text-fg"
         }`}
       >

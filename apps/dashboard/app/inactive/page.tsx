@@ -36,10 +36,9 @@ export default async function InactivePage() {
             </div>
           </div>
           <div className="flex w-full flex-col justify-center gap-1.5 rounded-xl border border-dashed border-ink/[.1] bg-surface-2 px-4 py-3.5 md:w-[300px]">
-            <div className="text-[12.5px] font-bold text-fg-2">확인용 화면입니다</div>
             <div className="text-[12px] leading-relaxed text-faint">
-              자동 발송이나 강제 탈퇴 기능은 없습니다. 관리자는 마지막 활동일을 직접 고칠 수
-              있습니다.
+              이 페이지는 <span className="font-bold text-fg-2">미활동 회원 확인용 화면입니다.</span> 자동 알림
+              발송 및 강제 탈퇴 기능은 제공하지 않으며, 마지막 활동일은 관리자가 직접 수정할 수 있습니다.
             </div>
           </div>
         </div>

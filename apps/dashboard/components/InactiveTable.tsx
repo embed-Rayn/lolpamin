@@ -4,8 +4,9 @@ import { InactiveLastActiveCell } from "./InactiveLastActiveCell";
 import { InactiveCard } from "./InactiveCard";
 
 // 경과일 바는 남는 폭을 다 먹지 않는다 — 마지막 활동 칸에 date input이 들어가면서
-// 바가 짧아져야 행이 한 줄에 남는다.
-const COLUMNS = "grid-cols-[186px_164px_minmax(0,1fr)_170px_146px]";
+// 바가 짧아져야 행이 한 줄에 남는다. 마지막 두 칸은 내용(날짜 하나, 숫자 둘)만큼만 —
+// 넓히면 가운데 정렬한 값이 이웃 칸과 멀어져 어느 열의 값인지 읽기 어렵다.
+const COLUMNS = "grid-cols-[186px_164px_minmax(0,1fr)_132px_112px]";
 
 export function InactiveTable({ rows, isAdmin }: { rows: InactiveRow[]; isAdmin: boolean }) {
   const maxDays = Math.max(30, ...rows.map((r) => r.daysSinceActive));
@@ -21,8 +22,8 @@ export function InactiveTable({ rows, isAdmin }: { rows: InactiveRow[]; isAdmin:
           <div>실명</div>
           <div>카톡 닉네임</div>
           <div>경과일</div>
-          <div className="text-right">마지막 활동</div>
-          <div className="text-right">MMR / 최근 내전</div>
+          <div className="text-center">마지막 활동</div>
+          <div className="text-center">MMR / 최근 내전</div>
         </div>
         {rows.map((r) => (
           <div key={r.id} className={`grid ${COLUMNS} items-center border-b border-ink/[.04] px-5 py-3 hover:bg-hover`}>
@@ -45,10 +46,10 @@ export function InactiveTable({ rows, isAdmin }: { rows: InactiveRow[]; isAdmin:
                 {r.daysSinceActive}일
               </span>
             </div>
-            <div className="pl-4">
+            <div className="px-2">
               <InactiveLastActiveCell memberId={r.id} lastActiveDate={r.lastActiveDate} isAdmin={isAdmin} />
             </div>
-            <div className="flex flex-col items-end gap-0.5">
+            <div className="flex flex-col items-center gap-0.5">
               <span className="font-mono text-[13px] font-bold">{r.mmr}</span>
               <span className="text-[12px] text-faint">내전 {r.gameCount}회</span>
             </div>

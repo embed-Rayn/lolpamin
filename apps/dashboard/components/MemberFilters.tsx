@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import type { MemberFilter, MemberSort, SortDirection } from "@/lib/queries/members";
+import type { MemberActivityFilter, MemberFilter, MemberSort, SortDirection } from "@/lib/queries/members";
 import { SortSelect } from "@/components/SortSelect";
 
 // 점수판이라 판수 기준으로만 가른다 — 연결 상태는 /link-accounts, 미활동은 /inactive.
@@ -9,6 +9,13 @@ const FILTERS: Array<{ key: MemberFilter; label: string }> = [
   { key: "all", label: "전체" },
   { key: "played", label: "유저만" },
   { key: "unranked", label: "언랭만" },
+];
+
+// 운영진에게만 보이는 두 번째 축. 같은 칩을 다시 누르면 해제된다("all") — "전체" 칩을
+// 하나 더 두면 판수 필터의 "전체"와 나란히 놓여 어느 쪽 전체인지 헷갈린다.
+const ACTIVITY_FILTERS: Array<{ key: Exclude<MemberActivityFilter, "all">; label: string }> = [
+  { key: "active", label: "활동회원" },
+  { key: "inactive", label: "미활동회원" },
 ];
 
 // 폰의 정렬 셀렉트가 고르는 값. "sort:dir"로 인코딩해 <select> 하나가 기준과 방향을
@@ -23,14 +30,24 @@ const SORT_OPTIONS: Array<{ value: string; label: string; sort: MemberSort; dir:
   { value: "kakaoNickname:asc", label: "카톡 닉네임순", sort: "kakaoNickname", dir: "asc" },
 ];
 
+function chipClass(selected: boolean): string {
+  return `rounded-md border px-2.5 py-1 text-[12.5px] font-semibold ${
+    selected ? "border-accent/45 bg-accent/[.18] text-accent-soft" : "border-ink/[.09] bg-transparent text-faint"
+  }`;
+}
+
 export function MemberFilters({
   activeFilter,
+  activity,
+  isAdmin,
   query,
   sort,
   dir,
   basePath,
 }: {
   activeFilter: MemberFilter;
+  activity: MemberActivityFilter;
+  isAdmin: boolean;
   query: string;
   sort: MemberSort;
   dir: SortDirection;
@@ -41,9 +58,13 @@ export function MemberFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  function updateParams(next: { filter?: string; q?: string; sort?: string; dir?: string }) {
+  function updateParams(next: { filter?: string; activity?: string; q?: string; sort?: string; dir?: string }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.filter !== undefined) params.set("filter", next.filter);
+    if (next.activity !== undefined) {
+      if (next.activity === "all") params.delete("activity");
+      else params.set("activity", next.activity);
+    }
     if (next.q !== undefined) {
       if (next.q) params.set("q", next.q);
       else params.delete("q");
@@ -62,25 +83,31 @@ export function MemberFilters({
   return (
     <div className="flex flex-col gap-3 border-b border-ink/[.06] px-7 py-3.5 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="flex items-center gap-3">
-          {/* 폰에서는 필터 칩과 정렬 셀렉트가 이미 이 카드 목록의 정체를 말해주므로
-              제목을 생략해 세로 공간을 아낀다. */}
-          <h2 className="m-0 hidden text-[14.5px] font-bold md:block">전체 회원</h2>
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => updateParams({ filter: f.key })}
-                className={`rounded-md border px-2.5 py-1 text-[12.5px] font-semibold ${
-                  activeFilter === f.key
-                    ? "border-accent/45 bg-accent/[.18] text-accent-soft"
-                    : "border-ink/[.09] bg-transparent text-faint"
-                }`}
+                className={chipClass(activeFilter === f.key)}
               >
                 {f.label}
               </button>
             ))}
           </div>
+          {isAdmin && (
+            <div className="flex gap-1 border-l border-ink/[.09] pl-3">
+              {ACTIVITY_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => updateParams({ activity: activity === f.key ? "all" : f.key })}
+                  className={chipClass(activity === f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="md:hidden">
           <SortSelect
