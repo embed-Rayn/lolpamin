@@ -81,7 +81,7 @@ export function MemberFilters({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-b border-ink/[.06] px-7 py-3.5 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 border-b border-ink/[.06] px-4 py-3.5 md:flex-row md:items-center md:justify-between md:px-12">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1">
