@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Member, MemberTier } from "@lolpamin/db";
+import type { Lane, Member, MemberTier } from "@lolpamin/db";
 import { displayedRating, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
@@ -63,6 +63,9 @@ export interface MemberInfoRow {
   realName: string;
   kakaoNickname: string;
   tier: MemberTier;
+  // null은 「모름」.
+  mainLane: Lane | null;
+  subLane: Lane | null;
   rift: ModeRecord;
   aram: ModeRecord;
   note: string | null;
@@ -256,6 +259,8 @@ export async function getMemberInfoListData(
           realName,
           kakaoNickname: displayKakaoNickname(m),
           tier: m.tier,
+          mainLane: m.mainLane,
+          subLane: m.subLane,
           rift: record.rift,
           aram: record.aram,
           note: m.note,

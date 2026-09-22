@@ -1,14 +1,16 @@
 import Link from "next/link";
 import type { MemberInfoRow, MemberInfoSort, ModeRecord, SortDirection } from "@/lib/queries/member-info";
 import { MemberTierCell } from "@/components/MemberTierCell";
+import { MemberLaneCell } from "@/components/MemberLaneCell";
 import { MemberNoteCell } from "@/components/MemberNoteCell";
 import { MemberRiotAccountsCell } from "@/components/MemberRiotAccountsCell";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
 
 // 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임·라이엇 계정·비고가
 // 가져간다. 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 —
-// METRICS_GRID 참고. 라이엇 계정 칸은 칩 여러 개와 입력창이 들어가 닉네임 칸만큼 넓다.
-const GRID = "grid-cols-[44px_80px_1.3fr_600px_120px_1.2fr_1fr]";
+// METRICS_GRID 참고. 주라인·부라인은 두 글자짜리 select라 좁다. 라이엇 계정 칸은 칩
+// 여러 개와 입력창이 들어가 닉네임 칸만큼 넓다.
+const GRID = "grid-cols-[44px_80px_1.3fr_600px_120px_72px_72px_1.2fr_1fr]";
 
 // 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
 // 곧 협곡·칼바람 경계다.
@@ -90,6 +92,8 @@ export function MemberInfoTable({
           <div />
           <div />
           <div />
+          <div />
+          <div />
         </div>
         <div
           className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-faint`}
@@ -113,6 +117,8 @@ export function MemberInfoTable({
             <SortLink sortKey="aramWinRate" label="승률" align="center" />
           </div>
           <SortLink sortKey="tier" label="현재티어" align="center" />
+          <div className="text-center">주라인</div>
+          <div className="text-center">부라인</div>
           <div className="text-center">라이엇 계정</div>
           <div className="text-center">비고</div>
         </div>
@@ -166,6 +172,8 @@ export function MemberInfoTable({
             </div>
 
             <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
+            <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin={isAdmin} />
+            <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin={isAdmin} />
             <MemberRiotAccountsCell memberId={m.id} accounts={m.riotAccounts} isAdmin={isAdmin} />
             <MemberNoteCell memberId={m.id} note={m.note} isAdmin={isAdmin} />
           </div>

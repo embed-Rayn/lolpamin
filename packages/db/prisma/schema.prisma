@@ -12,6 +12,16 @@ enum Team {
   RED
 }
 
+// 회원이 주로 서는 라인. 리플레이 TEAM_POSITION(JUNGLE/MIDDLE/BOTTOM/UTILITY)과는
+// 표기가 다르다 — 둘을 견줄 일이 생기면 변환표를 둔다.
+enum Lane {
+  TOP
+  JUG
+  MID
+  AD
+  SUP
+}
+
 // 솔로랭크 티어. 마스터 위쪽은 티어 이름이 아니라 LP 구간으로 자른다 — 그랜드마스터와
 // 챌린저는 별도 티어가 아니라 마스터 LP의 상위 구간이라, LP로 자르면 자동으로 덮인다.
 // 선언 순서는 점수 내림차순이다(packages/core/src/tier.ts의 TIER_SCORES와 같은 순서).
@@ -74,6 +84,9 @@ model Member {
   tier               MemberTier @default(UNRANKED)
   // 회원 정보 페이지의 비고 칸 — 운영자가 손으로 남기는 자유 텍스트 메모.
   note               String?
+  // 회원 정보 페이지의 주라인·부라인. 운영자가 손으로 고른다. null은 「아직 모름」.
+  mainLane           Lane?
+  subLane            Lane?
   discordUserId      String?  @unique
   discordHandle      String?
   discordDisplayName String?

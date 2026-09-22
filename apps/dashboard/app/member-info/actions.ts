@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { parseRiotId } from "@lolpamin/core";
+import type { Lane } from "@lolpamin/db";
+import { isLane, parseRiotId } from "@lolpamin/core";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { updateMemberNote } from "@/lib/mutations/update-member-note";
+import { updateMemberLane, type LaneSlot } from "@/lib/mutations/update-member-lane";
 import { lookupRiotAccount } from "@/lib/riot-api/account";
 import {
   isOwnedByOtherError,
@@ -23,6 +25,28 @@ export async function updateMemberNoteAction(
     await updateMemberNote(prisma, memberId, note);
   } catch {
     return { error: "비고를 저장하지 못했습니다." };
+  }
+
+  revalidatePath("/member-info");
+  return { error: null };
+}
+
+export async function updateMemberLaneAction(
+  memberId: string,
+  slot: LaneSlot,
+  lane: Lane | null,
+): Promise<{ error: string | null }> {
+  await requireAdmin();
+
+  // 클라이언트가 보낸 문자열이므로 enum 값인지 여기서 확인한다 — updateMemberTierAction과 같은 이유.
+  if ((slot !== "main" && slot !== "sub") || (lane !== null && !isLane(lane))) {
+    return { error: "알 수 없는 라인입니다." };
+  }
+
+  try {
+    await updateMemberLane(prisma, memberId, slot, lane);
+  } catch {
+    return { error: "라인을 저장하지 못했습니다." };
   }
 
   revalidatePath("/member-info");

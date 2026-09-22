@@ -1,5 +1,5 @@
 import type { MemberInfoRow, ModeRecord } from "@/lib/queries/member-info";
-import { tierLabel, tierScore } from "@lolpamin/core";
+import { laneLabel, tierLabel, tierScore } from "@lolpamin/core";
 
 function mmrClassName(mmr: number): string {
   if (mmr === 0) return "text-ghost";
@@ -39,6 +39,11 @@ export function MemberInfoCard({ row, index }: { row: MemberInfoRow; index: numb
           {tierLabel(row.tier)}
         </span>
       </div>
+      {(row.mainLane !== null || row.subLane !== null) && (
+        <div className="pl-8 text-[12.5px] text-fg-2">
+          주 {laneLabel(row.mainLane)} · 부 {laneLabel(row.subLane)}
+        </div>
+      )}
       <div className={`truncate pl-8 text-[12.5px] ${row.kakaoNickname === "-" ? "text-ghost" : "text-muted"}`}>
         {row.kakaoNickname}
       </div>
