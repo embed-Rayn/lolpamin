@@ -68,7 +68,7 @@ export function MemberTable({
       {/* 데스크톱: 원래 그리드 표. 폰: 아래 md:hidden 카드 목록이 대신한다. */}
       <div className="hidden md:block">
         <div
-          className={`grid ${GRID} gap-4 border-b border-ink/[.06] bg-surface-2 px-5 py-3 text-[12.5px] font-bold tracking-wide text-faint`}
+          className={`grid ${GRID} gap-4 border-b border-ink/[.06] bg-surface-2 px-7 py-3 text-[12.5px] font-bold tracking-wide text-faint`}
         >
           <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             순위
@@ -97,7 +97,7 @@ export function MemberTable({
           return (
             <div
               key={m.id}
-              className={`grid ${GRID} relative items-center gap-4 border-b border-ink/[.04] px-5 py-3.5 text-[15px] ${
+              className={`grid ${GRID} relative items-center gap-4 border-b border-ink/[.04] px-7 py-3.5 text-[15px] ${
                 podium ? podium.row : "hover:bg-hover"
               }`}
             >

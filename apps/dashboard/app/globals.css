@@ -196,14 +196,18 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  /* 얇고 밝은 빛줄기 하나 — 가장자리는 메달 색조로, 한가운데만 거의 흰색으로 반짝인다.
+     너비를 46~54%(8%)로 좁혀 예전의 넓은 물결(25~75%, 50%)보다 훨씬 가는 선이 된다. */
   background: linear-gradient(
     110deg,
-    transparent 25%,
-    var(--rank-shine) 50%,
-    transparent 75%
+    transparent 46%,
+    var(--rank-shine) 49%,
+    var(--rank-shine-core) 50%,
+    var(--rank-shine) 51%,
+    transparent 54%
   );
   transform: translateX(-100%);
-  animation: rank-shimmer 2.6s ease-in-out infinite;
+  animation: rank-shimmer 1.3s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .rank-row-gold,
@@ -233,6 +237,8 @@ body {
       0 0 14px -2px var(--rank-glow-strong);
   }
 }
+/* 예전 4.5s → 2.6s에서 다시 절반(1.3s) — 정지 구간도 같은 비율로 짧아져 두 배 자주
+   스친다. */
 @keyframes rank-shimmer {
   0%, 40% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
@@ -244,7 +250,10 @@ body {
   --rank-edge: rgba(242, 199, 92, 0.24);
   --rank-glow: rgba(242, 199, 92, 0.11);
   --rank-glow-strong: rgba(242, 199, 92, 0.17);
-  --rank-shine: rgba(255, 236, 170, 0.08);
+  /* 바탕 톤(tint/glow)은 "과하다"고 확정된 30% 값 그대로 둔다 — 반짝이는 빛줄기만
+     따로 밝게 올린다. 폭이 8%로 얇아진 만큼, 밝기를 올려야 눈에 띈다. */
+  --rank-shine: rgba(255, 236, 170, 0.55);
+  --rank-shine-core: rgba(255, 250, 235, 0.95);
   --rank-highlight: rgba(255, 246, 214, 0.17);
 }
 .rank-row-silver {
@@ -252,7 +261,8 @@ body {
   --rank-edge: rgba(196, 206, 224, 0.22);
   --rank-glow: rgba(196, 206, 224, 0.1);
   --rank-glow-strong: rgba(196, 206, 224, 0.15);
-  --rank-shine: rgba(235, 240, 250, 0.08);
+  --rank-shine: rgba(235, 240, 250, 0.5);
+  --rank-shine-core: rgba(255, 255, 255, 0.95);
   --rank-highlight: rgba(255, 255, 255, 0.17);
 }
 .rank-row-bronze {
@@ -260,7 +270,8 @@ body {
   --rank-edge: rgba(214, 133, 74, 0.24);
   --rank-glow: rgba(214, 133, 74, 0.11);
   --rank-glow-strong: rgba(214, 133, 74, 0.17);
-  --rank-shine: rgba(255, 200, 150, 0.08);
+  --rank-shine: rgba(255, 200, 150, 0.5);
+  --rank-shine-core: rgba(255, 240, 225, 0.92);
   --rank-highlight: rgba(255, 224, 194, 0.15);
 }
 

@@ -60,7 +60,7 @@ export function MemberFilters({
   }
 
   return (
-    <div className="flex flex-col gap-3 border-b border-ink/[.06] px-5 py-3.5 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-3 border-b border-ink/[.06] px-7 py-3.5 md:flex-row md:items-center md:justify-between">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="flex items-center gap-3">
           {/* 폰에서는 필터 칩과 정렬 셀렉트가 이미 이 카드 목록의 정체를 말해주므로
