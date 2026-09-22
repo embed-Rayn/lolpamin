@@ -182,11 +182,11 @@ body {
   background: conic-gradient(
     from var(--rank-angle),
     transparent 0deg,
-    var(--rank-c) 20deg,
-    transparent 40deg,
+    var(--rank-c) 45deg,
+    transparent 90deg,
     transparent 180deg,
-    var(--rank-c) 200deg,
-    transparent 220deg,
+    var(--rank-c) 225deg,
+    transparent 270deg,
     transparent 360deg
   );
   filter: blur(12px);
@@ -206,16 +206,20 @@ body {
   z-index: 0;
   border-radius: 12px;
   border: 2px solid transparent;
-  background: rgb(var(--c-surface)) padding-box,
+  /* 안쪽 덮개는 linear-gradient(색, 색)이어야 한다 — background 축약형에서 단색은
+     마지막 레이어에만 올 수 있어서, 첫 레이어에 rgb()를 그대로 쓰면 선언 전체가
+     무효가 되고 행이 투명해진다(후광이 행 안으로 비쳐 보였던 원인). */
+  background:
+    linear-gradient(rgb(var(--c-surface)), rgb(var(--c-surface))) padding-box,
     conic-gradient(
       from var(--rank-angle),
-      transparent 0deg,
-      var(--rank-c) 20deg,
-      transparent 40deg,
-      transparent 180deg,
-      var(--rank-c) 200deg,
-      transparent 220deg,
-      transparent 360deg
+      var(--rank-c-dim) 0deg,
+      var(--rank-c) 45deg,
+      var(--rank-c-dim) 90deg,
+      var(--rank-c-dim) 180deg,
+      var(--rank-c) 225deg,
+      var(--rank-c-dim) 270deg,
+      var(--rank-c-dim) 360deg
     ) border-box;
   animation: rank-spin 3s linear infinite;
 }
@@ -234,17 +238,22 @@ body {
     animation: none;
   }
 }
+/* --rank-c는 스쳐 지나가는 밝은 호, --rank-c-dim은 그 사이를 채우는 옅은 기본 링 —
+   호가 지나가지 않는 동안에도 테두리가 금·은·동으로 남아 있게 한다. */
 .rank-row-gold,
 .rank-glow-gold {
   --rank-c: rgba(242, 199, 92, 0.95);
+  --rank-c-dim: rgba(242, 199, 92, 0.25);
 }
 .rank-row-silver,
 .rank-glow-silver {
-  --rank-c: rgba(210, 218, 232, 0.95);
+  --rank-c: rgba(200, 210, 226, 0.95);
+  --rank-c-dim: rgba(200, 210, 226, 0.3);
 }
 .rank-row-bronze,
 .rank-glow-bronze {
   --rank-c: rgba(224, 150, 95, 0.95);
+  --rank-c-dim: rgba(224, 150, 95, 0.25);
 }
 
 /* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
