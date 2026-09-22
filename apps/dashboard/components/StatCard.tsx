@@ -43,6 +43,7 @@ export function StatCard({ label, value, unit, colorClassName, icon, iconClassNa
           <span className="text-[13px] text-faint md:text-[14px]">{unit}</span>
         </div>
       </div>
+      <NavIcon name="chevron-down" size={16} className="ml-auto flex-none -rotate-90 text-ghost" />
     </div>
   );
 }
