@@ -1,5 +1,11 @@
 import Link from "next/link";
-import type { MemberInfoRow, MemberInfoSort, ModeRecord, SortDirection } from "@/lib/queries/member-info";
+import {
+  birthYearLabel,
+  type MemberInfoRow,
+  type MemberInfoSort,
+  type ModeRecord,
+  type SortDirection,
+} from "@/lib/queries/member-info";
 import { MemberTierCell } from "@/components/MemberTierCell";
 import { MemberLaneCell } from "@/components/MemberLaneCell";
 import { MemberNoteCell } from "@/components/MemberNoteCell";
@@ -36,7 +42,7 @@ function mmrClassName(mmr: number): string {
 
 // 이름은 오름차순, 숫자는 내림차순으로 시작한다 — 가나다순으로 찾는 칸과 "가장 많이/잘한
 // 사람"을 찾는 칸의 기대가 서로 반대다. 같은 칸을 다시 누르면 방향만 뒤집는다.
-// 나이도 숫자지만 적은 수(= 출생연도가 이른 사람)부터 읽는 편이 자연스럽다.
+// 나이 칸은 출생연도라, 오름차순이 곧 연장자부터다.
 const TEXT_SORTS: MemberInfoSort[] = ["realName", "age"];
 
 function winRateLabel(record: ModeRecord): string {
@@ -135,8 +141,8 @@ export function MemberInfoTable({
             }`}
           >
             <div className={`truncate text-center font-bold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
-            <div className={`text-center text-[13.5px] ${m.age === null ? "text-ghost" : "text-muted"}`}>
-              {m.age ?? "-"}
+            <div className={`text-center text-[13.5px] ${m.birthYear === null ? "text-ghost" : "text-muted"}`}>
+              {birthYearLabel(m.birthYear)}
             </div>
 
             {/* -my-3 py-3: 그리드 컨테이너의 py-3는 이 셀이 아니라 컨테이너 자신의

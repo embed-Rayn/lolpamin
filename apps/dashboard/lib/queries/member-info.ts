@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Lane, Member, MemberTier } from "@lolpamin/db";
-import { displayedRating, tierScore } from "@lolpamin/core";
+import { displayedRating, kakaoBirthYear, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
 export interface MemberInfoRiotAccount {
@@ -62,8 +62,10 @@ export interface MemberInfoRow {
   id: string;
   realName: string;
   kakaoNickname: string;
-  // 카톡 닉네임 `이름/나이/…`의 두 번째 조각을 그대로 담은 값(대개 출생연도 두 자리).
-  age: number | null;
+  // 카톡 닉네임 `이름/나이/RiotID`의 두 번째 조각을 네 자리 출생연도로 읽은 값
+  // (kakaoBirthYear). Member.age는 보지 않는다 — 닉네임이 바뀌어도 따라가지 않는 저장값이다.
+  // 화면은 두 자리로 줄여 보여준다.
+  birthYear: number | null;
   tier: MemberTier;
   // null은 「모름」.
   mainLane: Lane | null;
@@ -74,6 +76,11 @@ export interface MemberInfoRow {
   // 검증된 PUUID로 등록된 라이엇 계정. 묘비의 계정은 absorbMember가 생존자로 옮기므로
   // 자기 것만 보면 된다. 최근 관측순.
   riotAccounts: MemberInfoRiotAccount[];
+}
+
+/** 모임이 닉네임에 적는 대로 두 자리("94", "01")로 보여준다. */
+export function birthYearLabel(birthYear: number | null): string {
+  return birthYear === null ? "-" : String(birthYear % 100).padStart(2, "0");
 }
 
 // 흡수해도 카톡 닉네임은 묘비에 남는다 — queries/members.ts의 displayKakaoNickname과
@@ -202,7 +209,7 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
       return compareNullableString(a.realName, b.realName, sign, a.id, b.id);
     case "age":
       // 나이를 모르는 회원은 방향과 무관하게 뒤로 보낸다 — 승률의 "기록 없음"과 같은 규칙.
-      return compareWinRate(a.age, b.age, sign, a.id, b.id);
+      return compareWinRate(a.birthYear, b.birthYear, sign, a.id, b.id);
     case "tier": {
       const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
@@ -250,6 +257,7 @@ export async function getMemberInfoListData(
   const rows: MemberInfoRow[] = members
     .map((m) => {
       const realName = m.realName ?? "-";
+      const kakaoNickname = displayKakaoNickname(m);
       const record = records.get(m.id) ?? {
         rift: toModeRecord(m.mmr, 0, 0),
         aram: toModeRecord(m.aramMmr, 0, 0),
@@ -260,8 +268,8 @@ export async function getMemberInfoListData(
         row: {
           id: m.id,
           realName,
-          kakaoNickname: displayKakaoNickname(m),
-          age: m.age,
+          kakaoNickname,
+          birthYear: kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname),
           tier: m.tier,
           mainLane: m.mainLane,
           subLane: m.subLane,

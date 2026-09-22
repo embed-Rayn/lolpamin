@@ -75,3 +75,17 @@ export function kakaoMatchKey(rawNickname: string): string {
 
   return normalizeForMatch(nickname);
 }
+
+/**
+ * 카톡 닉네임 관례의 두 번째 조각(출생연도)을 네 자리 연도로 읽는다. 관례 밖이면 null.
+ * "94"와 "1994"가 섞여 적히므로 두 자리는 네 자리로 펼쳐야 정렬이 맞는다 — 30 미만은
+ * 2000년대로 본다.
+ */
+export function kakaoBirthYear(rawNickname: string): number | null {
+  const convention = readKakaoConvention(normalizeKakaoNickname(rawNickname));
+  if (!convention) return null;
+  const { year } = convention;
+  if (year >= 1900) return year;
+  if (year >= 100) return null;
+  return year < 30 ? 2000 + year : 1900 + year;
+}

@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: new Client({ datasourceUrl: process.env.DATABASE_URL_TEST }) };
 });
 
-const { getMemberInfoListData, getMemberInfoSummary, parseMemberInfoSort, parseSortDirection } =
+const { birthYearLabel, getMemberInfoListData, getMemberInfoSummary, parseMemberInfoSort, parseSortDirection } =
   await import("./member-info");
 
 async function playGame(options: {
@@ -55,6 +55,14 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma.$disconnect();
+});
+
+describe("birthYearLabel", () => {
+  it("shows two digits the way the nickname writes them", () => {
+    expect(birthYearLabel(1994)).toBe("94");
+    expect(birthYearLabel(2001)).toBe("01");
+    expect(birthYearLabel(null)).toBe("-");
+  });
 });
 
 describe("parseMemberInfoSort / parseSortDirection", () => {
@@ -256,15 +264,16 @@ describe("getMemberInfoListData sorting", () => {
     expect(descending.map((r) => r.realName)).toEqual(["나회원", "가회원", "-"]);
   });
 
-  it("sorts by age and keeps members without one last in both directions", async () => {
-    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { age: 98 } });
-    await prisma.member.updateMany({ where: { realName: "나회원" }, data: { age: 94 } });
+  it("sorts by the birth year read from the kakao nickname, unknown last", async () => {
+    // Member.age는 보지 않는다 — 닉네임과 어긋난 저장값이 있어도 닉네임을 따른다.
+    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { kakaoNickname: "가회원/98/가#KR1", age: 90 } });
+    await prisma.member.updateMany({ where: { realName: "나회원" }, data: { kakaoNickname: "나회원/1994/나#KR1" } });
 
     const ascending = await getMemberInfoListData("", "age", "asc");
-    expect(ascending.map((r) => r.age)).toEqual([94, 98, null]);
+    expect(ascending.map((r) => r.birthYear)).toEqual([1994, 1998, null]);
 
     const descending = await getMemberInfoListData("", "age", "desc");
-    expect(descending.map((r) => r.age)).toEqual([98, 94, null]);
+    expect(descending.map((r) => r.birthYear)).toEqual([1998, 1994, null]);
   });
 
   it("sorts by tier score, not enum declaration order", async () => {

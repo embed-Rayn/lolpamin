@@ -1,4 +1,4 @@
-import type { MemberInfoRow, ModeRecord } from "@/lib/queries/member-info";
+import { birthYearLabel, type MemberInfoRow, type ModeRecord } from "@/lib/queries/member-info";
 import { laneLabel, tierLabel, tierScore } from "@lolpamin/core";
 
 function mmrClassName(mmr: number): string {
@@ -34,7 +34,9 @@ export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: 
     <div className="border-b border-ink/[.04] px-4 py-3">
       <div className="flex items-baseline gap-2">
         <span className={`truncate text-[15px] font-bold ${row.realName === "-" ? "text-ghost" : ""}`}>{row.realName}</span>
-        {row.age !== null && <span className="flex-none text-[12.5px] text-muted">{row.age}</span>}
+        {row.birthYear !== null && (
+          <span className="flex-none text-[12.5px] text-muted">{birthYearLabel(row.birthYear)}</span>
+        )}
         <span className={`ml-auto flex-none text-[12.5px] ${tierScore(row.tier) === 0 ? "text-ghost" : "text-fg-2"}`}>
           {tierLabel(row.tier)}
         </span>
