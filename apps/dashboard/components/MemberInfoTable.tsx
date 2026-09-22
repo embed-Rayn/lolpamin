@@ -65,9 +65,9 @@ export function MemberInfoTable({
     return dir === "desc" ? " ↓" : " ↑";
   }
 
-  function SortLink({ sortKey, label, align }: { sortKey: MemberInfoSort; label: string; align?: "right" }) {
+  function SortLink({ sortKey, label, align }: { sortKey: MemberInfoSort; label: string; align?: "center" }) {
     return (
-      <Link href={sortHref(sortKey)} className={`hover:text-fg-2 ${align === "right" ? "text-right" : ""}`}>
+      <Link href={sortHref(sortKey)} className={`hover:text-fg-2 ${align === "center" ? "text-center" : ""}`}>
         {label}
         {sortMark(sortKey)}
       </Link>
@@ -95,26 +95,26 @@ export function MemberInfoTable({
         <div
           className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-faint`}
         >
-          <div className="text-right">NO.</div>
-          <SortLink sortKey="realName" label="이름" />
+          <div className="text-center">NO.</div>
+          <SortLink sortKey="realName" label="이름" align="center" />
           <SortLink sortKey="kakaoNickname" label="닉네임" />
           {/* -mt-1.5 pt-1.5 -mb-3 pb-3: 이 행의 위·아래 여백이 서로 다르다(pt-1.5,
               pb-3) — 양쪽 다 값이 다른 만큼 밀어내고 되채워야 배경이 정확히 여백까지
               닿는다. */}
           <div className={`-mb-3 -mt-1.5 grid ${METRICS_GRID} gap-3 pb-3 pt-1.5`} style={METRICS_BG}>
-            <SortLink sortKey="riftMmr" label="MMR" align="right" />
-            <SortLink sortKey="riftGames" label="판" align="right" />
-            <div className="text-right">승</div>
-            <div className="text-right">패</div>
-            <SortLink sortKey="riftWinRate" label="승률" align="right" />
-            <SortLink sortKey="aramMmr" label="MMR" align="right" />
-            <SortLink sortKey="aramGames" label="판" align="right" />
-            <div className="text-right">승</div>
-            <div className="text-right">패</div>
-            <SortLink sortKey="aramWinRate" label="승률" align="right" />
+            <SortLink sortKey="riftMmr" label="MMR" align="center" />
+            <SortLink sortKey="riftGames" label="판" align="center" />
+            <div className="text-center">승</div>
+            <div className="text-center">패</div>
+            <SortLink sortKey="riftWinRate" label="승률" align="center" />
+            <SortLink sortKey="aramMmr" label="MMR" align="center" />
+            <SortLink sortKey="aramGames" label="판" align="center" />
+            <div className="text-center">승</div>
+            <div className="text-center">패</div>
+            <SortLink sortKey="aramWinRate" label="승률" align="center" />
           </div>
-          <SortLink sortKey="tier" label="현재티어" />
-          <div>비고</div>
+          <SortLink sortKey="tier" label="현재티어" align="center" />
+          <div className="text-center">비고</div>
         </div>
         {rows.length === 0 && (
           <div className="px-5 py-8 text-center text-[13.5px] text-ghost">조건에 맞는 회원이 없습니다.</div>
@@ -126,8 +126,8 @@ export function MemberInfoTable({
               index % 2 === 1 ? "bg-surface-2" : ""
             }`}
           >
-            <div className="text-right font-mono text-[12.5px] text-ghost">{index + 1}</div>
-            <div className={`truncate font-semibold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
+            <div className="text-center font-mono text-[12.5px] text-ghost">{index + 1}</div>
+            <div className={`truncate text-center font-semibold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
             <div
               className={`truncate font-mono text-[13px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-gold"}`}
             >
@@ -138,30 +138,30 @@ export function MemberInfoTable({
                 여백이라, 셀 배경이 위아래로 그 여백까지 덮게 하려면 밀어냈다가(-my-3)
                 똑같이 되채워야(py-3) 한다 — 행 높이는 그대로고 배경만 꽉 찬다. */}
             <div className={`-my-3 grid ${METRICS_GRID} items-center gap-3 py-3`} style={METRICS_BG}>
-              <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
-              <div className="text-right font-mono text-[13px] text-muted">{m.rift.games}</div>
-              <div className={`text-right font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+              <div className={`text-center font-mono text-[13.5px] font-bold ${mmrClassName(m.rift.mmr)}`}>{m.rift.mmr}</div>
+              <div className="text-center font-mono text-[13px] text-muted">{m.rift.games}</div>
+              <div className={`text-center font-mono text-[13px] ${m.rift.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
                 {m.rift.wins}
               </div>
-              <div className={`text-right font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+              <div className={`text-center font-mono text-[13px] ${m.rift.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
                 {m.rift.losses}
               </div>
               <div
-                className={`text-right font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
+                className={`text-center font-mono text-[13px] ${m.rift.winRate === null ? "text-ghost" : "text-fg"}`}
               >
                 {winRateLabel(m.rift)}
               </div>
 
-              <div className={`text-right font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
-              <div className="text-right font-mono text-[13px] text-muted">{m.aram.games}</div>
-              <div className={`text-right font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
+              <div className={`text-center font-mono text-[13.5px] font-bold ${mmrClassName(m.aram.mmr)}`}>{m.aram.mmr}</div>
+              <div className="text-center font-mono text-[13px] text-muted">{m.aram.games}</div>
+              <div className={`text-center font-mono text-[13px] ${m.aram.wins > 0 ? "text-success-soft" : "text-ghost"}`}>
                 {m.aram.wins}
               </div>
-              <div className={`text-right font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
+              <div className={`text-center font-mono text-[13px] ${m.aram.losses > 0 ? "text-danger-soft" : "text-ghost"}`}>
                 {m.aram.losses}
               </div>
               <div
-                className={`text-right font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
+                className={`text-center font-mono text-[13px] ${m.aram.winRate === null ? "text-ghost" : "text-fg"}`}
               >
                 {winRateLabel(m.aram)}
               </div>
