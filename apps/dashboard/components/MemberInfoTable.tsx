@@ -14,12 +14,14 @@ const METRICS_GRID = "grid-cols-10";
 
 // 협곡·칼바람 블록을 하나의 그라데이션으로 칠한다. 칸마다 배경을 따로 칠하면 gap-3가
 // 흰 틈으로 보이고, 두 블록 사이에도 같은 gap이 끼어 파랑·주황이 맞닿지 않는다 —
-// 한 덩어리(544px) 위에 50:50 그라데이션을 얹으면 내부 칸 간격도, 두 블록의 경계도
-// 전부 이 배경 하나가 이어서 채운다. 두 절반은 실제로 정확히 5칸씩 같은 폭이라 50%가
-// 곧 그 경계다.
+// 한 덩어리 위에 50:50 그라데이션을 얹으면 내부 칸 간격도, 두 블록의 경계도 전부 이
+// 배경 하나가 이어서 채운다. 두 절반은 실제로 정확히 5칸씩 같은 폭이라 50%가 곧 그
+// 경계다. 불투명한 accent-tint가 아니라 accent에 alpha를 얹는 이유: 스킨마다 accent가
+// 다르므로 같은 alpha면 어느 스킨에서든 그 스킨 색의 연한 판이 되고, 아래 깔린 지브라
+// 줄무늬도 비쳐 보인다.
 const METRICS_BG = {
   background:
-    "linear-gradient(90deg, rgb(var(--c-accent-tint)) 0%, rgb(var(--c-accent-tint)) 50%, rgb(var(--c-orange) / 0.16) 50%, rgb(var(--c-orange) / 0.16) 100%)",
+    "linear-gradient(90deg, rgb(var(--c-accent) / 0.07) 0%, rgb(var(--c-accent) / 0.07) 50%, rgb(var(--c-orange) / 0.07) 50%, rgb(var(--c-orange) / 0.07) 100%)",
 };
 
 function mmrClassName(mmr: number): string {
@@ -80,8 +82,8 @@ export function MemberInfoTable({
           {/* 협곡·칼바람 이름표는 서로 떨어진 두 상자다 — 아래 행들의 그라데이션과 달리
               여기서만 둘 사이에 틈을 두고 위 모서리를 둥글린다. */}
           <div className="grid grid-cols-2 gap-1">
-            <div className="rounded-t-lg bg-accent-tint py-2 text-center text-accent-soft">협곡</div>
-            <div className="rounded-t-lg bg-orange/[.16] py-2 text-center text-orange">칼바람</div>
+            <div className="rounded-t-lg bg-accent/[.14] py-2 text-center text-accent-soft">협곡</div>
+            <div className="rounded-t-lg bg-orange/[.14] py-2 text-center text-orange">칼바람</div>
           </div>
           <div />
           <div />
