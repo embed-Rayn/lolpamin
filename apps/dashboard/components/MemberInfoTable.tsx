@@ -122,7 +122,9 @@ export function MemberInfoTable({
         {rows.map((m, index) => (
           <div
             key={m.id}
-            className={`grid ${GRID} items-center gap-3 border-b border-ink/[.04] px-5 py-3 text-[14px] hover:bg-hover`}
+            className={`grid ${GRID} items-center gap-3 border-b border-ink/[.04] px-5 py-3 text-[14px] hover:bg-hover ${
+              index % 2 === 1 ? "bg-surface-2" : ""
+            }`}
           >
             <div className="text-right font-mono text-[12.5px] text-ghost">{index + 1}</div>
             <div className={`truncate font-semibold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
