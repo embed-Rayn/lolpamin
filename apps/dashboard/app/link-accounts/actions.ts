@@ -9,7 +9,7 @@ import { fetchGuildMembers } from "@/lib/discord/fetch-guild-members";
 import { importDiscordMembers, type ImportDiscordMembersResult } from "@/lib/mutations/import-discord-members";
 import { lookupRiotAccount } from "@/lib/riot-api/account";
 import {
-  countMembersWithoutRiotAccount,
+  countRiotLookupTargets,
   registerRiotAccountsFromHints,
   type HintRegistrationResult,
 } from "@/lib/mutations/register-riot-accounts-from-hints";
@@ -91,7 +91,7 @@ export async function importDiscordMembersAction(): Promise<ImportDiscordMembers
 /** 확인창의 "N명"용. 배치가 조회할 회원 수와 같은 조건이다. */
 export async function countRiotLookupTargetsAction(): Promise<number> {
   await requireAdmin();
-  return countMembersWithoutRiotAccount(prisma);
+  return countRiotLookupTargets(prisma);
 }
 
 export interface RegisterRiotAccountsFromHintsActionResult {

@@ -62,10 +62,14 @@ export function AccountMappingPanel({
     try {
       const targetCount = await countRiotLookupTargetsAction();
       if (targetCount === 0) {
-        setRiotStatus("라이엇 계정이 없는 회원이 없습니다.");
+        setRiotStatus("새로 조회할 라이엇 ID가 없습니다.");
         return;
       }
-      if (!window.confirm(`라이엇 계정이 없는 회원 ${targetCount}명의 닉네임으로 Riot API를 조회합니다. 계속할까요?`)) {
+      if (
+        !window.confirm(
+          `회원 ${targetCount}명의 닉네임에 적힌 라이엇 ID를 모두 Riot API로 조회합니다. 계속할까요?`,
+        )
+      ) {
         return;
       }
 
@@ -74,7 +78,7 @@ export function AccountMappingPanel({
         setRiotStatus(error ?? "조회하지 못했습니다.");
         return;
       }
-      const summary = `등록 ${result.registered} · 못 찾음 ${result.notFound} · 충돌 ${result.conflicts} · 힌트 없음 ${result.skipped}`;
+      const summary = `등록 ${result.registered}개 · 못 찾음 ${result.notFound} · 충돌 ${result.conflicts} · 조회할 ID 없음 ${result.skipped}명`;
       setRiotStatus(
         result.unauthorized
           ? `Riot API 키가 만료됐거나 없습니다 (.env RIOT_API_KEY). 중단 전까지 ${summary}`

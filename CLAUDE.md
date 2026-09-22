@@ -146,8 +146,10 @@ header line (`@태그해서 작성해주세요`) becomes a member too. Idempoten
 `RiotAccount`는 **검증된 PUUID 소스로만** 만든다 — 리플레이 메타데이터, 그리고 Riot
 Account-V1 조회 응답(`lib/riot-api/account.ts`). 등록 경로는 셋: 리플레이 업로드,
 `/member-info`에서 "이름#태그" 입력(`registerRiotAccount`), `/link-accounts`의 배치
-(`registerRiotAccountsFromHints` — 디코 별명 → 카톡 닉네임 → `Member.riotId` 순으로 첫
-힌트 하나만 조회, 계정이 없는 회원만, 첫 `unauthorized`에서 중단). `RIOT_API_KEY`는
+(`registerRiotAccountsFromHints` — 디코 별명·카톡 닉네임(묘비 포함)·`Member.riotId`에 적힌
+Riot ID를 **전부** 조회해 찾은 수만큼 계정을 붙인다. 부계정을 서로 다른 닉네임에 나눠 적는
+일이 흔해서다. 이미 등록된 계정과 같은 ID는 대소문자를 접어 비교해 조회를 건너뛰므로,
+한도에 걸려 중단돼도 다시 돌리면 남은 ID부터 이어서 한다. 첫 `unauthorized`에서 중단). `RIOT_API_KEY`는
 `.env`; 개발 키는 24시간 만료라 "키 만료" 안내가 나면 갱신한다. 카톡·디코 닉네임에 적힌 Riot
 ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누락이 흔하고, 그대로 저장하면
 한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **조회의 입력이자 매칭
