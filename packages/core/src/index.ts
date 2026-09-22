@@ -13,3 +13,4 @@ export * from "./score-riot-account-match";
 export * from "./displayed-rating";
 export * from "./theme";
 export * from "./svg-sanitize";
+export * from "./parse-riot-id";
