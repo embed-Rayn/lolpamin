@@ -184,9 +184,11 @@ body {
   pointer-events: none;
   animation: rank-spin 3s linear infinite;
 }
-/* 테두리 링: padding-box 레이어(기존 은은한 tint)가 위에 그려져 안쪽을 덮고,
-   border-box 레이어(회전 그라데이션)는 border의 2px 폭에서만 드러난다 — 마스킹용
-   div 없이 border-box/padding-box 클립만으로 "테두리만 빛나는" 결과를 낸다. */
+/* 테두리 링: padding-box 레이어가 표 배경색(불투명)으로 안쪽을 완전히 덮어 회전
+   그라데이션을 가리고, border-box 레이어(회전 그라데이션)는 border의 2px 폭에서만
+   드러난다 — 마스킹용 div 없이 border-box/padding-box 클립만으로 "테두리만 빛나는"
+   결과를 낸다. 안쪽을 불투명 표 배경색으로 덮어야 한다 — 반투명 tint를 쓰면 아래
+   그라데이션이 비쳐 보여 테두리만 빛나는 게 아니라 박스 전체가 물든 것처럼 보인다. */
 .rank-row-gold,
 .rank-row-silver,
 .rank-row-bronze {
@@ -194,14 +196,7 @@ body {
   z-index: 0;
   border-radius: 12px;
   border: 2px solid transparent;
-  background:
-    linear-gradient(
-      90deg,
-      var(--rank-tint) 0%,
-      var(--rank-tint) 20%,
-      rgba(255, 255, 255, 0.04) 55%,
-      transparent 100%
-    ) padding-box,
+  background: rgb(var(--c-surface)) padding-box,
     conic-gradient(
       from var(--rank-angle),
       transparent 0deg,
@@ -240,15 +235,6 @@ body {
 .rank-row-bronze,
 .rank-glow-bronze {
   --rank-c: rgba(224, 150, 95, 0.95);
-}
-.rank-row-gold {
-  --rank-tint: rgba(242, 199, 92, 0.12);
-}
-.rank-row-silver {
-  --rank-tint: rgba(196, 206, 224, 0.11);
-}
-.rank-row-bronze {
-  --rank-tint: rgba(214, 133, 74, 0.11);
 }
 
 /* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
