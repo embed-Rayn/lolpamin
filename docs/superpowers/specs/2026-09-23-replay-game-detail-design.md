@@ -106,7 +106,8 @@ model ReplayPlayerStat {
   - `summarizeReplayTeams(players)` → 팀별 `{ kills, gold, baron, dragon, herald, horde, atakhan, turret, inhibitor }`
   - `killParticipation(player, teamKills)` → 0~100 정수 %, 팀 킬 0이면 0
   - `kdaRatio(k, d, a)` → 데스 0이면 `"Perfect"`, 아니면 소수 둘째 자리 문자열
-  - 미리보기 예상 변화량은 기존 `calculateTeamMmrChange` + `WIN_POINT`/`LOSS_POINT`를 그대로 쓴다.
+  - 미리보기 예상 변화량은 기존 `calculateTeamMmrChange`를 그대로 쓴다. K·승점·패점은 상수가 아니라
+    `/admins`에서 고치는 DB 값이므로 `getMmrConfig(prisma)`의 결과를 `PreparedReplayImport.mmrConfig`로 함께 내려보낸다.
 
 ## 저장 경로
 
