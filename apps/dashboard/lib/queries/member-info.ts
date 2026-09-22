@@ -3,8 +3,16 @@ import type { Member, MemberTier } from "@lolpamin/db";
 import { displayedRating, tierScore } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
+export interface MemberInfoRiotAccount {
+  id: string;
+  gameName: string;
+  tagLine: string;
+}
+
 type MemberWithAbsorbed = Member & {
   absorbed: Array<{ id: string; kakaoNickname: string | null }>;
+  // getMemberInfoSummary는 싣지 않는다 — 집계에 필요 없다.
+  riotAccounts?: MemberInfoRiotAccount[];
 };
 
 export type MemberInfoSort =
@@ -58,6 +66,9 @@ export interface MemberInfoRow {
   rift: ModeRecord;
   aram: ModeRecord;
   note: string | null;
+  // 검증된 PUUID로 등록된 라이엇 계정. 묘비의 계정은 absorbMember가 생존자로 옮기므로
+  // 자기 것만 보면 된다. 최근 관측순.
+  riotAccounts: MemberInfoRiotAccount[];
 }
 
 // 흡수해도 카톡 닉네임은 묘비에 남는다 — queries/members.ts의 displayKakaoNickname과
@@ -216,6 +227,7 @@ export async function getMemberInfoListData(
     where: { mergedIntoId: null },
     include: {
       absorbed: { select: { id: true, kakaoNickname: true }, orderBy: { createdAt: "desc" } },
+      riotAccounts: { select: { id: true, gameName: true, tagLine: true }, orderBy: { lastSeenAt: "desc" } },
     },
   });
 
@@ -247,6 +259,7 @@ export async function getMemberInfoListData(
           rift: record.rift,
           aram: record.aram,
           note: m.note,
+          riotAccounts: m.riotAccounts ?? [],
         },
       };
     })

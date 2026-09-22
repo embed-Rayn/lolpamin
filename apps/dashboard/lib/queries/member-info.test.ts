@@ -177,6 +177,25 @@ describe("getMemberInfoListData records", () => {
     // 묘비 자체는 목록에 나오지 않는다.
     expect(rows.some((r) => r.kakaoNickname === "옛닉/94/old#KR1" && r.realName === "-")).toBe(false);
   });
+
+  it("lists each member's riot accounts, newest-seen first", async () => {
+    const m = await prisma.member.create({ data: { realName: "가", discordUserId: "d-1" } });
+    await prisma.riotAccount.create({
+      data: { puuid: "p-old", memberId: m.id, gameName: "옛계정", tagLine: "KR1", lastSeenAt: new Date("2026-01-01") },
+    });
+    await prisma.riotAccount.create({
+      data: { puuid: "p-new", memberId: m.id, gameName: "새계정", tagLine: "KR2", lastSeenAt: new Date("2026-09-01") },
+    });
+    await prisma.member.create({ data: { realName: "나", discordUserId: "d-2" } });
+
+    const rows = await getMemberInfoListData("", "realName", "asc");
+
+    expect(rows.map((r) => r.riotAccounts.map((a) => `${a.gameName}#${a.tagLine}`))).toEqual([
+      ["새계정#KR2", "옛계정#KR1"],
+      [],
+    ]);
+    expect(rows[0].riotAccounts[0].id).toBeTruthy();
+  });
 });
 
 describe("getMemberInfoListData search", () => {
