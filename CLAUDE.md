@@ -240,6 +240,29 @@ active-item highlight all carry over unchanged. It stays mounted and slides via
 `translate-x` + `motion-safe:` classes rather than conditional mounting, so the
 transition actually plays.
 
+## Branding
+
+The sidebar/drawer logo tile's glyph, the site name/tagline next to it, and the
+home page banner (desktop + mobile) are admin-editable from `/admins`
+(`BrandingPanel`) and stored on the same `SiteSetting` singleton row the skin
+lives on — never in `public/`, since this server's deploy replaces the whole
+file tree from git each time. All six fields are nullable; null means "use the
+built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게임",
+`public/banner.png`).
+
+A pasted logo SVG is denylist-sanitized exactly once, at save time
+(`sanitizeSvg` in `packages/core`, strips `<script>`, event-handler attributes,
+`javascript:` URIs, `<foreignObject>`/`<iframe>`/`<object>`) — it renders site-wide
+to every visitor, logged in or not, so a malicious or careless paste from any
+admin account is a stored-XSS risk otherwise. `BrandLogo` trusts the stored
+value and never re-sanitizes on render.
+
+Banners are `Bytes` columns, served by `/api/branding/banner/{desktop,mobile}`
+route handlers that read straight from Postgres on every request. Neither route
+404s when nothing is stored: desktop redirects to `/banner.png`, and mobile
+redirects to the desktop route — so "no mobile banner" naturally resolves to
+"whatever the desktop banner currently is," without a separate code path.
+
 ## Deployment
 
 The OCI instance runs `docker-compose.prod.yml`: a Postgres container with no
