@@ -184,9 +184,9 @@ body {
      이 정적 값이 그대로 보인다. */
   box-shadow:
     inset 0 1px 0 var(--rank-highlight),
-    inset 0 -16px 20px -14px rgba(0, 0, 0, 0.4),
-    0 6px 18px -6px var(--rank-glow),
-    0 0 16px -4px var(--rank-glow);
+    inset 0 -8px 12px -10px rgba(0, 0, 0, 0.14),
+    0 3px 9px -6px var(--rank-glow),
+    0 0 8px -4px var(--rank-glow);
   animation: rank-pulse 2.2s ease-in-out infinite;
 }
 .rank-row-gold::after,
@@ -221,45 +221,47 @@ body {
   0%, 100% {
     box-shadow:
       inset 0 1px 0 var(--rank-highlight),
-      inset 0 -16px 20px -14px rgba(0, 0, 0, 0.4),
-      0 6px 18px -6px var(--rank-glow),
-      0 0 16px -4px var(--rank-glow);
+      inset 0 -8px 12px -10px rgba(0, 0, 0, 0.14),
+      0 3px 9px -6px var(--rank-glow),
+      0 0 8px -4px var(--rank-glow);
   }
   50% {
     box-shadow:
       inset 0 1px 0 var(--rank-highlight),
-      inset 0 -16px 20px -14px rgba(0, 0, 0, 0.46),
-      0 10px 28px -4px var(--rank-glow-strong),
-      0 0 34px -2px var(--rank-glow-strong);
+      inset 0 -8px 12px -10px rgba(0, 0, 0, 0.16),
+      0 4px 12px -4px var(--rank-glow-strong),
+      0 0 14px -2px var(--rank-glow-strong);
   }
 }
 @keyframes rank-shimmer {
   0%, 40% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
+/* 처음엔 진하게 갔다가(0.4/0.8/0.38...) "입체감이 과하다"는 피드백으로 그 값의 30%로
+   낮췄다 — 그 이전 옅은 버전보다도 더 옅다. */
 .rank-row-gold {
-  --rank-tint: rgba(242, 199, 92, 0.4);
-  --rank-edge: rgba(242, 199, 92, 0.8);
-  --rank-glow: rgba(242, 199, 92, 0.38);
-  --rank-glow-strong: rgba(242, 199, 92, 0.55);
-  --rank-shine: rgba(255, 236, 170, 0.28);
-  --rank-highlight: rgba(255, 246, 214, 0.55);
+  --rank-tint: rgba(242, 199, 92, 0.12);
+  --rank-edge: rgba(242, 199, 92, 0.24);
+  --rank-glow: rgba(242, 199, 92, 0.11);
+  --rank-glow-strong: rgba(242, 199, 92, 0.17);
+  --rank-shine: rgba(255, 236, 170, 0.08);
+  --rank-highlight: rgba(255, 246, 214, 0.17);
 }
 .rank-row-silver {
-  --rank-tint: rgba(196, 206, 224, 0.36);
-  --rank-edge: rgba(196, 206, 224, 0.75);
-  --rank-glow: rgba(196, 206, 224, 0.32);
-  --rank-glow-strong: rgba(196, 206, 224, 0.5);
-  --rank-shine: rgba(235, 240, 250, 0.26);
-  --rank-highlight: rgba(255, 255, 255, 0.55);
+  --rank-tint: rgba(196, 206, 224, 0.11);
+  --rank-edge: rgba(196, 206, 224, 0.22);
+  --rank-glow: rgba(196, 206, 224, 0.1);
+  --rank-glow-strong: rgba(196, 206, 224, 0.15);
+  --rank-shine: rgba(235, 240, 250, 0.08);
+  --rank-highlight: rgba(255, 255, 255, 0.17);
 }
 .rank-row-bronze {
-  --rank-tint: rgba(214, 133, 74, 0.38);
-  --rank-edge: rgba(214, 133, 74, 0.8);
-  --rank-glow: rgba(214, 133, 74, 0.35);
-  --rank-glow-strong: rgba(214, 133, 74, 0.55);
-  --rank-shine: rgba(255, 200, 150, 0.26);
-  --rank-highlight: rgba(255, 224, 194, 0.5);
+  --rank-tint: rgba(214, 133, 74, 0.11);
+  --rank-edge: rgba(214, 133, 74, 0.24);
+  --rank-glow: rgba(214, 133, 74, 0.11);
+  --rank-glow-strong: rgba(214, 133, 74, 0.17);
+  --rank-shine: rgba(255, 200, 150, 0.08);
+  --rank-highlight: rgba(255, 224, 194, 0.15);
 }
 
 /* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
