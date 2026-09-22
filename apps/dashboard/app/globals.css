@@ -179,6 +179,16 @@ body {
   position: absolute;
   inset: -5px;
   border-radius: 16px;
+  background: conic-gradient(
+    from var(--rank-angle),
+    transparent 0deg,
+    var(--rank-c) 20deg,
+    transparent 40deg,
+    transparent 180deg,
+    var(--rank-c) 200deg,
+    transparent 220deg,
+    transparent 360deg
+  );
   filter: blur(12px);
   opacity: 0.6;
   pointer-events: none;
