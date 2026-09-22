@@ -144,9 +144,8 @@ registerRiotAccountsFromHints(
 
 - `.env`: `RIOT_API_KEY="RGAPI-…"`. `.env.example`·`.env.prod.example`에 플레이스홀더와
   "developer.riotgames.com, 개발 키는 24시간 만료" 주석.
-- 서버 `.env`에도 넣어야 한다. `docker-compose.prod.yml`의 dashboard는 `env_file`이 아니라
-  `environment`로 `DATABASE_URL`만 넘기므로 `RIOT_API_KEY: ${RIOT_API_KEY:-}`를 추가한다
-  (비어 있어도 컨테이너는 뜨고 조회만 `unauthorized`).
+- 서버 `.env`에도 넣어야 한다. `docker-compose.prod.yml`의 dashboard가 `env_file: .env`를
+  읽으므로 compose 변경은 없다. 비어 있어도 컨테이너는 뜨고 조회만 `unauthorized`다.
 - 개발 키는 매일 갱신해야 한다. 귀찮으면 Personal API Key(신청, 영구, 같은 한도).
 
 ## 테스트
