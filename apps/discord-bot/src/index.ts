@@ -4,6 +4,7 @@ import * as mmrCommand from "./commands/mmr";
 import * as leaderboardCommand from "./commands/leaderboard";
 import * as rankingAramCommand from "./commands/ranking-aram";
 import * as recordCommand from "./commands/record";
+import * as siteCommand from "./commands/site";
 
 const REQUIRED_ENV_VARS = ["DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_GUILD_ID"] as const;
 
@@ -19,7 +20,13 @@ interface Command {
 }
 
 const commands = new Collection<string, Command>();
-for (const command of [mmrCommand, leaderboardCommand, rankingAramCommand, recordCommand]) {
+for (const command of [
+  mmrCommand,
+  leaderboardCommand,
+  rankingAramCommand,
+  recordCommand,
+  siteCommand,
+]) {
   commands.set(command.data.name, command);
 }
 

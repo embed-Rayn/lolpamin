@@ -3,6 +3,7 @@ import * as mmrCommand from "./commands/mmr";
 import * as leaderboardCommand from "./commands/leaderboard";
 import * as rankingAramCommand from "./commands/ranking-aram";
 import * as recordCommand from "./commands/record";
+import * as siteCommand from "./commands/site";
 
 const REQUIRED_ENV_VARS = ["DISCORD_TOKEN", "DISCORD_APP_ID", "DISCORD_GUILD_ID"] as const;
 
@@ -17,6 +18,7 @@ const commandPayloads = [
   leaderboardCommand.data.toJSON(),
   rankingAramCommand.data.toJSON(),
   recordCommand.data.toJSON(),
+  siteCommand.data.toJSON(),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN!);

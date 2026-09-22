@@ -9,7 +9,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 npm-workspaces monorepo, one shared Postgres:
 
 - `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
-- `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
+- `apps/discord-bot` — discord.js read-only slash commands: `/mmr` (본인 MMR·칼바람 MMR과 각 순위), `/랭킹` (MMR TOP 10), `/ranking-aram` (칼바람 MMR TOP 10), `/전적` (지정한 디스코드 유저의 MMR과 내전 횟수), `/사이트` (사이트 주소 안내, 유일하게 DB를 보지 않는 명령어). A new command must be added in three places — its own file under `src/commands/`, the `commands` collection in `src/index.ts`, and `commandPayloads` in `src/deploy-commands.ts` — and only takes effect after `npm run deploy-commands --workspace=discord-bot`.
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
 
