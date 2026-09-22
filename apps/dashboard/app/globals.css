@@ -155,124 +155,100 @@ body {
   background: transparent;
 }
 
-/* /rift, /aram 1·2·3위 행. 진하게 물든 금·은·동 바탕에 위쪽 유리 하이라이트 + 아래쪽
-   속그림자로 눌린 카드 같은 입체감을 주고, 은은히 숨쉬는 후광(pulse)과 빠르게 스치는
-   광택(shimmer) 두 애니메이션을 겹쳐 생동감을 낸다. position: relative는 셀렉터에서
-   직접 준다 — 이 배경을 쓰는 자리가 데스크톱 행(MemberTable)과 폰 카드(MemberCard)
-   둘이라 호출부마다 relative를 안 잊게 하려고. */
+/* /rift, /aram 1·2·3위. 이전의 tint+pulse+shimmer 조합을 걷어내고, 금·은·동 색
+   그라데이션이 빙글빙글 도는 "테두리가 빛나는" 효과로 바꿨다 — border-box/padding-box
+   이중 배경 트릭 하나로 테두리 링만 회전 그라데이션을 보여준다(자세한 원리는 아래).
+   흐린 후광(.rank-glow-*)은 실제 행 내용(이름·버튼 등)을 가리면 안 되므로 별도의
+   형제 엘리먼트로 뒤에 깐다 — DOM에서 본문보다 먼저 나오는 형제라 z-index 없이도
+   자연히 뒤에 그려진다(조상의 stacking context에 잘려 나가는 z-index:-1 트릭을
+   피한다). .rank-wrap이 그 둘을 묶는 래퍼: 데스크톱 행(MemberTable)과 폰 카드
+   (MemberCard) 양쪽에서 PodiumFrame이 공통으로 렌더링한다. */
+@property --rank-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.rank-wrap {
+  position: relative;
+  margin: 3px 0;
+  border-radius: 12px;
+}
+.rank-glow-gold,
+.rank-glow-silver,
+.rank-glow-bronze {
+  position: absolute;
+  inset: -5px;
+  border-radius: 16px;
+  filter: blur(12px);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: rank-spin 3s linear infinite;
+}
+/* 테두리 링: padding-box 레이어(기존 은은한 tint)가 위에 그려져 안쪽을 덮고,
+   border-box 레이어(회전 그라데이션)는 border의 2px 폭에서만 드러난다 — 마스킹용
+   div 없이 border-box/padding-box 클립만으로 "테두리만 빛나는" 결과를 낸다. */
 .rank-row-gold,
 .rank-row-silver,
 .rank-row-bronze {
   position: relative;
-  overflow: hidden;
-  border-radius: 10px;
-  /* 좌우 여백은 두지 않는다 — 셀이 헤더 컬럼과 어긋난다. */
-  margin: 3px 0;
-  border: 1px solid var(--rank-edge);
+  z-index: 0;
+  border-radius: 12px;
+  border: 2px solid transparent;
   background:
     linear-gradient(
       90deg,
       var(--rank-tint) 0%,
       var(--rank-tint) 20%,
-      rgba(255, 255, 255, 0.05) 55%,
+      rgba(255, 255, 255, 0.04) 55%,
       transparent 100%
-    );
-  /* overflow: hidden은 shimmer가 카드 밖으로 새지 않게 자식(::after)을 자르지만,
-     엘리먼트 자신의 box-shadow는 자르지 않는다 — 그래서 후광 펄스는 별도 레이어 없이
-     이 셀렉터 자신의 box-shadow를 rank-pulse로 직접 애니메이션한다. 이 값은
-     0%/100% 키프레임과 같아야 한다 — reduced-motion에서 animation:none이 되면
-     이 정적 값이 그대로 보인다. */
-  box-shadow:
-    inset 0 1px 0 var(--rank-highlight),
-    inset 0 -8px 12px -10px rgba(0, 0, 0, 0.14),
-    0 3px 9px -6px var(--rank-glow),
-    0 0 8px -4px var(--rank-glow);
-  animation: rank-pulse 2.2s ease-in-out infinite;
+    ) padding-box,
+    conic-gradient(
+      from var(--rank-angle),
+      transparent 0deg,
+      var(--rank-c) 20deg,
+      transparent 40deg,
+      transparent 180deg,
+      var(--rank-c) 200deg,
+      transparent 220deg,
+      transparent 360deg
+    ) border-box;
+  animation: rank-spin 3s linear infinite;
 }
-.rank-row-gold::after,
-.rank-row-silver::after,
-.rank-row-bronze::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  /* 얇고 밝은 빛줄기 하나 — 가장자리는 메달 색조로, 한가운데만 거의 흰색으로 반짝인다.
-     너비를 46~54%(8%)로 좁혀 예전의 넓은 물결(25~75%, 50%)보다 훨씬 가는 선이 된다. */
-  background: linear-gradient(
-    110deg,
-    transparent 46%,
-    var(--rank-shine) 49%,
-    var(--rank-shine-core) 50%,
-    var(--rank-shine) 51%,
-    transparent 54%
-  );
-  transform: translateX(-100%);
-  animation: rank-shimmer 1.3s ease-in-out infinite;
+@keyframes rank-spin {
+  to {
+    --rank-angle: 360deg;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
+  .rank-glow-gold,
+  .rank-glow-silver,
+  .rank-glow-bronze,
   .rank-row-gold,
   .rank-row-silver,
-  .rank-row-bronze,
-  .rank-row-gold::after,
-  .rank-row-silver::after,
-  .rank-row-bronze::after {
+  .rank-row-bronze {
     animation: none;
   }
 }
-/* 숨쉬는 후광: 그림자 세트를 통째로 두 상태(옅게/진하게) 사이로 보간한다 — 레이어
-   개수·순서가 양쪽 키프레임에서 같아야 브라우저가 부드럽게 보간한다. */
-@keyframes rank-pulse {
-  0%, 100% {
-    box-shadow:
-      inset 0 1px 0 var(--rank-highlight),
-      inset 0 -8px 12px -10px rgba(0, 0, 0, 0.14),
-      0 3px 9px -6px var(--rank-glow),
-      0 0 8px -4px var(--rank-glow);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 var(--rank-highlight),
-      inset 0 -8px 12px -10px rgba(0, 0, 0, 0.16),
-      0 4px 12px -4px var(--rank-glow-strong),
-      0 0 14px -2px var(--rank-glow-strong);
-  }
+.rank-row-gold,
+.rank-glow-gold {
+  --rank-c: rgba(242, 199, 92, 0.95);
 }
-/* 예전 4.5s → 2.6s에서 다시 절반(1.3s) — 정지 구간도 같은 비율로 짧아져 두 배 자주
-   스친다. */
-@keyframes rank-shimmer {
-  0%, 40% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+.rank-row-silver,
+.rank-glow-silver {
+  --rank-c: rgba(210, 218, 232, 0.95);
 }
-/* 처음엔 진하게 갔다가(0.4/0.8/0.38...) "입체감이 과하다"는 피드백으로 그 값의 30%로
-   낮췄다 — 그 이전 옅은 버전보다도 더 옅다. */
+.rank-row-bronze,
+.rank-glow-bronze {
+  --rank-c: rgba(224, 150, 95, 0.95);
+}
 .rank-row-gold {
   --rank-tint: rgba(242, 199, 92, 0.12);
-  --rank-edge: rgba(242, 199, 92, 0.24);
-  --rank-glow: rgba(242, 199, 92, 0.11);
-  --rank-glow-strong: rgba(242, 199, 92, 0.17);
-  /* 바탕 톤(tint/glow)은 "과하다"고 확정된 30% 값 그대로 둔다 — 반짝이는 빛줄기만
-     따로 밝게 올린다. 폭이 8%로 얇아진 만큼, 밝기를 올려야 눈에 띈다. */
-  --rank-shine: rgba(255, 236, 170, 0.55);
-  --rank-shine-core: rgba(255, 250, 235, 0.95);
-  --rank-highlight: rgba(255, 246, 214, 0.17);
 }
 .rank-row-silver {
   --rank-tint: rgba(196, 206, 224, 0.11);
-  --rank-edge: rgba(196, 206, 224, 0.22);
-  --rank-glow: rgba(196, 206, 224, 0.1);
-  --rank-glow-strong: rgba(196, 206, 224, 0.15);
-  --rank-shine: rgba(235, 240, 250, 0.5);
-  --rank-shine-core: rgba(255, 255, 255, 0.95);
-  --rank-highlight: rgba(255, 255, 255, 0.17);
 }
 .rank-row-bronze {
   --rank-tint: rgba(214, 133, 74, 0.11);
-  --rank-edge: rgba(214, 133, 74, 0.24);
-  --rank-glow: rgba(214, 133, 74, 0.11);
-  --rank-glow-strong: rgba(214, 133, 74, 0.17);
-  --rank-shine: rgba(255, 200, 150, 0.5);
-  --rank-shine-core: rgba(255, 240, 225, 0.92);
-  --rank-highlight: rgba(255, 224, 194, 0.15);
 }
 
 /* 순위 배지는 public/medals의 메달 이미지로 그린다(components/MemberCard.tsx의
