@@ -10,8 +10,8 @@ import { MemberInfoCard } from "@/components/MemberInfoCard";
 // 계정·비고가 가져간다. 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 —
 // METRICS_GRID 참고. 주라인·부라인은 두 글자짜리 select라 좁다. 라이엇 계정 칸은 칩
 // 여러 개와 입력창이 들어가 넓다. 비고는 운영진 메모라 운영진에게만 칸이 생긴다.
-const GRID_ADMIN = "grid-cols-[80px_56px_600px_120px_72px_72px_1.2fr_1fr]";
-const GRID_PUBLIC = "grid-cols-[80px_56px_600px_120px_72px_72px_1.2fr]";
+const GRID_ADMIN = "grid-cols-[80px_56px_600px_80px_72px_72px_1.2fr_1fr]";
+const GRID_PUBLIC = "grid-cols-[80px_56px_600px_80px_72px_72px_1.2fr]";
 
 // 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
 // 곧 협곡·칼바람 경계다.

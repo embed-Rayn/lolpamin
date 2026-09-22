@@ -44,14 +44,15 @@ export const TIER_SCORES: Record<MemberTier, number> = {
   UNRANKED: 0,
 };
 
-// 모임이 실제로 쓰는 표기다 — "다1", "에2". 마스터 구간은 LP 범위를 그대로 읽는다.
+// 모임이 실제로 쓰는 표기다 — "다1", "에2". 마스터 구간은 LP 하한을 100 단위로 읽는다
+// ("마4↑" = 400LP 이상) — 범위를 다 적으면 표의 티어 칸이 그것만으로 넓어진다.
 export const TIER_LABELS: Record<MemberTier, string> = {
-  MASTER_1000_PLUS: "마스터 1000+",
-  MASTER_800_1000: "마스터 800~1000",
-  MASTER_600_800: "마스터 600~800",
-  MASTER_400_600: "마스터 400~600",
-  MASTER_200_400: "마스터 200~400",
-  MASTER_0_200: "마스터 0~200",
+  MASTER_1000_PLUS: "마10↑",
+  MASTER_800_1000: "마8↑",
+  MASTER_600_800: "마6↑",
+  MASTER_400_600: "마4↑",
+  MASTER_200_400: "마2↑",
+  MASTER_0_200: "마0↑",
   DIAMOND_1: "다1",
   DIAMOND_2: "다2",
   DIAMOND_3: "다3",

@@ -41,8 +41,8 @@ describe("tierLabel", () => {
     expect(tierLabel("DIAMOND_1")).toBe("다1");
     expect(tierLabel("EMERALD_2")).toBe("에2");
     expect(tierLabel("GOLD_4")).toBe("골4");
-    expect(tierLabel("MASTER_400_600")).toBe("마스터 400~600");
-    expect(tierLabel("MASTER_1000_PLUS")).toBe("마스터 1000+");
+    expect(tierLabel("MASTER_400_600")).toBe("마4↑");
+    expect(tierLabel("MASTER_1000_PLUS")).toBe("마10↑");
     expect(tierLabel("UNRANKED")).toBe("언랭");
   });
 });
