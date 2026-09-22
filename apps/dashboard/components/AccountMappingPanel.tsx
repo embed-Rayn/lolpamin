@@ -9,6 +9,8 @@ import {
   importDiscordMembersAction,
   countRiotLookupTargetsAction,
   registerRiotAccountsFromHintsAction,
+  riotIdRefreshStatusAction,
+  refreshRiotIdsAction,
 } from "@/app/link-accounts/actions";
 
 export function AccountMappingPanel({
@@ -32,6 +34,8 @@ export function AccountMappingPanel({
   const [isImporting, setIsImporting] = useState(false);
   const [riotStatus, setRiotStatus] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const selectedKakao = kakaoAccounts.find((k) => k.id === selectedKakaoId) ?? null;
 
@@ -86,6 +90,40 @@ export function AccountMappingPanel({
       );
     } finally {
       setIsLookingUp(false);
+    }
+  }
+
+  async function handleRefreshRiotIds() {
+    setIsRefreshing(true);
+    setRefreshStatus(null);
+    try {
+      const status = await riotIdRefreshStatusAction();
+      if (status.accountCount === 0) {
+        setRefreshStatus("갱신할 라이엇 계정이 없습니다.");
+        return;
+      }
+      if (!status.allowed) {
+        const last = status.lastRefreshedAt ? new Date(status.lastRefreshedAt).toLocaleString("ko-KR") : "";
+        setRefreshStatus(`오늘은 이미 갱신했습니다 (${last}). 24시간 뒤에 다시 시도해 주세요.`);
+        return;
+      }
+      if (!window.confirm(`계정 ${status.accountCount}개의 PUUID로 현재 라이엇 ID를 다시 읽어옵니다. 하루 한 번만 할 수 있습니다. 계속할까요?`)) {
+        return;
+      }
+
+      const { result, error } = await refreshRiotIdsAction();
+      if (error || !result) {
+        setRefreshStatus(error ?? "갱신하지 못했습니다.");
+        return;
+      }
+      const summary = `변경 ${result.updated} · 그대로 ${result.unchanged} · 못 찾음 ${result.notFound}`;
+      setRefreshStatus(
+        result.unauthorized
+          ? `Riot API 키가 만료됐거나 없습니다 (.env RIOT_API_KEY). 중단 전까지 ${summary}`
+          : summary,
+      );
+    } finally {
+      setIsRefreshing(false);
     }
   }
 
@@ -150,6 +188,20 @@ export function AccountMappingPanel({
             {isLookingUp ? "조회 중..." : "닉네임에서 라이엇 계정 찾기"}
           </button>
           {riotStatus && <span className="text-[12.5px] text-muted">{riotStatus}</span>}
+          <button
+            type="button"
+            onClick={handleRefreshRiotIds}
+            disabled={isRefreshing}
+            title="저장된 PUUID로 현재 라이엇 ID를 다시 읽어옵니다 (하루 한 번)"
+            className={`rounded-lg border px-3.5 py-2 text-[13px] font-extrabold ${
+              isRefreshing
+                ? "cursor-not-allowed border-ink/[.06] bg-hover text-ghost"
+                : "cursor-pointer border-orange/45 bg-orange/[.16] text-orange"
+            }`}
+          >
+            {isRefreshing ? "갱신 중..." : "PUUID로 라이엇 ID 갱신"}
+          </button>
+          {refreshStatus && <span className="text-[12.5px] text-muted">{refreshStatus}</span>}
         </div>
       )}
       <div className="grid grid-cols-[1fr_210px_1fr] items-stretch gap-3.5">

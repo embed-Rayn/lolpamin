@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { lookupRiotAccount } from "./account";
+import { lookupRiotAccount, lookupRiotAccountByPuuid } from "./account";
 
 function fakeFetch(status: number, body?: unknown) {
   return vi.fn(async () =>
@@ -74,5 +74,29 @@ describe("lookupRiotAccount", () => {
 
     expect(result).toEqual({ ok: false, reason: "unauthorized" });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("lookupRiotAccountByPuuid", () => {
+  it("calls the by-puuid path and returns the current riot id", async () => {
+    const fetch = fakeFetch(200, { puuid: "p-1", gameName: "새이름", tagLine: "KR2" });
+
+    const result = await lookupRiotAccountByPuuid("p-1", { fetch, apiKey: "RGAPI-test" });
+
+    expect(result).toEqual({ ok: true, account: { puuid: "p-1", gameName: "새이름", tagLine: "KR2" } });
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://asia.api.riotgames.com/riot/account/v1/accounts/by-puuid/p-1");
+    expect((init.headers as Record<string, string>)["X-Riot-Token"]).toBe("RGAPI-test");
+  });
+
+  it("maps failures the same way the by-riot-id lookup does", async () => {
+    expect(await lookupRiotAccountByPuuid("p", { fetch: fakeFetch(404), apiKey: "k" })).toEqual({
+      ok: false,
+      reason: "not_found",
+    });
+    expect(await lookupRiotAccountByPuuid("p", { fetch: fakeFetch(429), apiKey: "k" })).toEqual({
+      ok: false,
+      reason: "rate_limited",
+    });
   });
 });

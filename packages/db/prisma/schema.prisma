@@ -258,6 +258,9 @@ model SiteSetting {
   homeBannerDesktopType String?
   homeBannerMobile      Bytes?
   homeBannerMobileType  String?
+  // PUUID로 Riot ID를 되읽은 마지막 시각. 그 배치를 하루 한 번으로 묶는 근거다 —
+  // 브라우저가 아니라 여기 있어야 관리자가 여럿이어도 같은 한도를 본다.
+  riotIdRefreshedAt DateTime?
   updatedAt   DateTime @updatedAt
   updatedById String?
 }

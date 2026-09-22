@@ -7,12 +7,18 @@ import { absorbMember, ABSORB_MEMBER_ERRORS } from "@/lib/mutations/absorb-membe
 import { releaseMember, RELEASE_MEMBER_ERRORS } from "@/lib/mutations/release-member";
 import { fetchGuildMembers } from "@/lib/discord/fetch-guild-members";
 import { importDiscordMembers, type ImportDiscordMembersResult } from "@/lib/mutations/import-discord-members";
-import { lookupRiotAccount } from "@/lib/riot-api/account";
+import { lookupRiotAccount, lookupRiotAccountByPuuid } from "@/lib/riot-api/account";
 import {
   countRiotLookupTargets,
   registerRiotAccountsFromHints,
   type HintRegistrationResult,
 } from "@/lib/mutations/register-riot-accounts-from-hints";
+import {
+  getRiotIdRefreshAvailability,
+  refreshRiotAccountIds,
+  REFRESH_RIOT_IDS_ERRORS,
+  type RiotIdRefreshResult,
+} from "@/lib/mutations/refresh-riot-account-ids";
 
 // absorb/release가 일부러 던지는 한글 안내만 그대로 보여준다. findUniqueOrThrow 같은
 // Prisma 예외는 영어 스택이 섞인 긴 문자열이라 관리자 화면에 그대로 띄우지 않는다.
@@ -111,5 +117,42 @@ export async function registerRiotAccountsFromHintsAction(): Promise<RegisterRio
   } catch (error) {
     console.error(error);
     return { result: null, error: "라이엇 계정 조회 중 오류가 났습니다." };
+  }
+}
+
+export interface RiotIdRefreshStatus {
+  allowed: boolean;
+  // 직렬화해 클라이언트로 넘기려고 ISO 문자열로 준다.
+  lastRefreshedAt: string | null;
+  accountCount: number;
+}
+
+/** 버튼을 누르기 전에 보여 줄 상태 — 남은 하루 제한과 갱신 대상 수. */
+export async function riotIdRefreshStatusAction(): Promise<RiotIdRefreshStatus> {
+  await requireAdmin();
+  const { allowed, lastRefreshedAt, accountCount } = await getRiotIdRefreshAvailability(prisma);
+  return { allowed, lastRefreshedAt: lastRefreshedAt?.toISOString() ?? null, accountCount };
+}
+
+export interface RefreshRiotIdsActionResult {
+  result: RiotIdRefreshResult | null;
+  error: string | null;
+}
+
+export async function refreshRiotIdsAction(): Promise<RefreshRiotIdsActionResult> {
+  await requireAdmin();
+
+  try {
+    const result = await refreshRiotAccountIds(prisma, lookupRiotAccountByPuuid);
+    revalidatePath("/link-accounts");
+    revalidatePath("/member-info");
+    return { result, error: null };
+  } catch (error) {
+    // 하루 제한은 일부러 던진 안내다 — 그대로 보여 준다.
+    if (error instanceof Error && error.message === REFRESH_RIOT_IDS_ERRORS.tooSoon) {
+      return { result: null, error: error.message };
+    }
+    console.error(error);
+    return { result: null, error: "라이엇 ID 갱신 중 오류가 났습니다." };
   }
 }

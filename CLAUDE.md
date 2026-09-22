@@ -164,6 +164,14 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 `removeRiotAccount`는 행을 **삭제**한다 — `memberId = null`은 "외부인 확정"이라 잘못 붙인
 계정을 뗀 것과 구별되지 않는다.
 
+저장된 표기는 늙는다 — 인게임에서 이름을 바꿔도 PUUID는 그대로라서다. `/link-accounts`의
+"PUUID로 라이엇 ID 갱신"(`refreshRiotAccountIds` + `lookupRiotAccountByPuuid`)이 회원에게
+붙은 계정만 골라 by-puuid로 되읽고 달라진 `gameName`/`tagLine`만 고쳐 쓴다. **하루 한 번**
+제한이고, 그 근거는 `SiteSetting.riotIdRefreshedAt` — 브라우저가 아니라 DB에 둬야 관리자가
+여럿이어도 같은 한도를 본다. 달력 날짜가 아니라 24시간으로 재는 이유는 서버가 UTC라 KST
+저녁 이후의 "오늘"이 서버의 내일이 되기 때문. 호출을 한 번이라도 쓴 실행만 시각을 남긴다 —
+대상이 없거나 키가 죽어 즉시 멈춘 실행까지 하루를 잡아먹으면 키를 고친 뒤 다시 못 돌린다.
+
 `RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
 "연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.
 Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다면, 회원을 지웠을 때 그 계정이
