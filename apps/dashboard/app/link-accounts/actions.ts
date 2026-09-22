@@ -7,6 +7,12 @@ import { absorbMember, ABSORB_MEMBER_ERRORS } from "@/lib/mutations/absorb-membe
 import { releaseMember, RELEASE_MEMBER_ERRORS } from "@/lib/mutations/release-member";
 import { fetchGuildMembers } from "@/lib/discord/fetch-guild-members";
 import { importDiscordMembers, type ImportDiscordMembersResult } from "@/lib/mutations/import-discord-members";
+import { lookupRiotAccount } from "@/lib/riot-api/account";
+import {
+  countMembersWithoutRiotAccount,
+  registerRiotAccountsFromHints,
+  type HintRegistrationResult,
+} from "@/lib/mutations/register-riot-accounts-from-hints";
 
 // absorb/release가 일부러 던지는 한글 안내만 그대로 보여준다. findUniqueOrThrow 같은
 // Prisma 예외는 영어 스택이 섞인 긴 문자열이라 관리자 화면에 그대로 띄우지 않는다.
@@ -79,5 +85,31 @@ export async function importDiscordMembersAction(): Promise<ImportDiscordMembers
     return { result, error: null };
   } catch (error) {
     return { result: null, error: error instanceof Error ? error.message : "디스코드 회원을 가져오지 못했습니다." };
+  }
+}
+
+/** 확인창의 "N명"용. 배치가 조회할 회원 수와 같은 조건이다. */
+export async function countRiotLookupTargetsAction(): Promise<number> {
+  await requireAdmin();
+  return countMembersWithoutRiotAccount(prisma);
+}
+
+export interface RegisterRiotAccountsFromHintsActionResult {
+  result: HintRegistrationResult | null;
+  error: string | null;
+}
+
+export async function registerRiotAccountsFromHintsAction(): Promise<RegisterRiotAccountsFromHintsActionResult> {
+  await requireAdmin();
+
+  try {
+    const result = await registerRiotAccountsFromHints(prisma, lookupRiotAccount);
+    revalidatePath("/link-accounts");
+    revalidatePath("/member-info");
+    revalidatePath("/matches");
+    return { result, error: null };
+  } catch (error) {
+    console.error(error);
+    return { result: null, error: "라이엇 계정 조회 중 오류가 났습니다." };
   }
 }
