@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { BrandLogo } from "./BrandLogo";
 import { NavIcon } from "./nav-icons";
 import { SidebarNav, type SidebarNavGroup } from "./SidebarNav";
 
@@ -20,7 +21,17 @@ import { SidebarNav, type SidebarNavGroup } from "./SidebarNav";
 // 아니라 "56px짜리 헤더 상자" 기준으로 inset: 0이 걸려, 오버레이가 화면을 덮지 못하고
 // 헤더 높이만큼 눌린 채로 렌더된다 — 좁은 화면에서 ≡를 눌러도 드로어가 제대로 안 뜨고
 // 화면 뒤로 숨는 것처럼 보이던 원인이다. body에 직접 붙이면 헤더의 필터와 무관해진다.
-export function MobileDrawer({ groups, activeNav }: { groups: SidebarNavGroup[]; activeNav: string }) {
+export function MobileDrawer({
+  groups,
+  activeNav,
+  logoSvg,
+  siteName,
+}: {
+  groups: SidebarNavGroup[];
+  activeNav: string;
+  logoSvg: string | null;
+  siteName: string;
+}) {
   const [open, setOpen] = useState(false);
   // document는 서버에 없다. 마운트된 뒤에만 포털 타깃이 있다고 보고, 그 전에는
   // 오버레이를 아예 그리지 않는다(버튼은 그 전에도 항상 그린다).
@@ -67,9 +78,9 @@ export function MobileDrawer({ groups, activeNav }: { groups: SidebarNavGroup[];
         <div className="flex items-center justify-between px-2">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-accent-tint text-accent">
-              <NavIcon name="gamepad" size={20} />
+              <BrandLogo logoSvg={logoSvg} size={20} />
             </div>
-            <div className="text-[16px] font-extrabold tracking-tight text-fg">롤파민</div>
+            <div className="text-[16px] font-extrabold tracking-tight text-fg">{siteName}</div>
           </Link>
           <button
             type="button"

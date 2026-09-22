@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getInactiveMembers } from "@lolpamin/core";
 import { effectiveKakaoNickname } from "@/lib/queries/inactive";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
+import { getBranding } from "@/lib/queries/branding";
+import { BrandLogo } from "./BrandLogo";
 import { HeaderAuth } from "./HeaderAuth";
 import { MobileDrawer } from "./MobileDrawer";
 import { NavIcon } from "./nav-icons";
@@ -34,7 +36,7 @@ export interface AppShellProps {
 }
 
 export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, children }: AppShellProps) {
-  const [totalCount, allMembersForInactivity, currentAdmin] = await Promise.all([
+  const [totalCount, allMembersForInactivity, currentAdmin, branding] = await Promise.all([
     prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
       where: { mergedIntoId: null },
@@ -51,6 +53,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       },
     }),
     getCurrentAdmin(),
+    getBranding(prisma),
   ]);
   const inactiveNavCount = getInactiveMembers(
     allMembersForInactivity.map((m) => ({ ...m, kakaoNickname: effectiveKakaoNickname(m) })),
@@ -113,11 +116,11 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       <aside className="sticky top-0 hidden h-screen w-[260px] flex-none flex-col gap-5 overflow-y-auto border-r border-ink/[.07] bg-[rgb(var(--sidebar-bg))] px-3.5 py-5 md:flex">
         <Link href="/" className="flex items-center gap-3 px-2">
           <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-accent-tint text-accent">
-            <NavIcon name="gamepad" size={22} />
+            <BrandLogo logoSvg={branding.logoSvg} size={22} />
           </div>
           <div className="flex flex-col gap-px">
-            <div className="text-[17px] font-extrabold tracking-tight text-fg">롤파민</div>
-            <div className="text-[12px] text-faint">함께라서 더 즐거운 게임</div>
+            <div className="text-[17px] font-extrabold tracking-tight text-fg">{branding.siteName}</div>
+            <div className="text-[12px] text-faint">{branding.siteTagline}</div>
           </div>
         </Link>
 
@@ -137,7 +140,12 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex h-14 flex-none items-center justify-between gap-3 border-b border-ink/[.07] bg-[rgb(var(--header-bg)/0.9)] px-3 backdrop-blur md:h-[72px] md:px-7">
           <div className="flex min-w-0 items-center gap-2.5 md:flex-col md:items-stretch md:gap-0.5">
-            <MobileDrawer groups={groups} activeNav={activeNav} />
+            <MobileDrawer
+              groups={groups}
+              activeNav={activeNav}
+              logoSvg={branding.logoSvg}
+              siteName={branding.siteName}
+            />
             <h1 className="m-0 truncate text-[16px] font-extrabold tracking-tight md:text-[20px]">{pageTitle}</h1>
             <div className="hidden items-center gap-1.5 text-[12.5px] text-faint md:flex">
               <Link href="/" className="hover:text-fg-2">
