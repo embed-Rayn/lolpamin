@@ -69,6 +69,7 @@ describe("parseMemberInfoSort / parseSortDirection", () => {
     expect(parseMemberInfoSort("riftWinRate")).toBe("riftWinRate");
     expect(parseMemberInfoSort("aramGames")).toBe("aramGames");
     expect(parseMemberInfoSort("tier")).toBe("tier");
+    expect(parseMemberInfoSort("age")).toBe("age");
     expect(parseSortDirection("desc")).toBe("desc");
   });
 });
@@ -253,6 +254,17 @@ describe("getMemberInfoListData sorting", () => {
 
     const descending = await getMemberInfoListData("", "realName", "desc");
     expect(descending.map((r) => r.realName)).toEqual(["나회원", "가회원", "-"]);
+  });
+
+  it("sorts by age and keeps members without one last in both directions", async () => {
+    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { age: 98 } });
+    await prisma.member.updateMany({ where: { realName: "나회원" }, data: { age: 94 } });
+
+    const ascending = await getMemberInfoListData("", "age", "asc");
+    expect(ascending.map((r) => r.age)).toEqual([94, 98, null]);
+
+    const descending = await getMemberInfoListData("", "age", "desc");
+    expect(descending.map((r) => r.age)).toEqual([98, 94, null]);
   });
 
   it("sorts by tier score, not enum declaration order", async () => {

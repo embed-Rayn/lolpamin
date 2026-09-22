@@ -29,31 +29,28 @@ function ModeLine({ label, labelClassName, record }: { label: string; labelClass
   );
 }
 
-export function MemberInfoCard({ row, index }: { row: MemberInfoRow; index: number }) {
+export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: boolean }) {
   return (
     <div className="border-b border-ink/[.04] px-4 py-3">
       <div className="flex items-baseline gap-2">
-        <span className="w-6 flex-none text-[12px] text-ghost">{index + 1}</span>
         <span className={`truncate text-[15px] font-bold ${row.realName === "-" ? "text-ghost" : ""}`}>{row.realName}</span>
+        {row.age !== null && <span className="flex-none text-[12.5px] text-muted">{row.age}</span>}
         <span className={`ml-auto flex-none text-[12.5px] ${tierScore(row.tier) === 0 ? "text-ghost" : "text-fg-2"}`}>
           {tierLabel(row.tier)}
         </span>
       </div>
       {(row.mainLane !== null || row.subLane !== null) && (
-        <div className="pl-8 text-[12.5px] text-fg-2">
+        <div className="text-[12.5px] text-fg-2">
           주 {laneLabel(row.mainLane)} · 부 {laneLabel(row.subLane)}
         </div>
       )}
-      <div className={`truncate pl-8 text-[12.5px] ${row.kakaoNickname === "-" ? "text-ghost" : "text-muted"}`}>
-        {row.kakaoNickname}
-      </div>
-      <div className="mt-1.5 flex flex-col gap-0.5 pl-8">
+      <div className="mt-1.5 flex flex-col gap-0.5">
         <ModeLine label="협곡" labelClassName="text-accent-soft" record={row.rift} />
         <ModeLine label="칼바람" labelClassName="text-orange" record={row.aram} />
       </div>
       {/* 폰에서는 보기만 한다 — 편집은 다른 셀들과 같이 데스크톱 표에서만. */}
       {row.riotAccounts.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1 pl-8">
+        <div className="mt-1 flex flex-wrap gap-1">
           {row.riotAccounts.map((a) => (
             <span
               key={a.id}
@@ -64,7 +61,8 @@ export function MemberInfoCard({ row, index }: { row: MemberInfoRow; index: numb
           ))}
         </div>
       )}
-      {row.note &&<div className="mt-1 truncate pl-8 text-[12px] text-faint">비고: {row.note}</div>}
+      {/* 비고는 운영진 메모라 운영진에게만 보인다. */}
+      {isAdmin && row.note && <div className="mt-1 truncate text-[12px] text-faint">비고: {row.note}</div>}
     </div>
   );
 }

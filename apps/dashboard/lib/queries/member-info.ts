@@ -17,7 +17,7 @@ type MemberWithAbsorbed = Member & {
 
 export type MemberInfoSort =
   | "realName"
-  | "kakaoNickname"
+  | "age"
   | "tier"
   | "riftMmr"
   | "riftGames"
@@ -29,7 +29,7 @@ export type SortDirection = "asc" | "desc";
 
 const MEMBER_INFO_SORTS: MemberInfoSort[] = [
   "realName",
-  "kakaoNickname",
+  "age",
   "tier",
   "riftMmr",
   "riftGames",
@@ -62,6 +62,8 @@ export interface MemberInfoRow {
   id: string;
   realName: string;
   kakaoNickname: string;
+  // 카톡 닉네임 `이름/나이/…`의 두 번째 조각을 그대로 담은 값(대개 출생연도 두 자리).
+  age: number | null;
   tier: MemberTier;
   // null은 「모름」.
   mainLane: Lane | null;
@@ -198,8 +200,9 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
   switch (sort) {
     case "realName":
       return compareNullableString(a.realName, b.realName, sign, a.id, b.id);
-    case "kakaoNickname":
-      return compareNullableString(a.kakaoNickname, b.kakaoNickname, sign, a.id, b.id);
+    case "age":
+      // 나이를 모르는 회원은 방향과 무관하게 뒤로 보낸다 — 승률의 "기록 없음"과 같은 규칙.
+      return compareWinRate(a.age, b.age, sign, a.id, b.id);
     case "tier": {
       const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
@@ -258,6 +261,7 @@ export async function getMemberInfoListData(
           id: m.id,
           realName,
           kakaoNickname: displayKakaoNickname(m),
+          age: m.age,
           tier: m.tier,
           mainLane: m.mainLane,
           subLane: m.subLane,
