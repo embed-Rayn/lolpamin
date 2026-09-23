@@ -80,8 +80,12 @@ model Member {
   age                Int?
   riotId             String?
   // 「티어를 모른다」와 「언랭이다」는 점수가 0으로 같고 화면 문구도 같다. nullable로
-  // 두면 아무것도 얻지 못하면서 null 분기만 늘어난다.
+  // 두면 아무것도 얻지 못하면서 null 분기만 늘어난다. 화면 이름은 「산정티어」 — 팀빌더
+  // 점수의 근거가 되는 티어다.
   tier               MemberTier @default(UNRANKED)
+  // 「최고티어」. 관리자가 손으로 적는 참고값이고 점수에 쓰지 않는다 — Riot API는 역대 최고
+  // 티어를 주지 않는다.
+  peakTier           MemberTier @default(UNRANKED)
   // 회원 정보 페이지의 비고 칸 — 운영자가 손으로 남기는 자유 텍스트 메모.
   note               String?
   // 회원 정보 페이지의 주라인·부라인. 운영자가 손으로 고른다. null은 「아직 모름」.
