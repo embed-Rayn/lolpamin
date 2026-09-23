@@ -275,12 +275,11 @@ transition actually plays.
 ## Branding
 
 The sidebar/drawer logo tile's glyph, the site name/tagline next to it, and the
-home page banner (desktop + mobile) are admin-editable from `/admins`
-(`BrandingPanel`) and stored on the same `SiteSetting` singleton row the skin
-lives on — never in `public/`, since this server's deploy replaces the whole
-file tree from git each time. All six fields are nullable; null means "use the
-built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게임",
-`public/banner.png`).
+home page banners are admin-editable from `/admins` (`BrandingPanel`) and stored
+in Postgres — never in `public/`, since this server's deploy replaces the whole
+file tree from git each time. Logo and name/tagline live on the same `SiteSetting`
+singleton row the skin lives on; all three are nullable, and null means "use the
+built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게임").
 
 A pasted logo SVG is denylist-sanitized exactly once, at save time
 (`sanitizeSvg` in `packages/core`, strips `<script>`, event-handler attributes,
@@ -291,11 +290,16 @@ to every visitor, logged in or not, so a malicious or careless paste from any
 admin account is a stored-XSS risk otherwise. `BrandLogo` trusts the stored
 value and never re-sanitizes on render.
 
-Banners are `Bytes` columns, served by `/api/branding/banner/{desktop,mobile}`
-route handlers that read straight from Postgres on every request. Neither route
-404s when nothing is stored: desktop redirects to `/banner.png`, and mobile
-redirects to the desktop route — so "no mobile banner" naturally resolves to
-"whatever the desktop banner currently is," without a separate code path.
+Banners are rows of `HomeBanner` — up to four per variant (`DESKTOP`/`MOBILE`,
+slot 0–3, an empty slot has no row). `BannerSlotGrid` uploads or deletes one slot
+immediately, outside the branding form's 저장. The home page stacks the filled
+slots top to bottom in slot order; the fallback is decided by the whole set, not
+per slot (`resolveHomeBannerSources`): no desktop banner at all → `/banner.png`,
+no mobile banner at all → the desktop set. Both sets are rendered and CSS shows
+one; `loading="lazy"` keeps the hidden set from downloading. Images are served by
+`/api/branding/banners/{desktop,mobile}/{slot}`, which 404s on an empty slot and
+caches as immutable — every page links it with `?v=updatedAt`, so replacing a slot
+changes the URL.
 
 ## Deployment
 

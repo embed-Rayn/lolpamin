@@ -302,19 +302,34 @@ model RiotAccount {
 model SiteSetting {
   id          String   @id
   theme       String   @default("clean")
-  // 로고·홈 배너. 전부 null 허용 — null이면 기본값(게임패드 아이콘, "롤파민",
-  // "함께라서 더 즐거운 게임", public/banner.png)을 쓴다. lib/queries/branding.ts가
-  // 이 기본값 적용을 맡는다.
+  // 로고·이름. 전부 null 허용 — null이면 기본값(게임패드 아이콘, "롤파민",
+  // "함께라서 더 즐거운 게임")을 쓴다. lib/queries/branding.ts가 이 기본값 적용을 맡는다.
+  // 홈 배너는 여러 장이라 HomeBanner 테이블에 따로 있다.
   logoSvg               String?
   siteName              String?
   siteTagline           String?
-  homeBannerDesktop     Bytes?
-  homeBannerDesktopType String?
-  homeBannerMobile      Bytes?
-  homeBannerMobileType  String?
   // PUUID로 Riot ID를 되읽은 마지막 시각. 그 배치를 하루 한 번으로 묶는 근거다 —
   // 브라우저가 아니라 여기 있어야 관리자가 여럿이어도 같은 한도를 본다.
   riotIdRefreshedAt DateTime?
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+enum BannerVariant {
+  DESKTOP
+  MOBILE
+}
+
+// 홈 화면 배너. 변형(데스크톱/모바일)마다 슬롯 0..3, 빈 슬롯은 행이 없다. 홈은 슬롯
+// 순서대로 세로로 잇는다. 데스크톱이 하나도 없으면 public/banner.png, 모바일이 하나도
+// 없으면 데스크톱 세트를 그대로 쓴다(lib/queries/home-banners.ts).
+model HomeBanner {
+  variant     BannerVariant
+  slot        Int
+  bytes       Bytes
+  type        String
+  updatedAt   DateTime      @updatedAt
+  updatedById String?
+
+  @@id([variant, slot])
 }
