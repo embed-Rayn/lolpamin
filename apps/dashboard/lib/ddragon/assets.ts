@@ -50,3 +50,9 @@ export function spellName(key: number): string {
 export function runeName(id: number): string {
   return map.runes[String(id)]?.name ?? "";
 }
+
+// Mastery rows carry the numeric key. A champion released after the committed patch has no
+// entry and resolves to null, which the board draws as an empty square.
+export function championIdByKey(key: number): string | null {
+  return map.championKeys[String(key)] ?? null;
+}

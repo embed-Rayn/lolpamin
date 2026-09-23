@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { championIcon, championName, itemIcon, itemName, runeIcon, spellIcon, spellName } from "./assets";
+import { championIcon, championIdByKey, championName, itemIcon, itemName, runeIcon, spellIcon, spellName } from "./assets";
 
 describe("ddragon assets", () => {
   it("builds root-relative icon urls for known ids", () => {
@@ -28,5 +28,11 @@ describe("ddragon assets", () => {
     expect(championIcon("FiddleSticks")).toBe("/ddragon/champion/Fiddlesticks.png");
     expect(championName("FiddleSticks")).toBe(championName("Fiddlesticks"));
     expect(championName("FiddleSticks")).not.toBe("FiddleSticks");
+  });
+
+  it("resolves a mastery championId to the Data Dragon id, or null for an unknown patch", () => {
+    expect(championIdByKey(266)).toBe("Aatrox");
+    expect(championIdByKey(48)).toBe("Trundle");
+    expect(championIdByKey(999999)).toBeNull();
   });
 });

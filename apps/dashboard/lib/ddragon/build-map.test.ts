@@ -3,7 +3,7 @@ import { buildDdragonMap } from "./build-map";
 
 const sources = {
   version: "16.18.1",
-  champion: { data: { Trundle: { id: "Trundle", name: "트런들" } } },
+  champion: { data: { Trundle: { id: "Trundle", key: "48", name: "트런들" } } },
   item: { data: { "3047": { name: "판금 장화" } } },
   summoner: {
     data: {
@@ -43,5 +43,9 @@ describe("buildDdragonMap", () => {
     expect(map.version).toBe("16.18.1");
     expect(map.champions).toEqual({ Trundle: "트런들" });
     expect(map.items).toEqual({ "3047": "판금 장화" });
+  });
+
+  it("indexes champions by the numeric key the mastery API returns", () => {
+    expect(buildDdragonMap(sources).championKeys).toEqual({ "48": "Trundle" });
   });
 });
