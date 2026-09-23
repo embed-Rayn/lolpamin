@@ -117,6 +117,32 @@ describe("normalizeKakaoNicknames", () => {
     expect(survivor.tier).toBe("GOLD_1");
   });
 
+  it("carries the loser's peak tier, lanes and note onto a survivor that has none", async () => {
+    const older = await prisma.member.create({
+      data: { kakaoNickname: "유승수/98/ModCow#KR98", createdAt: new Date("2026-08-01T00:00:00Z"), mainLane: "MID" },
+    });
+    await prisma.member.create({
+      data: {
+        kakaoNickname: "유승수/98/ModCow#KR98(7시30분 도착)",
+        createdAt: new Date("2026-08-05T00:00:00Z"),
+        peakTier: "DIAMOND_1",
+        mainLane: "AD",
+        subLane: "SUP",
+        note: "메모",
+      },
+    });
+
+    await normalizeKakaoNicknames(prisma);
+
+    const survivor = await prisma.member.findUniqueOrThrow({ where: { id: older.id } });
+    expect([survivor.peakTier, survivor.mainLane, survivor.subLane, survivor.note]).toEqual([
+      "DIAMOND_1",
+      "MID",
+      "SUP",
+      "메모",
+    ]);
+  });
+
   it("keeps the linked member as the survivor even when it was created later", async () => {
     const older = await prisma.member.create({
       data: { kakaoNickname: "유승수/98/ModCow#KR98(도착)", createdAt: new Date("2026-08-01T00:00:00Z") },

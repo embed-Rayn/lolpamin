@@ -92,6 +92,49 @@ describe("absorbMember", () => {
     expect(after.tier).toBe("GOLD_1");
   });
 
+  it("carries the loser's peak tier, lanes and note onto a survivor that has none", async () => {
+    const survivor = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    const loser = await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/유대혁#KR1",
+        peakTier: "MASTER_0_200",
+        mainLane: "JUG",
+        subLane: "TOP",
+        note: "카톡 쪽에 적은 메모",
+      },
+    });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect([after.peakTier, after.mainLane, after.subLane, after.note]).toEqual([
+      "MASTER_0_200",
+      "JUG",
+      "TOP",
+      "카톡 쪽에 적은 메모",
+    ]);
+  });
+
+  it("keeps the survivor's own peak tier, lanes and note", async () => {
+    const survivor = await prisma.member.create({
+      data: { discordUserId: "d-1", peakTier: "GOLD_1", mainLane: "MID", subLane: "SUP", note: "디코 쪽 메모" },
+    });
+    const loser = await prisma.member.create({
+      data: {
+        kakaoNickname: "유대혁/95/유대혁#KR1",
+        peakTier: "MASTER_0_200",
+        mainLane: "JUG",
+        subLane: "TOP",
+        note: "카톡 쪽에 적은 메모",
+      },
+    });
+
+    await absorbMember(prisma, loser.id, survivor.id);
+
+    const after = await prisma.member.findUniqueOrThrow({ where: { id: survivor.id } });
+    expect([after.peakTier, after.mainLane, after.subLane, after.note]).toEqual(["GOLD_1", "MID", "SUP", "디코 쪽 메모"]);
+  });
+
   it("moves the survivor's lastActiveAt forward to the later of the two", async () => {
     const survivor = await prisma.member.create({
       data: { discordUserId: "d-1", lastActiveAt: new Date(2026, 7, 1) },

@@ -108,7 +108,8 @@ export async function getMemberAdminRows(
       id: m.id,
       realName: m.realName ?? "-",
       age: m.age,
-      birthYear: m.age !== null ? fullBirthYear(m.age) : nickname ? kakaoBirthYear(nickname) : null,
+      // 읽을 수 없는 저장값(옛 연결 때 들어간 150 같은 수)은 닉네임 값을 가리지 않는다.
+      birthYear: (m.age !== null ? fullBirthYear(m.age) : null) ?? (nickname ? kakaoBirthYear(nickname) : null),
       peakTier: m.peakTier,
       tier: m.tier,
       mainLane: m.mainLane,

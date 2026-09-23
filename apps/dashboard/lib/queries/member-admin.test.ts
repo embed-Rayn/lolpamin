@@ -64,6 +64,14 @@ describe("getMemberAdminRows", () => {
     });
   });
 
+  it("falls back to the nickname when the stored age is not a readable year", async () => {
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/94/닉#KR1", age: 150 } });
+
+    const [row] = await getMemberAdminRows(prisma, "realName", "asc", NOW);
+
+    expect(row.birthYear).toBe(1994);
+  });
+
   it("falls back to the nickname's birth year and to createdAt", async () => {
     await prisma.member.create({
       data: { realName: "가", kakaoNickname: "가/01/닉#KR1", createdAt: new Date(2026, 8, 20, 9, 0, 0) },

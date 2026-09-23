@@ -386,6 +386,14 @@ describe("getMemberInfoListData — admin fields", () => {
     expect(rows.map((r) => r.birthYear)).toEqual([1996, 2001]);
   });
 
+  it("falls back to the nickname when the stored age is not a readable year", async () => {
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/94/닉#KR1", age: 150 } });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.birthYear).toBe(1994);
+  });
+
   it("sorts by peak tier score", async () => {
     await prisma.member.create({ data: { realName: "가", peakTier: "SILVER_1" } });
     await prisma.member.create({ data: { realName: "나", peakTier: "MASTER_0_200" } });

@@ -293,8 +293,10 @@ export async function getMemberInfoListData(
           id: m.id,
           realName,
           kakaoNickname,
+          // 읽을 수 없는 저장값(옛 연결 때 들어간 150 같은 수)은 닉네임 값을 가리지 않는다.
           birthYear:
-            m.age !== null ? fullBirthYear(m.age) : kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname),
+            (m.age !== null ? fullBirthYear(m.age) : null) ??
+            (kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname)),
           tier: m.tier,
           peakTier: m.peakTier,
           mainLane: m.mainLane,
