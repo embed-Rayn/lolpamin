@@ -57,4 +57,13 @@ describe("draft storage", () => {
     expect(loadDraft(hostile, new Set())).toBeNull();
     expect(() => saveDraft(hostile, sample())).not.toThrow();
   });
+
+  it("resets the draft but keeps participants and guests when a captain left the pool", () => {
+    const storage = memoryStorage();
+    saveDraft(storage, sample());
+    const loaded = loadDraft(storage, new Set(["b"]))!;
+    expect(loaded.participantIds).toEqual(["b"]);
+    expect(loaded.guests).toEqual([{ name: "손님", mmr: 1000, mainLane: null, subLane: "SUP" }]);
+    expect(loaded.draft).toEqual(emptyDraft());
+  });
 });
