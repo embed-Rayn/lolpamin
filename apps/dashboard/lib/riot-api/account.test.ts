@@ -33,12 +33,12 @@ describe("lookupRiotAccount", () => {
     const acquire = vi.fn(async () => {
       order.push("acquire");
     });
-    const fetch = vi.fn(async () => {
+    const fetchSpy = vi.fn(async () => {
       order.push("fetch");
       return new Response(JSON.stringify({ puuid: "p", gameName: "a", tagLine: "b" }), { status: 200 });
-    }) as unknown as typeof fetch;
+    }) as unknown as typeof globalThis.fetch;
 
-    await lookupRiotAccount("a", "b", { fetch, apiKey: "k", acquire });
+    await lookupRiotAccount("a", "b", { fetch: fetchSpy, apiKey: "k", acquire });
 
     expect(order).toEqual(["acquire", "fetch"]);
   });
