@@ -1,3 +1,4 @@
+import { fullBirthYear } from "./birth-year";
 import { normalizeKakaoNickname } from "./normalize-kakao-nickname";
 
 /**
@@ -84,8 +85,5 @@ export function kakaoMatchKey(rawNickname: string): string {
 export function kakaoBirthYear(rawNickname: string): number | null {
   const convention = readKakaoConvention(normalizeKakaoNickname(rawNickname));
   if (!convention) return null;
-  const { year } = convention;
-  if (year >= 1900) return year;
-  if (year >= 100) return null;
-  return year < 30 ? 2000 + year : 1900 + year;
+  return fullBirthYear(convention.year);
 }

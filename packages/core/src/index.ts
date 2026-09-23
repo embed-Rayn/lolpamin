@@ -18,3 +18,4 @@ export * from "./parse-riot-id";
 export * from "./game-detail";
 export * from "./draft";
 export * from "./mastery";
+export * from "./birth-year";

@@ -79,9 +79,7 @@ export interface MemberInfoRow {
 }
 
 /** 모임이 닉네임에 적는 대로 두 자리("94", "01")로 보여준다. */
-export function birthYearLabel(birthYear: number | null): string {
-  return birthYear === null ? "-" : String(birthYear % 100).padStart(2, "0");
-}
+export { birthYearLabel } from "@lolpamin/core";
 
 // 흡수해도 카톡 닉네임은 묘비에 남는다 — queries/members.ts의 displayKakaoNickname과
 // 같은 이유로 여기서도 묘비를 본다.
