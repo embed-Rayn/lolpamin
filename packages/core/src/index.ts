@@ -15,3 +15,4 @@ export * from "./displayed-rating";
 export * from "./theme";
 export * from "./svg-sanitize";
 export * from "./parse-riot-id";
+export * from "./game-detail";
