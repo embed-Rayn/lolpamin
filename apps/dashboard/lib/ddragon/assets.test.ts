@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { championIcon, itemIcon, itemName, runeIcon, spellIcon, spellName } from "./assets";
+import { championIcon, championName, itemIcon, itemName, runeIcon, spellIcon, spellName } from "./assets";
 
 describe("ddragon assets", () => {
   it("builds root-relative icon urls for known ids", () => {
@@ -21,5 +21,12 @@ describe("ddragon assets", () => {
   it("names things in Korean and falls back to an empty string", () => {
     expect(spellName(4)).toBe("점멸");
     expect(itemName(999999)).toBe("");
+  });
+
+  it("finds a champion whatever casing the replay uses for its id", () => {
+    // Riot has sent "FiddleSticks" where Data Dragon's id is "Fiddlesticks".
+    expect(championIcon("FiddleSticks")).toBe("/ddragon/champion/Fiddlesticks.png");
+    expect(championName("FiddleSticks")).toBe(championName("Fiddlesticks"));
+    expect(championName("FiddleSticks")).not.toBe("FiddleSticks");
   });
 });

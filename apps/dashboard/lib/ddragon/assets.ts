@@ -7,8 +7,17 @@ import type { DdragonMap } from "./build-map";
 const map = rawMap as DdragonMap;
 const BASE = "/ddragon";
 
+// The replay's SKIN is not always cased like Data Dragon's id (Riot has sent "FiddleSticks"
+// for "Fiddlesticks"), so champions resolve through a lower-cased index to the canonical id.
+const championIdByLower = new Map(Object.keys(map.champions).map((id) => [id.toLowerCase(), id]));
+
+function canonicalChampion(id: string): string | undefined {
+  return championIdByLower.get(id.toLowerCase());
+}
+
 export function championIcon(id: string): string | null {
-  return id && map.champions[id] !== undefined ? `${BASE}/champion/${id}.png` : null;
+  const canonical = canonicalChampion(id);
+  return canonical ? `${BASE}/champion/${canonical}.png` : null;
 }
 
 export function itemIcon(id: number): string | null {
@@ -26,7 +35,8 @@ export function runeIcon(id: number): string | null {
 }
 
 export function championName(id: string): string {
-  return map.champions[id] ?? id;
+  const canonical = canonicalChampion(id);
+  return canonical ? map.champions[canonical] : id;
 }
 
 export function itemName(id: number): string {

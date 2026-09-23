@@ -1,6 +1,7 @@
 import { prisma } from "../src/index";
 
 async function main() {
+  await prisma.replayPlayerStat.deleteMany();
   await prisma.gameParticipant.deleteMany();
   await prisma.gameResult.deleteMany();
   await prisma.mentionLog.deleteMany();
