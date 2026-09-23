@@ -284,7 +284,9 @@ built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게�
 
 A pasted logo SVG is denylist-sanitized exactly once, at save time
 (`sanitizeSvg` in `packages/core`, strips `<script>`, event-handler attributes,
-`javascript:` URIs, `<foreignObject>`/`<iframe>`/`<object>`) — it renders site-wide
+`javascript:` URIs, `<foreignObject>`/`<iframe>`/`<object>`) and drops everything before the
+first `<svg` (the `<?xml …?>`, generator comment and DOCTYPE that Illustrator
+exports prepend) — it renders site-wide
 to every visitor, logged in or not, so a malicious or careless paste from any
 admin account is a stored-XSS risk otherwise. `BrandLogo` trusts the stored
 value and never re-sanitizes on render.

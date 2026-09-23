@@ -6,7 +6,11 @@ const MAX_SVG_LENGTH = 60_000;
 const WRAPPED_ELEMENTS = ["script", "foreignObject", "iframe", "object"] as const;
 
 export function sanitizeSvg(raw: string): string | null {
-  const trimmed = raw.trim();
+  // 일러스트레이터 등이 내보낸 파일은 <svg 앞에 XML 선언·주석·DOCTYPE이 붙는다. 로고로
+  // 렌더되는 건 <svg> 요소뿐이므로 첫 <svg 앞은 통째로 버린다 — DOCTYPE 내부 엔티티
+  // 선언도 함께 떨어져 나간다.
+  const svgStart = raw.search(/<svg[\s>]/i);
+  const trimmed = (svgStart === -1 ? raw : raw.slice(svgStart)).trim();
   if (trimmed.length === 0 || trimmed.length > MAX_SVG_LENGTH) return null;
   if (!/^<svg[\s>]/i.test(trimmed) || !/<\/svg>\s*$/i.test(trimmed)) return null;
 
