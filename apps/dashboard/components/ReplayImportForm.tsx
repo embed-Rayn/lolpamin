@@ -128,11 +128,16 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
       const form = new FormData();
       form.append("replay", picked);
       const result = await prepareReplayImportAction(form);
-      setPrepared(result);
-      setState(initialState(result.slots));
-    } catch (e) {
+      if (!result.ok) {
+        setPrepared(null);
+        setError(result.error);
+        return;
+      }
+      setPrepared(result.data);
+      setState(initialState(result.data.slots));
+    } catch {
       setPrepared(null);
-      setError(e instanceof Error ? e.message : "리플레이를 읽는 중 오류가 발생했습니다.");
+      setError("리플레이를 읽는 중 오류가 발생했습니다.");
     } finally {
       setIsBusy(false);
     }
@@ -161,11 +166,15 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
         })),
         mode,
       });
-      setSavedCount(result.updates.length);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSavedCount(result.data.updates.length);
       setPrepared(null);
       setFile(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "저장 중 오류가 발생했습니다.");
+    } catch {
+      setError("저장 중 오류가 발생했습니다.");
     } finally {
       setIsBusy(false);
     }
