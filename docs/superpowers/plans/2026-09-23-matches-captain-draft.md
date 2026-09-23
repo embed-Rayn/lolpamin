@@ -1851,58 +1851,31 @@ git commit -m "feat(draft): candidates, guests and session persistence"
 - Create: `apps/dashboard/components/draft/CandidateTable.tsx`
 - Create: `apps/dashboard/components/draft/TurnBanner.tsx`
 - Create: `apps/dashboard/components/draft/EntryBoard.tsx`
-- Create: `apps/dashboard/components/draft/MasteryRefreshButton.tsx`
 - Modify: `apps/dashboard/components/MmrSimulator.tsx`
 - Modify: `apps/dashboard/app/matches/page.tsx`
-- Replace: `apps/dashboard/app/matches/actions.ts`
+- Delete: `apps/dashboard/app/matches/actions.ts`
 - Modify: `apps/dashboard/components/AppShell.tsx:80`
 - Delete: `apps/dashboard/components/MatchBuilder.tsx`
 
 **Interfaces:**
-- Consumes: 모든 이전 Task의 export. `championIdByKey`, `championIcon`, `championName` from `@/lib/ddragon/assets`. `LANE_OPTIONS`, `laneLabel` from `@lolpamin/core`. `refreshChampionMasteries`, `getMasteryRefreshAvailability`, `REFRESH_MASTERIES_ERRORS` (Task 6), `lookupChampionMasteries` (Task 5), `getDraftPool` (Task 7).
-- Produces: `refreshMasteriesAction(): Promise<{ result: MasteryRefreshResult | null; error: string | null }>`; `MmrSimulator` 새 옵션 prop `blueAverage?: number | null`, `redAverage?: number | null`.
+- Consumes: 모든 이전 Task의 export. `championIdByKey`, `championIcon`, `championName` from `@/lib/ddragon/assets`. `LANE_OPTIONS`, `laneLabel` from `@lolpamin/core`. `getDraftPool` (Task 7). 숙련도 갱신 버튼·액션은 이 Task에 **없다** — 버튼은 다른 화면에 따로 만든다(Task 6의 mutation은 그쪽이 쓴다).
+- Produces: `MmrSimulator` 새 옵션 prop `blueAverage?: number | null`, `redAverage?: number | null`.
 
 `saveGameResult`(`lib/mutations/save-game-result.ts`)는 **고치지 않는다.** `saveReplayImport`가 `saveGameResultTx`를 쓰고, 래퍼 `saveGameResult`는 수많은 통합 테스트의 진입점이다. 이 Task가 끝나면 앱 코드에서 래퍼를 부르는 곳은 없어지지만 테스트용으로 남긴다.
 
 이 Task는 UI라 자동 테스트 대신 Step 7의 수동 점검과 `tsc`로 확인한다.
 
-- [ ] **Step 1: 결과 입력 제거 + 서버 액션 교체**
+- [ ] **Step 1: 결과 입력 제거**
 
 ```bash
 git rm apps/dashboard/components/MatchBuilder.tsx
 ```
 
-`apps/dashboard/app/matches/actions.ts` 전체를 교체:
-
-```ts
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth/current-admin";
-import { lookupChampionMasteries } from "@/lib/riot-api/mastery";
-import {
-  refreshChampionMasteries,
-  REFRESH_MASTERIES_ERRORS,
-  type MasteryRefreshResult,
-} from "@/lib/mutations/refresh-champion-masteries";
-
-// 경기 결과는 더 이상 여기서 입력하지 않는다 — /replay-import가 유일한 경로다.
-export async function refreshMasteriesAction(): Promise<{ result: MasteryRefreshResult | null; error: string | null }> {
-  await requireAdmin();
-  try {
-    const result = await refreshChampionMasteries(prisma, lookupChampionMasteries);
-    revalidatePath("/matches");
-    return { result, error: null };
-  } catch (error) {
-    if (error instanceof Error && error.message === REFRESH_MASTERIES_ERRORS.tooSoon) {
-      return { result: null, error: error.message };
-    }
-    console.error(error);
-    return { result: null, error: "숙련도 갱신 중 오류가 났습니다." };
-  }
-}
+```bash
+git rm apps/dashboard/app/matches/actions.ts
 ```
+
+경기 결과는 더 이상 `/matches`에서 입력하지 않는다 — `/replay-import`가 유일한 경로다. 이 화면에는 서버 액션이 남지 않는다.
 
 `AppShell.tsx:80`:
 
@@ -2077,67 +2050,13 @@ export function ParticipantPicker({
 }
 ```
 
-- [ ] **Step 5: 후보 표·차례 배너·엔트리·갱신 버튼**
-
-`apps/dashboard/components/draft/MasteryRefreshButton.tsx`:
-
-```tsx
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { refreshMasteriesAction } from "@/app/matches/actions";
-
-export function MasteryRefreshButton({ allowed, lastRefreshedAt }: { allowed: boolean; lastRefreshedAt: string | null }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function refresh() {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const { result, error } = await refreshMasteriesAction();
-      if (error !== null || result === null) {
-        setMessage(error ?? "갱신하지 못했습니다.");
-        return;
-      }
-      setMessage(
-        result.unauthorized
-          ? "라이엇 API 키가 만료됐거나 없습니다. .env의 RIOT_API_KEY를 확인해 주세요."
-          : `${result.refreshed}개 계정 갱신${result.notFound > 0 ? ` · ${result.notFound}개 찾지 못함` : ""}`,
-      );
-      router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const last = lastRefreshedAt ? new Date(lastRefreshedAt).toLocaleString("ko-KR") : "없음";
-
-  return (
-    <div className="flex items-center gap-2 text-[12px] text-faint">
-      <span>숙련도 갱신: {last}</span>
-      <button
-        onClick={refresh}
-        disabled={busy || !allowed}
-        className="rounded-md border border-ink/[.12] px-2.5 py-1 font-bold text-muted disabled:opacity-40"
-        title={allowed ? undefined : "24시간에 한 번만 갱신할 수 있습니다."}
-      >
-        {busy ? "갱신 중..." : "숙련도 갱신"}
-      </button>
-      {message && <span className="text-muted">{message}</span>}
-    </div>
-  );
-}
-```
+- [ ] **Step 5: 후보 표·차례 배너·엔트리**
 
 `apps/dashboard/components/draft/CandidateTable.tsx`:
 
 ```tsx
 "use client";
 
-import type { ReactNode } from "react";
 import type { Lane } from "@lolpamin/db";
 import { isCaptain, LANE_OPTIONS, laneLabel, seatOf, type DraftSide, type DraftState } from "@lolpamin/core";
 import { championIcon, championIdByKey, championName } from "@/lib/ddragon/assets";
@@ -2189,7 +2108,6 @@ export function CandidateTable({
   candidates,
   draft,
   turn,
-  headerRight,
   onSetCaptain,
   onPick,
   onGuestChange,
@@ -2197,7 +2115,6 @@ export function CandidateTable({
   candidates: Candidate[];
   draft: DraftState;
   turn: DraftSide | null;
-  headerRight: ReactNode;
   onSetCaptain: (side: DraftSide, candidate: Candidate) => void;
   onPick: (candidate: Candidate) => void;
   onGuestChange: (name: string, patch: Partial<Omit<Guest, "name">>) => void;
@@ -2206,10 +2123,7 @@ export function CandidateTable({
 
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-ink/[.06] bg-surface px-4 py-3.5">
-      <div className="flex items-center justify-between">
-        <h2 className="m-0 text-[14px] font-bold">후보 선수</h2>
-        {headerRight}
-      </div>
+      <h2 className="m-0 text-[14px] font-bold">후보 선수</h2>
       <div className={`${GRID} border-b border-ink/[.06] pb-1.5 text-[11.5px] font-bold text-faint`}>
         <span>#</span>
         <span>이름</span>
@@ -2464,7 +2378,6 @@ import { ParticipantPicker } from "./ParticipantPicker";
 import { CandidateTable } from "./CandidateTable";
 import { TurnBanner } from "./TurnBanner";
 import { EntryBoard } from "./EntryBoard";
-import { MasteryRefreshButton } from "./MasteryRefreshButton";
 import type { DragPayload } from "./dnd";
 
 function sessionStore(): Storage | null {
@@ -2478,11 +2391,9 @@ function sessionStore(): Storage | null {
 export function DraftBoard({
   pool,
   config,
-  masteryRefresh,
 }: {
   pool: DraftPoolMember[];
   config: MmrConfig;
-  masteryRefresh: { allowed: boolean; lastRefreshedAt: string | null };
 }) {
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -2550,7 +2461,6 @@ export function DraftBoard({
         candidates={candidates}
         draft={draft}
         turn={turn}
-        headerRight={<MasteryRefreshButton {...masteryRefresh} />}
         onSetCaptain={(side, c) => apply({ type: "setCaptain", side, key: c.key, prefs: prefsOf(c) })}
         onPick={(c) => apply({ type: "pick", key: c.key, prefs: prefsOf(c) })}
         onGuestChange={(name, patch) => setGuests(guests.map((g) => (g.name === name ? { ...g, ...patch } : g)))}
@@ -2576,7 +2486,6 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { DraftBoard } from "@/components/draft/DraftBoard";
 import { getDraftPool } from "@/lib/queries/draft-pool";
-import { getMasteryRefreshAvailability } from "@/lib/mutations/refresh-champion-masteries";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { getMmrConfig } from "@/lib/queries/mmr-config";
 import { prisma } from "@/lib/prisma";
@@ -2589,23 +2498,12 @@ export default async function MatchesPage() {
     redirect("/login");
   }
 
-  const [pool, mmrConfig, masteryRefresh] = await Promise.all([
-    getDraftPool(prisma),
-    getMmrConfig(prisma),
-    getMasteryRefreshAvailability(prisma),
-  ]);
+  const [pool, mmrConfig] = await Promise.all([getDraftPool(prisma), getMmrConfig(prisma)]);
 
   return (
     <AppShell activeNav="matches" pageTitle="팀 드래프트" pageDesc="팀장이 스네이크 순서로 팀원을 뽑습니다" desktopOnly>
       <div className="px-7 pb-10 pt-6">
-        <DraftBoard
-          pool={pool}
-          config={mmrConfig}
-          masteryRefresh={{
-            allowed: masteryRefresh.allowed,
-            lastRefreshedAt: masteryRefresh.lastRefreshedAt?.toISOString() ?? null,
-          }}
-        />
+        <DraftBoard pool={pool} config={mmrConfig} />
       </div>
     </AppShell>
   );
@@ -2634,7 +2532,7 @@ Expected: 모든 워크스페이스 PASS.
 7. 완료 후 11번째 사람을 엔트리 칸에 끌면 교체, 팀 간 맞바꿈 가능.
 8. 시뮬레이터 블루/레드 평균이 엔트리 변경마다 따라오고 손으로 고칠 수 있음.
 9. 새로고침해도 상태 유지, 탭을 닫았다 열면 초기화.
-10. [숙련도 갱신] → 아이콘과 `xN` 표시, 다시 누르면 비활성/24시간 안내. 스킨 3종(clean/pink/dark)에서 색 확인.
+10. 숙련도 행이 있는 회원은 초상화와 `xN`, 없는 회원·게스트는 `—`. 스킨 3종(clean/pink/dark)에서 색 확인.
 
 - [ ] **Step 8: Commit**
 
@@ -2666,9 +2564,10 @@ only in the browser (name, hand-typed MMR and lanes) and count in the team avera
 Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
 
 Candidates show combined champion mastery: `ChampionMastery` caches Riot
-Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed from the `/matches`
-button at most once per 24h (`SiteSetting.masteryRefreshedAt`, same rules as the Riot ID
-refresh). Points add up across a member's accounts and the highest level stands for the
+Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
+`refreshChampionMasteries` at most once per 24h (`SiteSetting.masteryRefreshedAt`, same
+rules as the Riot ID refresh). It has no UI trigger yet — the button is planned for another
+screen, not `/matches`. Points add up across a member's accounts and the highest level stands for the
 champion (`topMasteries`). The API names champions by numeric key, mapped through
 `ddragon-map.json`'s `championKeys`.
 ```
