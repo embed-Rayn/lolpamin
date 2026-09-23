@@ -20,6 +20,7 @@ export interface AppShellProps {
     | "replay-import"
     | "team-builder"
     | "match-history"
+    | "player-stats"
     | "inactive"
     | "kakao-import"
     | "link-accounts"
@@ -74,7 +75,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
   const matchItems: SidebarNavGroup["items"] = [
     { key: "match-history", href: "/match-history", label: "내전 기록", icon: "file-search" },
     { key: "matches", href: "/matches", label: "내전 팀 빌더", icon: "crown" },
-    { key: "player-stats", label: "플레이어 통계", icon: "bar-chart", disabled: true },
+    { key: "player-stats", href: "/player-stats", label: "플레이어 통계", icon: "bar-chart" },
     { key: "champion-stats", label: "챔피언 통계", icon: "trophy", disabled: true },
   ];
   if (currentAdmin) {

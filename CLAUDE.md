@@ -124,6 +124,12 @@ page). `canCancel` is decided **per mode** across the whole table, not the
 current page or filter, because `cancelGameResult` accepts the newest live game
 of the game's own mode — so 협곡 and 칼바람 each have one cancellable row.
 
+`/player-stats` aggregates rift results per member per lane from `ReplayPlayerStat`
+only — a hand-entered game has no position or KDA, so its count can be lower than
+`/rift`'s. `?period=season` (default) uses the same reset baseline as `counted-games`;
+`?period=all` drops it. The math is `aggregatePlayerStats` in `packages/core`; member
+selection and block folding are browser memory only.
+
 A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
 member's old score. Right after a reset nothing is cancellable, which is correct.
@@ -277,8 +283,8 @@ server → client boundary.
 
 ## Mobile
 
-Five read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`) work down to a 375px phone; the nine operator
+Six read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/inactive`, `/player-stats`) work down to a 375px phone; the nine operator
 screens (`matches`, `replay-import`, `team-builder`, `kakao-import`,
 `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
