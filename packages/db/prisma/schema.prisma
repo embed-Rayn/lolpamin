@@ -123,6 +123,9 @@ model GameResult {
   // 파일명에 의존하지 않으므로 이름을 바꿔 올려도 같은 값이 나온다. 손으로 입력한 경기는 null이다.
   replayKey String? @unique
 
+  // 리플레이로 저장한 판만 값이 있다. 상세 화면의 분당 CS가 이 값으로 나눈다.
+  gameLengthMs Int?
+
   // 입력·취소한 운영진. Admin.createdById와 같은 이유로 외래키를 걸지 않는다 — 관리자
   // 계정이 지워져도 「누가 무엇을 했는지」는 남아야 한다.
   createdById   String?
@@ -130,6 +133,7 @@ model GameResult {
   cancelledById String?
 
   participants GameParticipant[]
+  replayStats  ReplayPlayerStat[]
 
   // 되돌리기 대상은 "살아 있는 것 중 가장 나중에 입력된 것"이라 이 순서로 찾는다.
   @@index([cancelledAt, createdAt])
@@ -145,12 +149,62 @@ model GameParticipant {
   mmrBefore    Int
   mmrAfter     Int
 
+  // 이 회원이 이 경기를 뛴 라이엇 계정. 상세 화면이 ReplayPlayerStat.puuid로 이 행을 찾아
+  // 회원명과 그 판의 MMR 변화를 붙인다. 읽는 시점의 RiotAccount를 보지 않는 이유는 나중에
+  // 계정 주인을 바꿔도 과거 경기의 표시가 변하지 않아야 해서다. 손으로 입력한 경기는 null.
+  replayPuuid  String?
+
   // 흡수로 이 행을 넘겨받기 전의 원래 주인. releaseMember가 정확히 되돌리는 근거다.
   // 값은 비어 있을 때만 채운다 — 이미 이관된 행이 다시 이관돼도 최초 주인이 남아야 한다.
   absorbedFromId String?
 
   @@unique([gameResultId, memberId])
   @@index([absorbedFromId])
+}
+
+// 리플레이에 기록된 한 선수의 스탯. 외부인도 행을 가지므로 회원 FK가 없다 — 회원·MMR은
+// 같은 경기의 GameParticipant.replayPuuid로 찾는다. 경기는 지워지지 않고 취소만 되므로
+// cascade도 두지 않는다.
+model ReplayPlayerStat {
+  id           String     @id @default(uuid())
+  gameResultId String
+  gameResult   GameResult @relation(fields: [gameResultId], references: [id])
+
+  puuid    String
+  gameName String
+  tagLine  String
+  team     Team
+  position String
+  champion String
+  level    Int
+
+  kills   Int
+  deaths  Int
+  assists Int
+  cs      Int
+
+  spell1   Int
+  spell2   Int
+  keystone Int
+  subStyle Int
+  items    Int[]
+
+  damageDealt  Int
+  damageTaken  Int
+  controlWards Int
+  wardsPlaced  Int
+  wardsKilled  Int
+  gold         Int
+
+  baronKills     Int
+  dragonKills    Int
+  heraldKills    Int
+  hordeKills     Int
+  atakhanKills   Int
+  turretKills    Int
+  inhibitorKills Int
+
+  @@unique([gameResultId, puuid])
 }
 
 model MentionLog {

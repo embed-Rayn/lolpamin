@@ -1,3 +1,6 @@
+import type { ReplayPlayer } from "@lolpamin/core";
+import { computeReplayKey } from "./replay-key";
+
 /** 합성 .rofl 바이트. packages/core/src/parse-rofl.test.ts의 빌더와 같은 레이아웃이다. */
 export interface FixturePlayer {
   puuid: string;
@@ -50,4 +53,50 @@ export function tenPlayers(overrides: Array<Partial<FixturePlayer>> = []): Fixtu
     team: i < 5 ? ("BLUE" as const) : ("RED" as const),
     ...(overrides[i] ?? {}),
   }));
+}
+
+/** One parsed replay player with plausible stats — what the preview hands back on save. */
+export function replayPlayer(puuid: string, team: "BLUE" | "RED", overrides: Partial<ReplayPlayer> = {}): ReplayPlayer {
+  return {
+    puuid,
+    gameName: `name-${puuid}`,
+    tagLine: "KR1",
+    team,
+    win: team === "BLUE",
+    position: "TOP",
+    champion: "Yone",
+    level: 15,
+    kills: 1,
+    deaths: 2,
+    assists: 3,
+    cs: 145,
+    wasAfk: false,
+    wasLeaver: false,
+    secondsDisconnected: 0,
+    spell1: 4,
+    spell2: 14,
+    keystone: 8010,
+    subStyle: 8300,
+    items: [3047, 0, 0, 0, 0, 0, 3364],
+    damageDealt: 10000,
+    damageTaken: 12000,
+    controlWards: 1,
+    wardsPlaced: 5,
+    wardsKilled: 2,
+    gold: 9000,
+    baronKills: 0,
+    dragonKills: 0,
+    heraldKills: 0,
+    hordeKills: 0,
+    atakhanKills: 0,
+    turretKills: 0,
+    inhibitorKills: 0,
+    ...overrides,
+  };
+}
+
+/** The replayKey + replay payload saveReplayImport expects for these slots, key computed to match. */
+export function replayInput(assignments: Array<{ puuid: string; team: "BLUE" | "RED" }>, gameLengthMs = 1584502) {
+  const replay = { gameLengthMs, players: assignments.map((a) => replayPlayer(a.puuid, a.team)) };
+  return { replayKey: computeReplayKey(replay), replay };
 }

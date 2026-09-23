@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type { ReplayMetadata } from "@lolpamin/core";
 
 /**
  * 같은 리플레이의 재업로드를 막는 내용 해시. 카톡 임포트는 워터마크로 멱등성을 얻지만
@@ -10,9 +9,11 @@ import type { ReplayMetadata } from "@lolpamin/core";
  * 리플레이를 다시 받아 저장해도 같은 값이 나와야 한다. PUUID를 정렬하는 것은 참가자 순서가
  * 보장되지 않기 때문이다.
  *
+ * 저장 시에는 클라이언트가 돌려보낸 선수 배열로 다시 계산해 요청의 키와 맞는지 확인한다.
+ *
  * node:crypto를 쓰므로 packages/core에 둘 수 없다 — core는 클라이언트 번들에도 들어간다.
  */
-export function computeReplayKey(meta: ReplayMetadata): string {
+export function computeReplayKey(meta: { gameLengthMs: number; players: ReadonlyArray<{ puuid: string }> }): string {
   const puuids = meta.players.map((p) => p.puuid).sort();
   return createHash("sha256").update(`${puuids.join(",")}|${meta.gameLengthMs}`).digest("hex");
 }

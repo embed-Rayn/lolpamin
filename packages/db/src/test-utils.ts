@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 export async function resetDatabase(client: PrismaClient): Promise<void> {
   await client.adminSession.deleteMany();
   await client.admin.deleteMany();
+  await client.replayPlayerStat.deleteMany();
   await client.gameParticipant.deleteMany();
   await client.riotAccount.deleteMany();
   await client.gameResult.deleteMany();

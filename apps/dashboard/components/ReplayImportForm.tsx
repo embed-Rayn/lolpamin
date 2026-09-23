@@ -121,6 +121,8 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     try {
       const result = await saveReplayImportAction({
         replayKey: prepared.replayKey,
+        // Task 8 replaces this with the preview's own players.
+        replay: { gameLengthMs: prepared.gameLengthMs, players: [] },
         playedAt,
         winner: prepared.winner,
         assignments: prepared.slots.map((s) => ({

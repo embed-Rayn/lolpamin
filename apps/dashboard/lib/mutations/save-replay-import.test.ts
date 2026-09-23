@@ -4,7 +4,8 @@ import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { SAVE_REPLAY_IMPORT_ERRORS, saveReplayImport } from "./save-replay-import";
 import { cancelGameResult } from "./cancel-game-result";
 import { prepareReplayImport } from "../replay-import/prepare-import";
-import { buildRoflFixture, tenPlayers } from "../replay-import/test-fixture";
+import { buildRoflFixture, replayInput, tenPlayers } from "../replay-import/test-fixture";
+import { parseRoflMetadata } from "@lolpamin/core";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -36,11 +37,12 @@ describe("saveReplayImport", () => {
     const blue = await linkedMember("blue2");
     const red = await linkedMember("red2");
 
+    const assignments = [assignment("p-blue2", "BLUE", blue.id), assignment("p-red2", "RED", red.id)];
     const result = await saveReplayImport(prisma, {
-      replayKey: "key-aram",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-16T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue2", "BLUE", blue.id), assignment("p-red2", "RED", red.id)],
+      assignments,
       mode: "ARAM",
     });
 
@@ -56,11 +58,12 @@ describe("saveReplayImport", () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
     const result = await saveReplayImport(prisma, {
-      replayKey: "key-1",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)],
+      assignments,
     });
 
     expect(result.updates).toHaveLength(2);
@@ -70,22 +73,23 @@ describe("saveReplayImport", () => {
     expect(account.gameName).toBe("name-p-blue");
 
     const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
-    expect(game.replayKey).toBe("key-1");
+    expect(game.replayKey).toBe(replayInput(assignments).replayKey);
   });
 
   it("remembers an outsider so the next upload does not ask again", async () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
 
+    const assignments = [
+      assignment("p-blue", "BLUE", blue.id),
+      assignment("p-red", "RED", red.id),
+      assignment("p-outsider", "RED", null),
+    ];
     await saveReplayImport(prisma, {
-      replayKey: "key-2",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      assignments: [
-        assignment("p-blue", "BLUE", blue.id),
-        assignment("p-red", "RED", red.id),
-        assignment("p-outsider", "RED", null),
-      ],
+      assignments,
     });
 
     const outsider = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-outsider" } });
@@ -105,11 +109,12 @@ describe("saveReplayImport", () => {
       },
     });
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
     await saveReplayImport(prisma, {
-      replayKey: "key-3",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)],
+      assignments,
     });
 
     const account = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-blue" } });
@@ -123,11 +128,12 @@ describe("saveReplayImport", () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
     await saveReplayImport(prisma, {
-      replayKey: "key-4",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)],
+      assignments,
     });
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue.id } });
@@ -140,11 +146,12 @@ describe("saveReplayImport", () => {
     });
     const red = await linkedMember("red");
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
     await saveReplayImport(prisma, {
-      replayKey: "key-5",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-01T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)],
+      assignments,
     });
 
     const refreshed = await prisma.member.findUniqueOrThrow({ where: { id: blue.id } });
@@ -155,16 +162,17 @@ describe("saveReplayImport", () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
 
+    const assignments = [
+      assignment("p-blue", "BLUE", blue.id),
+      assignment("p-blue2", "BLUE", blue.id),
+      assignment("p-red", "RED", red.id),
+    ];
     await expect(
       saveReplayImport(prisma, {
-        replayKey: "key-6",
+        ...replayInput(assignments),
         playedAt: new Date("2026-09-05T12:00:00Z"),
         winner: "BLUE",
-        assignments: [
-          assignment("p-blue", "BLUE", blue.id),
-          assignment("p-blue2", "BLUE", blue.id),
-          assignment("p-red", "RED", red.id),
-        ],
+        assignments,
       }),
     ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.duplicateMember);
   });
@@ -173,12 +181,13 @@ describe("saveReplayImport", () => {
     // 회원이 0명인 팀은 평균 레이팅이 없어 MMR 계산이 NaN이 된다.
     const blue = await linkedMember("blue");
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", null)];
     await expect(
       saveReplayImport(prisma, {
-        replayKey: "key-7",
+        ...replayInput(assignments),
         playedAt: new Date("2026-09-05T12:00:00Z"),
         winner: "BLUE",
-        assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", null)],
+        assignments,
       }),
     ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.emptyTeam);
   });
@@ -186,11 +195,12 @@ describe("saveReplayImport", () => {
   it("refuses a replay that was already imported", async () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
     const input = {
-      replayKey: "key-8",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE" as const,
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)],
+      assignments,
     };
     await saveReplayImport(prisma, input);
 
@@ -203,11 +213,12 @@ describe("saveReplayImport", () => {
     const blue = await linkedMember("blue");
     const half = await prisma.member.create({ data: { kakaoNickname: "배성민/97/성민탑#KR1", mmr: 1000 } });
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-half", "RED", half.id)];
     const result = await saveReplayImport(prisma, {
-      replayKey: "key-9",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-half", "RED", half.id)],
+      assignments,
     });
 
     expect(result.updates).toHaveLength(2);
@@ -219,15 +230,16 @@ describe("saveReplayImport", () => {
     // 아래 "rolls back a riot account..." 테스트가 증명한다.
     const blue = await linkedMember("blue");
 
+    const assignments = [
+      assignment("p-blue", "BLUE", blue.id),
+      assignment("p-ghost", "RED", "00000000-0000-0000-0000-000000000000"),
+    ];
     await expect(
       saveReplayImport(prisma, {
-        replayKey: "key-10",
+        ...replayInput(assignments),
         playedAt: new Date("2026-09-05T12:00:00Z"),
         winner: "BLUE",
-        assignments: [
-          assignment("p-blue", "BLUE", blue.id),
-          assignment("p-ghost", "RED", "00000000-0000-0000-0000-000000000000"),
-        ],
+        assignments,
       }),
     ).rejects.toThrow(/do not exist/);
 
@@ -244,12 +256,13 @@ describe("saveReplayImport", () => {
       data: { kakaoNickname: "배성민/97/성민탑#KR1", mergedIntoId: survivor.id },
     });
 
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-tomb", "RED", tombstone.id)];
     await expect(
       saveReplayImport(prisma, {
-        replayKey: "key-11",
+        ...replayInput(assignments),
         playedAt: new Date("2026-09-05T12:00:00Z"),
         winner: "BLUE",
-        assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-tomb", "RED", tombstone.id)],
+        assignments,
       }),
     ).rejects.toThrow(/absorbed into another member/);
 
@@ -275,12 +288,13 @@ describe("saveReplayImport", () => {
       });
     }
 
+    // p-blue는 red에게 넘어가고(주인 변경), p-red는 blue 그대로다(주인 유지).
+    const assignments = [assignment("p-blue", "BLUE", red.id), assignment("p-red", "RED", blue.id)];
     await saveReplayImport(prisma, {
-      replayKey: "key-12",
+      ...replayInput(assignments),
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
-      // p-blue는 red에게 넘어가고(주인 변경), p-red는 blue 그대로다(주인 유지).
-      assignments: [assignment("p-blue", "BLUE", red.id), assignment("p-red", "RED", blue.id)],
+      assignments,
     });
 
     const reassigned = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-blue" } });
@@ -299,9 +313,11 @@ describe("saveReplayImport", () => {
     const red = await linkedMember("red");
     const bytes = buildRoflFixture(tenPlayers());
     const { replayKey } = await prepareReplayImport(prisma, bytes);
+    const meta = parseRoflMetadata(bytes);
 
     const saved = await saveReplayImport(prisma, {
       replayKey,
+      replay: { gameLengthMs: meta.gameLengthMs, players: meta.players },
       playedAt: new Date("2026-09-05T12:00:00Z"),
       winner: "BLUE",
       assignments: [assignment("puuid-0", "BLUE", blue.id), assignment("puuid-5", "RED", red.id)],
@@ -316,5 +332,92 @@ describe("saveReplayImport", () => {
     // 유니크 제약이 더는 막지 않으므로 같은 바이트를 다시 올릴 수 있다.
     const reprepared = await prepareReplayImport(prisma, bytes);
     expect(reprepared.replayKey).toBe(replayKey);
+  });
+
+  it("stores every player's stats, outsiders included, and the game length", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const assignments = [
+      assignment("p-blue", "BLUE", blue.id),
+      assignment("p-red", "RED", red.id),
+      assignment("p-outsider", "RED", null),
+    ];
+    const input = replayInput(assignments, 1743915);
+
+    const result = await saveReplayImport(prisma, {
+      ...input,
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    const rows = await prisma.replayPlayerStat.findMany({ where: { gameResultId: result.gameResultId } });
+    expect(rows.map((r) => r.puuid).sort()).toEqual(["p-blue", "p-outsider", "p-red"]);
+    const outsider = rows.find((r) => r.puuid === "p-outsider")!;
+    expect(outsider).toMatchObject({ team: "RED", champion: "Yone", damageDealt: 10000, items: [3047, 0, 0, 0, 0, 0, 3364] });
+
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(game.gameLengthMs).toBe(1743915);
+  });
+
+  it("records which riot account each member played the game on", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
+
+    const result = await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    const participants = await prisma.gameParticipant.findMany({ where: { gameResultId: result.gameResultId } });
+    expect(Object.fromEntries(participants.map((p) => [p.memberId, p.replayPuuid]))).toEqual({
+      [blue.id]: "p-blue",
+      [red.id]: "p-red",
+    });
+  });
+
+  it("refuses stats that do not belong to the replay key and writes nothing", async () => {
+    // A stale tab after a re-upload, or a hand-edited request, must not attach another game's stats.
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
+    const { replayKey } = replayInput(assignments);
+    const other = replayInput([assignment("p-blue", "BLUE", blue.id), assignment("p-someone", "RED", null)]);
+
+    await expect(
+      saveReplayImport(prisma, {
+        replayKey,
+        replay: other.replay,
+        playedAt: new Date("2026-09-05T12:00:00Z"),
+        winner: "BLUE",
+        assignments,
+      }),
+    ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.replayMismatch);
+
+    expect(await prisma.gameResult.count()).toBe(0);
+    expect(await prisma.riotAccount.count()).toBe(0);
+    expect(await prisma.replayPlayerStat.count()).toBe(0);
+  });
+
+  it("refuses an assignment for a puuid the replay does not contain", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const { replayKey, replay } = replayInput([
+      assignment("p-blue", "BLUE", blue.id),
+      assignment("p-red", "RED", red.id),
+    ]);
+
+    await expect(
+      saveReplayImport(prisma, {
+        replayKey,
+        replay,
+        playedAt: new Date("2026-09-05T12:00:00Z"),
+        winner: "BLUE",
+        assignments: [assignment("p-blue", "BLUE", blue.id), assignment("p-intruder", "RED", red.id)],
+      }),
+    ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.replayMismatch);
   });
 });

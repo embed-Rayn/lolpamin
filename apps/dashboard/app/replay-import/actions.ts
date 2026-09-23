@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { GameMode } from "@lolpamin/db";
+import type { ReplayPlayer } from "@lolpamin/core";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { prepareReplayImport, type PreparedReplayImport } from "@/lib/replay-import/prepare-import";
@@ -20,6 +21,8 @@ export async function prepareReplayImportAction(formData: FormData): Promise<Pre
 
 export interface SaveReplayImportActionInput {
   replayKey: string;
+  /** 미리보기가 받은 경기 정보를 그대로 돌려보낸다. 서버가 replayKey로 대조한다. */
+  replay: { gameLengthMs: number; players: ReplayPlayer[] };
   /** "2026-09-05" 형식. Date를 그대로 넘기지 않고 화면이 고른 날짜 문자열을 받는다. */
   playedAt: string;
   winner: "BLUE" | "RED";
