@@ -8,7 +8,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
 - `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
@@ -91,6 +91,23 @@ baseline. Games stay in the history screen untouched. The rule lives in
 cannot import the dashboard's lib. Deliberately **not** watermarked:
 `queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
 about to destroy, not a record.
+
+`/matches` is the **team draft**, not result entry — results come in only through
+`/replay-import`, so a game without a replay cannot be recorded. Two captains (agreed
+by the players, set by an admin) pick the other eight in snake order `B R R B B R R B`,
+blue first. The rules live in `packages/core/src/draft.ts`; the turn is derived from
+per-team seat counts rather than the pick list, so unchecking a picked participant hands
+the turn back, and cross-team moves are refused until the draft completes. Guests exist
+only in the browser (name, hand-typed MMR and lanes) and count in the team averages.
+Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
+
+Candidates show combined champion mastery: `ChampionMastery` caches Riot
+Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
+`refreshChampionMasteries` at most once per 24h (`SiteSetting.masteryRefreshedAt`, same
+rules as the Riot ID refresh). It has no UI trigger yet — the button is planned for another
+screen, not `/matches`. Points add up across a member's accounts and the highest level stands for the
+champion (`topMasteries`). The API names champions by numeric key, mapped through
+`ddragon-map.json`'s `championKeys`.
 
 `/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and pages
 20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
