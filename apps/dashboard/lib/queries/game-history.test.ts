@@ -4,6 +4,9 @@ import { calculateTeamMmrChange } from "@lolpamin/core";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { saveGameResult } from "@/lib/mutations/save-game-result";
 import { cancelGameResult } from "@/lib/mutations/cancel-game-result";
+import { saveReplayImport } from "@/lib/mutations/save-replay-import";
+import { absorbMember } from "@/lib/mutations/absorb-member";
+import { replayInput } from "@/lib/replay-import/test-fixture";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -282,5 +285,71 @@ describe("getGameHistory pagination", () => {
 
     expect(second.rows.some((r) => r.canCancel)).toBe(false);
     expect(first.rows.filter((r) => r.canCancel).map((r) => r.id)).toEqual([latest]);
+  });
+
+});
+
+describe("getGameHistory replay detail", () => {
+  it("has no detail for a hand-entered game", async () => {
+    const blue = await createLinkedMember("블루", 1000);
+    const red = await createLinkedMember("레드", 1000);
+    await playGame([blue], [red], "BLUE");
+
+    const [row] = (await getGameHistory()).rows;
+
+    expect(row.detail).toBeNull();
+  });
+
+  it("attaches the replay board with members, their mmr change and outsiders", async () => {
+    const blue = await createLinkedMember("블루", 1000);
+    const red = await createLinkedMember("레드", 1000);
+    const assignments = [
+      { puuid: "p-blue", gameName: "name-p-blue", tagLine: "KR1", team: "BLUE" as const, memberId: blue.id },
+      { puuid: "p-red", gameName: "name-p-red", tagLine: "KR1", team: "RED" as const, memberId: red.id },
+      { puuid: "p-out", gameName: "name-p-out", tagLine: "KR9", team: "RED" as const, memberId: null },
+    ];
+    await saveReplayImport(prisma, {
+      ...replayInput(assignments, 1743915),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    const [row] = (await getGameHistory()).rows;
+
+    expect(row.detail).not.toBeNull();
+    expect(row.detail!.gameLengthMs).toBe(1743915);
+    expect(row.detail!.winner).toBe("BLUE");
+    const byPuuid = new Map(row.detail!.players.map((p) => [p.puuid, p]));
+    expect(byPuuid.get("p-blue")!.member).toEqual({
+      name: "블루",
+      mmrBefore: 1000,
+      mmrAfter: row.winners[0].mmrAfter,
+    });
+    expect(byPuuid.get("p-out")!.member).toBeNull();
+    expect(byPuuid.get("p-out")!.champion).toBe("Yone");
+  });
+
+  it("names the survivor on a replay the absorbed member played", async () => {
+    // The board follows GameParticipant.memberId, which absorbMember moves to the survivor.
+    const blue = await createLinkedMember("블루", 1000);
+    const kakaoOnly = await prisma.member.create({ data: { realName: "카톡쪽", kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    const survivor = await prisma.member.create({ data: { realName: "생존자", discordUserId: "d-survivor" } });
+    const assignments = [
+      { puuid: "p-blue", gameName: "name-p-blue", tagLine: "KR1", team: "BLUE" as const, memberId: blue.id },
+      { puuid: "p-half", gameName: "name-p-half", tagLine: "KR1", team: "RED" as const, memberId: kakaoOnly.id },
+    ];
+    await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    await absorbMember(prisma, kakaoOnly.id, survivor.id);
+
+    const [row] = (await getGameHistory()).rows;
+    const half = row.detail!.players.find((p) => p.puuid === "p-half")!;
+    expect(half.member?.name).toBe("생존자");
   });
 });

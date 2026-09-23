@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { GameMode } from "@lolpamin/db";
+import type { GameDetail } from "@/lib/game-detail/types";
 
 export interface GameHistoryPlayer {
   name: string;
@@ -21,6 +22,8 @@ export interface GameHistoryRow {
   canCancel: boolean;
   winners: GameHistoryPlayer[];
   losers: GameHistoryPlayer[];
+  // 리플레이로 저장한 판의 상세 보드. 손으로 입력한 판과 이 기능 이전에 올린 판은 null이다.
+  detail: GameDetail | null;
 }
 
 // "all"은 두 모드를 한 목록에 섞는다. 모드 값은 URL에서 오므로 parseGameHistoryMode로 거른다.
@@ -95,6 +98,7 @@ export async function getGameHistory(
     skip: (page - 1) * GAME_HISTORY_PAGE_SIZE,
     take: GAME_HISTORY_PAGE_SIZE,
     include: {
+      replayStats: true,
       participants: {
         include: {
           member: {
@@ -146,6 +150,34 @@ export async function getGameHistory(
     }));
     const isWinner = (team: string) => team === game.winner;
 
+    // 보드의 회원·MMR은 그 판을 뛴 계정(replayPuuid)으로 찾는다. 읽는 시점의 RiotAccount가
+    // 아니라서 계정 주인이 나중에 바뀌어도 과거 경기의 표시는 그대로이고, 흡수는
+    // GameParticipant.memberId를 옮기므로 생존자 이름이 자연스럽게 따라온다.
+    const participantByPuuid = new Map(
+      game.participants.filter((p) => p.replayPuuid !== null).map((p) => [p.replayPuuid!, p]),
+    );
+    const detail: GameDetail | null =
+      game.replayStats.length === 0 || game.gameLengthMs === null
+        ? null
+        : {
+            winner: game.winner as "BLUE" | "RED",
+            mode: game.mode,
+            gameLengthMs: game.gameLengthMs,
+            players: game.replayStats.map(({ id: _id, gameResultId: _gameResultId, ...stat }) => {
+              const participant = participantByPuuid.get(stat.puuid);
+              return {
+                ...stat,
+                member: participant
+                  ? {
+                      name: playerName(participant.member),
+                      mmrBefore: participant.mmrBefore,
+                      mmrAfter: participant.mmrAfter,
+                    }
+                  : null,
+              };
+            }),
+          };
+
     return {
       id: game.id,
       mode: game.mode,
@@ -158,6 +190,7 @@ export async function getGameHistory(
         game.cancelledAt === null && latestLiveKey.has(`${game.mode}:${game.createdAt.getTime()}`),
       winners: players.filter((p) => isWinner(p.team)).map(({ team: _team, ...rest }) => rest),
       losers: players.filter((p) => !isWinner(p.team)).map(({ team: _team, ...rest }) => rest),
+      detail,
     };
   });
 
