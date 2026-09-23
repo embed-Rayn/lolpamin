@@ -152,7 +152,7 @@ props로 `winner`, `gameLengthMs`, `mode`, 선수 10명(스탯 + 선택적 `memb
   - 제어와드 / 설치 · 제거
   - CS / 분당 CS
   - 아이템 7칸. 0 또는 에셋이 없는 id는 빈 칸
-- 가운데 띠: 팀별 바론·드래곤·전령·유충·아타칸·포탑·억제기 아이콘과 수, 총 킬·총 골드 대비 막대.
+- 가운데 띠: 팀별 오브젝트 수, 총 킬·총 골드 대비 막대.
   칼바람은 포탑·억제기만 보인다. 오브젝트는 한글 라벨(바론·용·전령·유충·아타칸·포탑·억제기)과 수로 표시한다 — ddragon에 아이콘이 없고, 글자가 더 알아보기 쉽다.
 - 이미지는 `next/image`가 아닌 `<img loading="lazy">`로 `/ddragon/...`을 직접 가리킨다(정적 파일, 최적화 불필요).
 
@@ -174,7 +174,7 @@ props로 `winner`, `gameLengthMs`, `mode`, 선수 10명(스탯 + 선택적 `memb
 
 ## 에셋
 
-`scripts/sync-ddragon.mjs <원본 폴더>`:
+`apps/dashboard/scripts/sync-ddragon.ts <원본 폴더>` (`npx tsx`로 실행):
 
 - 복사 → `apps/dashboard/public/ddragon/`
   - `img/champion/*.png`
