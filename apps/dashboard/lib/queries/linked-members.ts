@@ -16,7 +16,7 @@ export interface LinkedMemberOption {
   // 팀짜기 화면이 쓰는 값. 점수는 저장하지 않고 tierScore로 계산한다.
   tier: MemberTier;
   riotId: string | null;
-  // 칼바람 트랙. MatchBuilder가 모드 토글에 따라 이쪽과 협곡 값을 오간다.
+  // 칼바람 트랙. 추첨 화면 등이 모드에 따라 이쪽과 협곡 값을 오간다.
   aramMmr: number;
   aramWins: number;
   aramLosses: number;
