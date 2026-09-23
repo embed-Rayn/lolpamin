@@ -8,7 +8,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
 - `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
@@ -73,6 +73,15 @@ per mode beside each 판 column, and its 평균 MMR cards average the **stored**
 rating over members with counted games in that mode (`getMemberInfoSummary`),
 so an untouched 1000 neither drags the mean nor shows up as 0 in it.
 
+`/member-info` is read-only for everyone, admins included. Every member edit lives on
+`/member-admin` (operator, desktop-only; `/members` stays the `/rift` redirect because
+browsers cache a 308): 이름, 나이, 최고/산정티어, 주/부라인, 라이엇 계정, 최근 활동 날짜,
+비고, plus the two once-a-day Riot batches (PUUID → Riot ID, champion masteries) as
+`DailyRefreshButton`, which `/link-accounts` also uses for the Riot ID one. 나이 is
+`Member.age` (the two-digit birth year imports read from the nickname) when set, else the
+nickname's (`fullBirthYear`) — both pages use that rule. 모스트 is `topMasteries` over every
+`ChampionMastery` row of the member's accounts, summed at read time.
+
 Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
 behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**
 reset (`applySoftReset`) pulls every active member's rating halfway back to 1000, so
@@ -104,8 +113,7 @@ Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
 Candidates show combined champion mastery: `ChampionMastery` caches Riot
 Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
 `refreshChampionMasteries` at most once per 24h (`SiteSetting.masteryRefreshedAt`, same
-rules as the Riot ID refresh). It has no UI trigger yet — the button is planned for another
-screen, not `/matches`. Points add up across a member's accounts and the highest level stands for the
+rules as the Riot ID refresh). Its button lives on `/member-admin`, not `/matches`. Points add up across a member's accounts and the highest level stands for the
 champion (`topMasteries`). The API names champions by numeric key, mapped through
 `ddragon-map.json`'s `championKeys`.
 
@@ -120,7 +128,8 @@ A consequence: `cancelGameResult` refuses a game entered at or before the newest
 member's old score. Right after a reset nothing is cancellable, which is correct.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
-`UNRANKED`) that an admin sets by hand. Its score comes from a reference table in
+`UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a
+second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
 moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
@@ -268,9 +277,9 @@ server → client boundary.
 ## Mobile
 
 Five read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`) work down to a 375px phone; the eight operator
+`/match-history`, `/inactive`) work down to a 375px phone; the nine operator
 screens (`matches`, `replay-import`, `team-builder`, `kakao-import`,
-`link-accounts`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
+`link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
 content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
 mode still reaches it.
