@@ -293,8 +293,24 @@ model RiotAccount {
   // GameParticipant.absorbedFromId와 같은 규칙. 흡수로 넘어오기 전의 원래 주인이다.
   absorbedFromId String?
 
+  masteries ChampionMastery[]
+
   @@index([memberId])
   @@index([absorbedFromId])
+}
+
+// 계정 하나의 챔피언 숙련도. 회원별 합산은 읽을 때 한다(topMasteries) — 흡수·해제·계정
+// 재배정은 RiotAccount.memberId만 옮기므로 합산을 저장하지 않으면 그 경로들이 손댈 게 없다.
+// 계정의 부속물이라 계정을 지우면 같이 지운다(Restrict가 필요한 "확정 상태"가 아니다).
+model ChampionMastery {
+  riotAccountId String
+  riotAccount   RiotAccount @relation(fields: [riotAccountId], references: [id], onDelete: Cascade)
+  // Data Dragon champion.json의 숫자 "key".
+  championId Int
+  level      Int
+  points     Int
+
+  @@id([riotAccountId, championId])
 }
 
 // 사이트 전체에 적용되는 스킨 등 운영 설정. 한 행(id = "default")만 쓴다 — MmrSetting과
@@ -311,6 +327,8 @@ model SiteSetting {
   // PUUID로 Riot ID를 되읽은 마지막 시각. 그 배치를 하루 한 번으로 묶는 근거다 —
   // 브라우저가 아니라 여기 있어야 관리자가 여럿이어도 같은 한도를 본다.
   riotIdRefreshedAt DateTime?
+  // 챔피언 숙련도를 마지막으로 받아 온 시각. riotIdRefreshedAt과 같은 이유로 DB에 둔다.
+  masteryRefreshedAt DateTime?
   updatedAt   DateTime @updatedAt
   updatedById String?
 }
