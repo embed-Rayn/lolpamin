@@ -93,6 +93,8 @@ model ReplayPlayerStat {
 
 `GameParticipant`에 `replayPuuid String?`를 추가한다. 리플레이로 저장할 때만 채우고, 손 입력 경기는 null이다.
 
+`GameResult`에 `gameLengthMs Int?`를 추가한다. 분당 CS를 기록 화면에서도 계산하려면 경기 길이가 필요하다. 리플레이 판에만 값이 있다.
+
 **회원·MMR 연결 규칙:** 보드는 `ReplayPlayerStat.puuid` → 같은 경기의 `GameParticipant.replayPuuid`로 회원과
 `mmrBefore/mmrAfter`를 찾는다. 읽는 시점의 `RiotAccount`를 조인하지 않는다 — 나중에 계정 주인을 바꾸거나 계정을
 지워도 과거 경기의 표시가 변하지 않아야 한다. 흡수·해제는 `GameParticipant.memberId`만 옮기므로 표시가 그대로
@@ -151,7 +153,7 @@ props로 `winner`, `gameLengthMs`, `mode`, 선수 10명(스탯 + 선택적 `memb
   - CS / 분당 CS
   - 아이템 7칸. 0 또는 에셋이 없는 id는 빈 칸
 - 가운데 띠: 팀별 바론·드래곤·전령·유충·아타칸·포탑·억제기 아이콘과 수, 총 킬·총 골드 대비 막대.
-  칼바람은 포탑·억제기만 보인다. 오브젝트 아이콘은 인라인 SVG로 그린다(ddragon에 없음).
+  칼바람은 포탑·억제기만 보인다. 오브젝트는 한글 라벨(바론·용·전령·유충·아타칸·포탑·억제기)과 수로 표시한다 — ddragon에 아이콘이 없고, 글자가 더 알아보기 쉽다.
 - 이미지는 `next/image`가 아닌 `<img loading="lazy">`로 `/ddragon/...`을 직접 가리킨다(정적 파일, 최적화 불필요).
 
 ### `/match-history`

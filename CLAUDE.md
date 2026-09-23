@@ -183,6 +183,21 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 취소 여부를 보지 않지만, `cancelGameResult`가 취소할 때 그 행의 `replayKey`를 함께
 지운다 — 그러지 않으면 매칭을 잘못 지정해 취소한 경기를 고쳐서 다시 올릴 방법이 없어진다.
 
+리플레이로 저장한 판은 **10명 전원**(외부인 포함)의 스탯을 `ReplayPlayerStat`에 남긴다 —
+챔피언·주문·룬·KDA·피해량·와드·CS·골드·아이템·오브젝트 킬. 회원 FK가 없고, 회원과 그 판의
+MMR 변화는 같은 경기의 `GameParticipant.replayPuuid`(그 회원이 뛴 계정)로 찾는다. 읽는 시점의
+`RiotAccount`를 보지 않으므로 계정 주인을 나중에 바꿔도 과거 경기 표시는 그대로이고, 흡수는
+`GameParticipant.memberId`를 옮기므로 생존자 이름이 따라온다. 저장 액션은 파일을 다시 받지 않고
+미리보기가 받은 선수 배열을 돌려받는다 — 그래서 `saveReplayImport`가 그 배열로 `replayKey`를
+다시 계산해 요청의 키와 다르면 `"리플레이 정보가 일치하지 않습니다."`로 거부한다. 이 기능 이전에
+올린 판과 손 입력 판은 스탯이 없어 `/match-history`에 확장 버튼이 붙지 않는다(보강하지 않는다).
+`GameResult.gameLengthMs`도 리플레이 판에만 있다.
+
+아이콘은 `apps/dashboard/public/ddragon/`에 커밋된 Data Dragon 일부다. 원본 덤프(`16.18.1/` 같은
+버전 폴더, 101MB)는 gitignore이고, `npx tsx scripts/sync-ddragon.ts <덤프>`(apps/dashboard에서)가
+보드에 쓰는 이미지만 복사하고 `lib/ddragon/ddragon-map.json`을 만든다. 새 패치의 아이템·챔피언은
+덤프를 교체해 스크립트를 다시 돌리기 전까지 빈 칸으로 나온다 — 모르는 id는 예외 없이 빈 칸이다.
+
 `saveGameResult`의 "디코 AND 카톡" 규칙에 "PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음"이
 더해져 있다(`getLinkedMembers`도 같다). `saveReplayImport`가 계정을 먼저 등록하고 경기를
 저장하므로, 리플레이에 배정된 회원은 그 순간 이 조건을 충족한다 — 리플레이가 그 사람이 그
