@@ -28,6 +28,21 @@ describe("lookupRiotAccount", () => {
     expect((init.headers as Record<string, string>)["X-Riot-Token"]).toBe("RGAPI-test");
   });
 
+  it("takes a rate-limit slot before every request", async () => {
+    const order: string[] = [];
+    const acquire = vi.fn(async () => {
+      order.push("acquire");
+    });
+    const fetch = vi.fn(async () => {
+      order.push("fetch");
+      return new Response(JSON.stringify({ puuid: "p", gameName: "a", tagLine: "b" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await lookupRiotAccount("a", "b", { fetch, apiKey: "k", acquire });
+
+    expect(order).toEqual(["acquire", "fetch"]);
+  });
+
   it("maps 404 to not_found", async () => {
     expect(await lookupRiotAccount("x", "y", { fetch: fakeFetch(404), apiKey: "k" })).toEqual({
       ok: false,

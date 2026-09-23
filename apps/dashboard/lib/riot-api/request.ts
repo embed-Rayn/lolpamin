@@ -1,3 +1,5 @@
+import { acquireRiotRequest } from "./rate-limit";
+
 // invalid_id: 400. On the by-puuid endpoints it means "Exception decrypting" — the PUUID is
 // either the raw one a replay file carries or one another Riot application encrypted. The API
 // only takes PUUIDs encrypted for the calling key's application.
@@ -6,6 +8,8 @@ export type LookupFailure = "not_found" | "unauthorized" | "rate_limited" | "una
 export interface LookupDeps {
   fetch?: typeof fetch;
   apiKey?: string;
+  // 요청 한 건의 자리를 받는다. 기본은 프로세스 전체가 나눠 쓰는 제한기(1초 20회, 2분 100회).
+  acquire?: () => Promise<void>;
 }
 
 export type RiotGetResult = { ok: true; body: unknown } | { ok: false; reason: LookupFailure };
@@ -22,6 +26,7 @@ export async function riotGet(url: string, deps: LookupDeps): Promise<RiotGetRes
   if (apiKey.length === 0) return { ok: false, reason: "unauthorized" };
 
   const doFetch = deps.fetch ?? fetch;
+  await (deps.acquire ?? acquireRiotRequest)();
 
   let response: Response;
   try {
