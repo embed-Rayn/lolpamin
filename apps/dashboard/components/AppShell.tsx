@@ -23,13 +23,14 @@ export interface AppShellProps {
     | "inactive"
     | "kakao-import"
     | "link-accounts"
+    | "member-admin"
     | "admins"
     | "draw-cannon"
     | "draw-plinko";
   pageTitle: string;
   pageDesc: string;
   // 이 화면은 폭이 넓어야 쓸 수 있다(경기 입력, 리플레이, 팀짜기, 카톡 불러오기, 계정
-  // 연결, 관리자, 뽑기 두 개). 폰에서는 children 대신 안내 카드를 보여주고, children은
+  // 연결, 회원 관리, 관리자, 뽑기 두 개). 폰에서는 children 대신 안내 카드를 보여주고, children은
   // DOM에 남겨(hidden md:block) "데스크톱 사이트 보기"로는 계속 볼 수 있게 한다.
   desktopOnly?: boolean;
   children: React.ReactNode;
@@ -102,6 +103,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       label: "운영 관리",
       icon: "gear",
       items: [
+        { key: "member-admin", href: "/member-admin", label: "회원 관리", icon: "file-text" },
         { key: "kakao-import", href: "/kakao-import", label: "카톡 불러오기", icon: "message" },
         { key: "link-accounts", href: "/link-accounts", label: "계정 연결", icon: "link" },
         { key: "admins", href: "/admins", label: "관리자 · 설정", icon: "shield" },
