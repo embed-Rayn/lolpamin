@@ -121,17 +121,17 @@ describe("refreshChampionMasteries", () => {
     expect(await masteriesOf("p-1")).toEqual([[1, 1, 1]]);
   });
 
-  it("allows one run per 24 hours", async () => {
+  it("allows one run per hour", async () => {
     const m = await prisma.member.create({ data: { realName: "가" } });
     await account(m.id, "p-1");
     const now = new Date("2026-09-23T12:00:00Z");
     await refreshChampionMasteries(prisma, noByRiotId, lookupFrom({ "p-1": ok() }), { ...noSleep, now });
 
     await expect(
-      refreshChampionMasteries(prisma, noByRiotId, lookupFrom({}), { ...noSleep, now: new Date("2026-09-24T11:59:00Z") }),
+      refreshChampionMasteries(prisma, noByRiotId, lookupFrom({}), { ...noSleep, now: new Date("2026-09-23T12:59:00Z") }),
     ).rejects.toThrow(REFRESH_MASTERIES_ERRORS.tooSoon);
 
-    const later = await getMasteryRefreshAvailability(prisma, new Date("2026-09-24T12:00:00Z"));
+    const later = await getMasteryRefreshAvailability(prisma, new Date("2026-09-23T13:00:00Z"));
     expect(later).toEqual({ allowed: true, lastRefreshedAt: now, accountCount: 1 });
   });
 
@@ -149,7 +149,7 @@ describe("refreshChampionMasteries", () => {
     expect((await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "replay-uuid" } })).apiPuuid).toBe("enc-1");
 
     byRiotId.mockClear();
-    await refreshChampionMasteries(prisma, byRiotId, lookup, { ...noSleep, now: new Date("2026-09-24T12:00:00Z") });
+    await refreshChampionMasteries(prisma, byRiotId, lookup, { ...noSleep, now: new Date("2026-09-23T13:00:00Z") });
     expect(byRiotId).not.toHaveBeenCalled();
   });
 

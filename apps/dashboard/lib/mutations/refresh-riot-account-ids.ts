@@ -17,15 +17,15 @@ export interface RiotIdRefreshResult {
 }
 
 export const REFRESH_RIOT_IDS_ERRORS = {
-  tooSoon: "오늘은 이미 갱신했습니다. 24시간 뒤에 다시 시도해 주세요.",
+  tooSoon: "최근 1시간 안에 이미 갱신했습니다. 잠시 후 다시 시도해 주세요.",
 } as const;
 
 const RATE_LIMIT_BACKOFF_MS = 2000;
 
-// 하루 한 번. 달력 날짜가 아니라 24시간으로 재는 이유: 서버는 UTC로 도는데 사람은 KST로
-// 생각해서, 달력으로 끊으면 저녁 9시 이후의 "오늘"이 서버의 내일이 된다. 24시간은 시간대를
-// 몰라도 늘 같은 뜻이다.
-export const REFRESH_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// 한 시간에 한 번. 호출 속도는 riotGet 앞의 제한기(1초 20회, 2분 100회)가 지키고, 이 제한은
+// 한 실행이 2분 창을 거의 다 쓰는 배치를 연달아 누르지 못하게만 한다. 이름·숙련도는 한 시간보다
+// 자주 바뀔 일이 없다.
+export const REFRESH_COOLDOWN_MS = 60 * 60 * 1000;
 
 export interface RiotIdRefreshAvailability {
   allowed: boolean;

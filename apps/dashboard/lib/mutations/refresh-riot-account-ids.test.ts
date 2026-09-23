@@ -108,7 +108,7 @@ describe("refreshRiotAccountIds", () => {
     expect(result.updated).toBe(0);
   });
 
-  it("refuses a second run inside 24 hours", async () => {
+  it("refuses a second run inside an hour", async () => {
     const m = await member("가", "d-1");
     await account(m.id, "p-1", "옛이름", "KR1");
     const lookup = lookupFrom({ "p-1": found("p-1", "새이름", "KR1") });
@@ -117,21 +117,21 @@ describe("refreshRiotAccountIds", () => {
     await refreshRiotAccountIds(prisma, noByRiotId, lookup, { ...noSleep, now: start });
     lookup.mockClear();
 
-    const tooSoon = new Date(start.getTime() + 23 * 60 * 60 * 1000);
+    const tooSoon = new Date(start.getTime() + 59 * 60 * 1000);
     await expect(refreshRiotAccountIds(prisma, noByRiotId, lookup, { ...noSleep, now: tooSoon })).rejects.toThrow(
       REFRESH_RIOT_IDS_ERRORS.tooSoon,
     );
     expect(lookup).not.toHaveBeenCalled();
   });
 
-  it("allows the next run once 24 hours have passed", async () => {
+  it("allows the next run once an hour has passed", async () => {
     const m = await member("가", "d-1");
     await account(m.id, "p-1", "이름", "KR1");
     const lookup = lookupFrom({ "p-1": found("p-1", "이름", "KR1") });
     const start = new Date("2026-09-23T01:00:00.000Z");
 
     await refreshRiotAccountIds(prisma, noByRiotId, lookup, { ...noSleep, now: start });
-    const later = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const later = new Date(start.getTime() + 60 * 60 * 1000);
     const result = await refreshRiotAccountIds(prisma, noByRiotId, lookup, { ...noSleep, now: later });
 
     expect(result.unchanged).toBe(1);

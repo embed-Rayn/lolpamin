@@ -20,7 +20,7 @@ export interface MasteryRefreshResult {
 }
 
 export const REFRESH_MASTERIES_ERRORS = {
-  tooSoon: "오늘은 이미 숙련도를 갱신했습니다. 24시간 뒤에 다시 시도해 주세요.",
+  tooSoon: "최근 1시간 안에 이미 숙련도를 갱신했습니다. 잠시 후 다시 시도해 주세요.",
 } as const;
 
 const RATE_LIMIT_BACKOFF_MS = 2000;
