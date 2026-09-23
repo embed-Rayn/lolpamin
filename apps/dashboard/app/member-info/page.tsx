@@ -8,7 +8,6 @@ import {
   parseMemberInfoSort,
   parseSortDirection,
 } from "@/lib/queries/member-info";
-import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
 // AppShell과 명부 조회 모두 살아 있는 DB 행을 읽는다. 없으면 next build가 스냅샷을 굽는다.
 export const dynamic = "force-dynamic";
@@ -21,14 +20,10 @@ export default async function MemberInfoPage({
   const query = searchParams.q ?? "";
   const sort = parseMemberInfoSort(searchParams.sort);
   const dir = parseSortDirection(searchParams.dir);
-  const [rows, summary, currentAdmin] = await Promise.all([
-    getMemberInfoListData(query, sort, dir),
-    getMemberInfoSummary(),
-    getCurrentAdmin(),
-  ]);
+  const [rows, summary] = await Promise.all([getMemberInfoListData(query, sort, dir), getMemberInfoSummary()]);
 
   return (
-    <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어">
+    <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어 · 모스트 챔피언">
       <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:gap-6 md:px-7 md:pb-10 md:pt-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
           <StatCard
@@ -60,7 +55,7 @@ export default async function MemberInfoPage({
         </div>
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberInfoSearch query={query} sort={sort} dir={dir} />
-          <MemberInfoTable rows={rows} isAdmin={currentAdmin !== null} sort={sort} dir={dir} query={query} />
+          <MemberInfoTable rows={rows} sort={sort} dir={dir} query={query} />
         </section>
       </div>
     </AppShell>

@@ -1,5 +1,6 @@
 import { birthYearLabel, type MemberInfoRow, type ModeRecord } from "@/lib/queries/member-info";
 import { laneLabel, tierLabel, tierScore } from "@lolpamin/core";
+import { MasteryChampions } from "@/components/MasteryChampions";
 
 function mmrClassName(mmr: number): string {
   if (mmr === 0) return "text-ghost";
@@ -29,7 +30,7 @@ function ModeLine({ label, labelClassName, record }: { label: string; labelClass
   );
 }
 
-export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: boolean }) {
+export function MemberInfoCard({ row }: { row: MemberInfoRow }) {
   return (
     <div className="border-b border-ink/[.04] px-4 py-3">
       <div className="flex items-baseline gap-2">
@@ -37,8 +38,10 @@ export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: 
         {row.birthYear !== null && (
           <span className="flex-none text-[12.5px] text-muted">{birthYearLabel(row.birthYear)}</span>
         )}
-        <span className={`ml-auto flex-none text-[12.5px] ${tierScore(row.tier) === 0 ? "text-ghost" : "text-fg-2"}`}>
-          {tierLabel(row.tier)}
+        <span className="ml-auto flex-none text-[12.5px] text-fg-2">
+          <span className={tierScore(row.peakTier) === 0 ? "text-ghost" : ""}>최고 {tierLabel(row.peakTier)}</span>
+          {" · "}
+          <span className={tierScore(row.tier) === 0 ? "text-ghost" : ""}>산정 {tierLabel(row.tier)}</span>
         </span>
       </div>
       {(row.mainLane !== null || row.subLane !== null) && (
@@ -50,7 +53,6 @@ export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: 
         <ModeLine label="협곡" labelClassName="text-accent-soft" record={row.rift} />
         <ModeLine label="칼바람" labelClassName="text-orange" record={row.aram} />
       </div>
-      {/* 폰에서는 보기만 한다 — 편집은 다른 셀들과 같이 데스크톱 표에서만. */}
       {row.riotAccounts.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {row.riotAccounts.map((a) => (
@@ -63,8 +65,11 @@ export function MemberInfoCard({ row, isAdmin }: { row: MemberInfoRow; isAdmin: 
           ))}
         </div>
       )}
-      {/* 비고는 운영진 메모라 운영진에게만 보인다. */}
-      {isAdmin && row.note && <div className="mt-1 truncate text-[12px] text-faint">비고: {row.note}</div>}
+      {row.masteries.length > 0 && (
+        <div className="mt-1 flex">
+          <MasteryChampions masteries={row.masteries} />
+        </div>
+      )}
     </div>
   );
 }
