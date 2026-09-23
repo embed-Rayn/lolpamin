@@ -1,4 +1,7 @@
-export type LookupFailure = "not_found" | "unauthorized" | "rate_limited" | "unavailable";
+// invalid_id: 400. On the by-puuid endpoints it means "Exception decrypting" — the PUUID is
+// either the raw one a replay file carries or one another Riot application encrypted. The API
+// only takes PUUIDs encrypted for the calling key's application.
+export type LookupFailure = "not_found" | "unauthorized" | "rate_limited" | "unavailable" | "invalid_id";
 
 export interface LookupDeps {
   fetch?: typeof fetch;
@@ -27,6 +30,7 @@ export async function riotGet(url: string, deps: LookupDeps): Promise<RiotGetRes
     return { ok: false, reason: "unavailable" };
   }
 
+  if (response.status === 400) return { ok: false, reason: "invalid_id" };
   if (response.status === 404) return { ok: false, reason: "not_found" };
   if (response.status === 401 || response.status === 403) return { ok: false, reason: "unauthorized" };
   if (response.status === 429) return { ok: false, reason: "rate_limited" };

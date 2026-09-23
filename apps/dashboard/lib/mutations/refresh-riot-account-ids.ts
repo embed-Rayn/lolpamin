@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@lolpamin/db";
-import type { LookupResult, LookupRiotAccountByPuuid } from "@/lib/riot-api/account";
+import type { LookupRiotAccount, LookupRiotAccountByPuuid } from "@/lib/riot-api/account";
+import { withApiPuuid } from "./api-puuid";
 import { SITE_SETTING_ID } from "../queries/site-theme";
 
 export interface RiotIdRefreshResult {
@@ -7,8 +8,10 @@ export interface RiotIdRefreshResult {
   updated: number;
   // 라이엇이 준 표기가 저장된 것과 같았다.
   unchanged: number;
-  // 404 — 계정이 사라졌거나 PUUID가 더는 유효하지 않다. 행은 그대로 둔다.
+  // 404 — 계정이 사라졌거나, API PUUID가 없는데 저장된 이름#태그로도 못 찾았다. 행은 그대로 둔다.
   notFound: number;
+  // 다시 받아도 복호화되지 않는 PUUID, 라이엇 쪽 일시 오류.
+  failed: number;
   // 키 만료·부재로 중단됐다. 위 숫자는 중단 전까지의 집계다.
   unauthorized: boolean;
 }
@@ -49,18 +52,20 @@ export async function getRiotIdRefreshAvailability(
 }
 
 /**
- * 저장해 둔 PUUID로 현재 Riot ID를 되읽어 표기를 고친다. 인게임에서 이름을 바꿔도 PUUID는
- * 그대로라, 회원 화면의 "이름#태그"가 옛 이름으로 남는 걸 이 배치가 푼다.
+ * 저장해 둔 API PUUID로 현재 Riot ID를 되읽어 표기를 고친다. 인게임에서 이름을 바꿔도
+ * PUUID는 그대로라, 회원 화면의 "이름#태그"가 옛 이름으로 남는 걸 이 배치가 푼다. API PUUID가
+ * 없거나 복호화되지 않으면 withApiPuuid가 저장된 이름#태그로 다시 받는다.
  *
  * 회원에게 붙은 계정만 본다 — `memberId = null`은 "우리 회원이 아님을 확인함"이라 화면에
  * 이름이 나갈 일이 없고, 그 표기를 최신으로 유지하려고 호출 한도를 쓸 이유가 없다.
  *
- * 하루 한 번으로 묶는다. 40개 계정이면 한 번에 40콜이고, 이름은 그렇게 자주 바뀌지 않는다.
- * 성공 시각은 실제로 호출을 쓴 실행만 기록한다 — 대상이 없어 한 번도 부르지 않았거나 키가
- * 죽어 바로 멈춘 실행까지 하루를 잡아먹으면, 키를 고친 뒤 오늘 안에 다시 못 돌린다.
+ * REFRESH_COOLDOWN_MS에 한 번으로 묶는다. 시각은 한 계정이라도 읽어 낸 실행만 기록한다 —
+ * 대상이 없거나 키가 죽었거나 전부 실패한 실행까지 제한 시간을 잡아먹으면, 원인을 고친 뒤
+ * 바로 다시 못 돌린다.
  */
 export async function refreshRiotAccountIds(
   prisma: PrismaClient,
+  lookupByRiotId: LookupRiotAccount,
   lookupByPuuid: LookupRiotAccountByPuuid,
   deps: { now?: Date; sleep?: (ms: number) => Promise<void> } = {},
 ): Promise<RiotIdRefreshResult> {
@@ -70,21 +75,18 @@ export async function refreshRiotAccountIds(
   const { allowed } = await getRiotIdRefreshAvailability(prisma, now);
   if (!allowed) throw new Error(REFRESH_RIOT_IDS_ERRORS.tooSoon);
 
-  const result: RiotIdRefreshResult = { updated: 0, unchanged: 0, notFound: 0, unauthorized: false };
+  const result: RiotIdRefreshResult = { updated: 0, unchanged: 0, notFound: 0, failed: 0, unauthorized: false };
   const accounts = await prisma.riotAccount.findMany({
     where: { memberId: { not: null } },
-    select: { puuid: true, gameName: true, tagLine: true },
+    select: { id: true, apiPuuid: true, gameName: true, tagLine: true },
     orderBy: { firstSeenAt: "asc" },
   });
 
-  let spentCalls = false;
-
   for (const account of accounts) {
-    spentCalls = true;
-    let outcome: LookupResult = await lookupByPuuid(account.puuid);
+    let outcome = await withApiPuuid(prisma, account, lookupByRiotId, lookupByPuuid);
     if (!outcome.ok && outcome.reason === "rate_limited") {
       await sleep(RATE_LIMIT_BACKOFF_MS);
-      outcome = await lookupByPuuid(account.puuid);
+      outcome = await withApiPuuid(prisma, account, lookupByRiotId, lookupByPuuid);
     }
 
     if (!outcome.ok) {
@@ -94,7 +96,8 @@ export async function refreshRiotAccountIds(
       }
       if (outcome.reason === "rate_limited") break;
       if (outcome.reason === "not_found") result.notFound += 1;
-      // unavailable: 이 한 건은 건너뛰고 계속 간다 — 일시적 오류일 가능성이 크다.
+      // unavailable·invalid_id: 이 한 건은 건너뛰고 계속 간다.
+      else result.failed += 1;
       continue;
     }
 
@@ -105,13 +108,14 @@ export async function refreshRiotAccountIds(
     }
 
     await prisma.riotAccount.update({
-      where: { puuid: account.puuid },
+      where: { id: account.id },
       data: { gameName, tagLine },
     });
     result.updated += 1;
   }
 
-  if (spentCalls) {
+  // 한 계정도 읽지 못한 실행은 제한 시간을 쓰지 않는다 — 원인을 없앤 뒤 바로 다시 돌릴 수 있게.
+  if (result.updated + result.unchanged > 0) {
     await prisma.siteSetting.upsert({
       where: { id: SITE_SETTING_ID },
       create: { id: SITE_SETTING_ID, riotIdRefreshedAt: now },

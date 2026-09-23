@@ -39,6 +39,7 @@ describe("lookupChampionMasteries", () => {
 
   it("maps failures the same way the account lookup does", async () => {
     const at = (status: number) => lookupChampionMasteries("p", { fetch: fakeFetch(status), apiKey: "k" });
+    expect(await at(400)).toEqual({ ok: false, reason: "invalid_id" });
     expect(await at(404)).toEqual({ ok: false, reason: "not_found" });
     expect(await at(403)).toEqual({ ok: false, reason: "unauthorized" });
     expect(await at(429)).toEqual({ ok: false, reason: "rate_limited" });

@@ -53,6 +53,13 @@ describe("lookupRiotAccount", () => {
     });
   });
 
+  it("maps 400 to invalid_id — a PUUID this API key cannot decrypt", async () => {
+    expect(await lookupRiotAccountByPuuid("72e2ebfc-e98c-5dca-831c-4e56b641dd7a", { fetch: fakeFetch(400), apiKey: "k" })).toEqual({
+      ok: false,
+      reason: "invalid_id",
+    });
+  });
+
   it("maps other statuses and thrown errors to unavailable", async () => {
     expect(await lookupRiotAccount("x", "y", { fetch: fakeFetch(503), apiKey: "k" })).toEqual({
       ok: false,
