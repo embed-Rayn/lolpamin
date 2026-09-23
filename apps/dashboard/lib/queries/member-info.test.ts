@@ -77,6 +77,7 @@ describe("parseMemberInfoSort / parseSortDirection", () => {
     expect(parseMemberInfoSort("riftWinRate")).toBe("riftWinRate");
     expect(parseMemberInfoSort("aramGames")).toBe("aramGames");
     expect(parseMemberInfoSort("tier")).toBe("tier");
+    expect(parseMemberInfoSort("peakTier")).toBe("peakTier");
     expect(parseMemberInfoSort("age")).toBe("age");
     expect(parseSortDirection("desc")).toBe("desc");
   });
@@ -264,16 +265,16 @@ describe("getMemberInfoListData sorting", () => {
     expect(descending.map((r) => r.realName)).toEqual(["나회원", "가회원", "-"]);
   });
 
-  it("sorts by the birth year read from the kakao nickname, unknown last", async () => {
-    // Member.age는 보지 않는다 — 닉네임과 어긋난 저장값이 있어도 닉네임을 따른다.
-    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { kakaoNickname: "가회원/98/가#KR1", age: 90 } });
+  it("sorts by birth year — stored age first, else the kakao nickname — unknown last", async () => {
+    // 관리자가 /member-admin에서 고친 Member.age가 닉네임보다 앞선다.
+    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { kakaoNickname: "가회원/98/가#KR1", age: 99 } });
     await prisma.member.updateMany({ where: { realName: "나회원" }, data: { kakaoNickname: "나회원/1994/나#KR1" } });
 
     const ascending = await getMemberInfoListData("", "age", "asc");
-    expect(ascending.map((r) => r.birthYear)).toEqual([1994, 1998, null]);
+    expect(ascending.map((r) => r.birthYear)).toEqual([1994, 1999, null]);
 
     const descending = await getMemberInfoListData("", "age", "desc");
-    expect(descending.map((r) => r.birthYear)).toEqual([1998, 1994, null]);
+    expect(descending.map((r) => r.birthYear)).toEqual([1999, 1994, null]);
   });
 
   it("sorts by tier score, not enum declaration order", async () => {
@@ -330,5 +331,68 @@ describe("getMemberInfoSummary", () => {
     await prisma.member.create({ data: { realName: "가" } });
 
     expect(await getMemberInfoSummary()).toEqual({ totalCount: 1, averageRiftMmr: 0, averageAramMmr: 0 });
+  });
+});
+
+describe("getMemberInfoListData — admin fields", () => {
+  it("carries the peak tier beside the rated tier", async () => {
+    await prisma.member.create({ data: { realName: "가", tier: "GOLD_1", peakTier: "DIAMOND_2" } });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.tier).toBe("GOLD_1");
+    expect(row.peakTier).toBe("DIAMOND_2");
+  });
+
+  it("sums masteries across every riot account and keeps the top three", async () => {
+    const m = await prisma.member.create({ data: { realName: "가" } });
+    const main = await prisma.riotAccount.create({
+      data: { puuid: "p-1", memberId: m.id, gameName: "본캐", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    const smurf = await prisma.riotAccount.create({
+      data: { puuid: "p-2", memberId: m.id, gameName: "부캐", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    await prisma.championMastery.createMany({
+      data: [
+        { riotAccountId: main.id, championId: 1, level: 7, points: 100 },
+        { riotAccountId: main.id, championId: 2, level: 7, points: 90 },
+        { riotAccountId: main.id, championId: 3, level: 5, points: 80 },
+        { riotAccountId: smurf.id, championId: 4, level: 5, points: 70 },
+        { riotAccountId: smurf.id, championId: 3, level: 5, points: 60 },
+      ],
+    });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.masteries.map((e) => [e.championId, e.points])).toEqual([
+      [3, 140],
+      [1, 100],
+      [2, 90],
+    ]);
+  });
+
+  it("gives an empty mastery list to a member without accounts", async () => {
+    await prisma.member.create({ data: { realName: "가" } });
+    const [row] = await getMemberInfoListData("");
+    expect(row.masteries).toEqual([]);
+  });
+
+  it("prefers the stored age over the nickname's birth year", async () => {
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/94/닉#KR1", age: 96 } });
+    await prisma.member.create({ data: { realName: "나", kakaoNickname: "나/01/닉#KR1" } });
+
+    const rows = await getMemberInfoListData("", "realName", "asc");
+
+    expect(rows.map((r) => r.birthYear)).toEqual([1996, 2001]);
+  });
+
+  it("sorts by peak tier score", async () => {
+    await prisma.member.create({ data: { realName: "가", peakTier: "SILVER_1" } });
+    await prisma.member.create({ data: { realName: "나", peakTier: "MASTER_0_200" } });
+    await prisma.member.create({ data: { realName: "다", peakTier: "GOLD_4" } });
+
+    const rows = await getMemberInfoListData("", "peakTier", "desc");
+
+    expect(rows.map((r) => r.realName)).toEqual(["나", "다", "가"]);
   });
 });

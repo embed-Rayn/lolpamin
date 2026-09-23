@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { Lane, Member, MemberTier } from "@lolpamin/db";
-import { displayedRating, kakaoBirthYear, tierScore } from "@lolpamin/core";
+import {
+  displayedRating,
+  fullBirthYear,
+  kakaoBirthYear,
+  tierScore,
+  topMasteries,
+  type MasteryEntry,
+} from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 
 export interface MemberInfoRiotAccount {
@@ -12,13 +19,14 @@ export interface MemberInfoRiotAccount {
 type MemberWithAbsorbed = Member & {
   absorbed: Array<{ id: string; kakaoNickname: string | null }>;
   // getMemberInfoSummary는 싣지 않는다 — 집계에 필요 없다.
-  riotAccounts?: MemberInfoRiotAccount[];
+  riotAccounts?: Array<MemberInfoRiotAccount & { masteries?: MasteryEntry[] }>;
 };
 
 export type MemberInfoSort =
   | "realName"
   | "age"
   | "tier"
+  | "peakTier"
   | "riftMmr"
   | "riftGames"
   | "riftWinRate"
@@ -31,6 +39,7 @@ const MEMBER_INFO_SORTS: MemberInfoSort[] = [
   "realName",
   "age",
   "tier",
+  "peakTier",
   "riftMmr",
   "riftGames",
   "riftWinRate",
@@ -62,20 +71,24 @@ export interface MemberInfoRow {
   id: string;
   realName: string;
   kakaoNickname: string;
-  // 카톡 닉네임 `이름/나이/RiotID`의 두 번째 조각을 네 자리 출생연도로 읽은 값
-  // (kakaoBirthYear). Member.age는 보지 않는다 — 닉네임이 바뀌어도 따라가지 않는 저장값이다.
-  // 화면은 두 자리로 줄여 보여준다.
+  // Member.age(관리자가 고칠 수 있는 출생연도 두 자리)가 있으면 그것, 없으면 카톡 닉네임
+  // `이름/출생연도/RiotID`의 두 번째 조각. 출생연도는 매칭 키의 일부라 닉네임을 바꿔도
+  // 변하지 않으므로 저장값이 낡을 일이 없다. 화면은 두 자리로 줄여 보여준다.
   birthYear: number | null;
+  // 산정티어 — 팀빌더 점수의 근거.
   tier: MemberTier;
+  // 최고티어 — 참고값.
+  peakTier: MemberTier;
   // null은 「모름」.
   mainLane: Lane | null;
   subLane: Lane | null;
   rift: ModeRecord;
   aram: ModeRecord;
-  note: string | null;
   // 검증된 PUUID로 등록된 라이엇 계정. 묘비의 계정은 absorbMember가 생존자로 옮기므로
   // 자기 것만 보면 된다. 최근 관측순.
   riotAccounts: MemberInfoRiotAccount[];
+  // 모든 라이엇 계정의 숙련도를 합산한 상위 3개. 계정이 없거나 아직 갱신 전이면 빈 배열.
+  masteries: MasteryEntry[];
 }
 
 /** 모임이 닉네임에 적는 대로 두 자리("94", "01")로 보여준다. */
@@ -212,6 +225,10 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
       const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
     }
+    case "peakTier": {
+      const byScore = (tierScore(a.peakTier) - tierScore(b.peakTier)) * sign;
+      return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
+    }
     case "riftMmr":
       return (a.rift.mmr - b.rift.mmr) * sign || a.id.localeCompare(b.id);
     case "aramMmr":
@@ -238,7 +255,15 @@ export async function getMemberInfoListData(
     where: { mergedIntoId: null },
     include: {
       absorbed: { select: { id: true, kakaoNickname: true }, orderBy: { createdAt: "desc" } },
-      riotAccounts: { select: { id: true, gameName: true, tagLine: true }, orderBy: { lastSeenAt: "desc" } },
+      riotAccounts: {
+        select: {
+          id: true,
+          gameName: true,
+          tagLine: true,
+          masteries: { select: { championId: true, level: true, points: true } },
+        },
+        orderBy: { lastSeenAt: "desc" },
+      },
     },
   });
 
@@ -256,6 +281,7 @@ export async function getMemberInfoListData(
     .map((m) => {
       const realName = m.realName ?? "-";
       const kakaoNickname = displayKakaoNickname(m);
+      const accounts = m.riotAccounts ?? [];
       const record = records.get(m.id) ?? {
         rift: toModeRecord(m.mmr, 0, 0),
         aram: toModeRecord(m.aramMmr, 0, 0),
@@ -267,14 +293,16 @@ export async function getMemberInfoListData(
           id: m.id,
           realName,
           kakaoNickname,
-          birthYear: kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname),
+          birthYear:
+            m.age !== null ? fullBirthYear(m.age) : kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname),
           tier: m.tier,
+          peakTier: m.peakTier,
           mainLane: m.mainLane,
           subLane: m.subLane,
           rift: record.rift,
           aram: record.aram,
-          note: m.note,
-          riotAccounts: m.riotAccounts ?? [],
+          riotAccounts: accounts.map(({ id, gameName, tagLine }) => ({ id, gameName, tagLine })),
+          masteries: topMasteries(accounts.flatMap((a) => a.masteries ?? [])),
         },
       };
     })
