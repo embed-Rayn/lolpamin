@@ -5,6 +5,9 @@ import type { GameMode } from "@lolpamin/db";
 import { prepareReplayImportAction, saveReplayImportAction } from "@/app/replay-import/actions";
 import { isMemberOfferable } from "@/lib/replay-import/offerable";
 import type { ImportSlot, PreparedReplayImport } from "@/lib/replay-import/prepare-import";
+import { GameDetailBoard } from "@/components/GameDetailBoard";
+import type { GameDetail } from "@/lib/game-detail/types";
+import { previewReplayMmr } from "@/lib/replay-import/preview-mmr";
 
 // 화면이 관리하는 상태. manual은 관리자가 직접 고른 것이라 확정(녹색)으로 친다.
 type Resolution = "confirmed" | "auto" | "outsider" | "manual" | "unresolved";
@@ -83,6 +86,31 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
   );
   const labelOf = (memberId: string) => prepared?.members.find((m) => m.id === memberId)?.label ?? memberId;
 
+  // 미리보기 보드. 배정·모드를 바꿀 때마다 예상 MMR을 다시 계산한다.
+  const previewDetail = useMemo<GameDetail | null>(() => {
+    if (!prepared) return null;
+    const ratingOf = (memberId: string) => {
+      const m = prepared.members.find((option) => option.id === memberId);
+      return m ? (mode === "ARAM" ? m.aramMmr : m.mmr) : 1000;
+    };
+    const preview = previewReplayMmr({
+      assignments: prepared.slots.map((s) => ({ team: s.team, memberId: state[s.puuid]?.memberId ?? null })),
+      ratingOf,
+      winner: prepared.winner,
+      config: prepared.mmrConfig,
+    });
+    return {
+      winner: prepared.winner,
+      mode,
+      gameLengthMs: prepared.gameLengthMs,
+      players: prepared.players.map((p) => {
+        const memberId = state[p.puuid]?.memberId ?? null;
+        const mmr = memberId ? preview.get(memberId) : undefined;
+        return { ...p, member: memberId && mmr ? { name: labelOf(memberId), ...mmr } : null };
+      }),
+    };
+  }, [prepared, state, mode]);
+
   async function accept(picked: File | null | undefined) {
     if (!picked) return;
     setSavedCount(null);
@@ -121,8 +149,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     try {
       const result = await saveReplayImportAction({
         replayKey: prepared.replayKey,
-        // Task 8 replaces this with the preview's own players.
-        replay: { gameLengthMs: prepared.gameLengthMs, players: [] },
+        replay: { gameLengthMs: prepared.gameLengthMs, players: prepared.players },
         playedAt,
         winner: prepared.winner,
         assignments: prepared.slots.map((s) => ({
@@ -369,6 +396,8 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
               className="rounded-md border border-ink/[.12] bg-inset px-2 py-1 text-[12.5px] text-fg"
             />
           </label>
+
+          {previewDetail && <GameDetailBoard detail={previewDetail} />}
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {(["BLUE", "RED"] as const).map((team) => (
