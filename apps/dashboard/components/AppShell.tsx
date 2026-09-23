@@ -77,7 +77,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
   ];
   if (currentAdmin) {
     matchItems.push(
-      { key: "matches", href: "/matches", label: "게임결과 입력", icon: "plus-square" },
+      { key: "matches", href: "/matches", label: "팀 드래프트", icon: "crown" },
       { key: "replay-import", href: "/replay-import", label: "리플레이 불러오기", icon: "film" },
       { key: "team-builder", href: "/team-builder", label: "수동 팀짜기", icon: "grid" },
     );

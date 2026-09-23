@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { calculateTeamMmrChange, type MmrConfig } from "@lolpamin/core";
 
 const DEFAULT_BLUE = 1200;
@@ -23,9 +23,25 @@ function deltaColor(delta: number): string {
   return "rgb(var(--c-muted))";
 }
 
-export function MmrSimulator({ config }: { config: MmrConfig }) {
-  const [blueRaw, setBlueRaw] = useState(String(DEFAULT_BLUE));
-  const [redRaw, setRedRaw] = useState(String(DEFAULT_RED));
+export function MmrSimulator({
+  config,
+  blueAverage = null,
+  redAverage = null,
+}: {
+  config: MmrConfig;
+  // 드래프트 엔트리의 팀 평균. 바뀔 때마다 입력칸을 덮는다 — 손으로 고친 값은 다음 변경까지만 산다.
+  blueAverage?: number | null;
+  redAverage?: number | null;
+}) {
+  const [blueRaw, setBlueRaw] = useState(String(blueAverage ?? DEFAULT_BLUE));
+  const [redRaw, setRedRaw] = useState(String(redAverage ?? DEFAULT_RED));
+
+  useEffect(() => {
+    if (blueAverage !== null) setBlueRaw(String(blueAverage));
+  }, [blueAverage]);
+  useEffect(() => {
+    if (redAverage !== null) setRedRaw(String(redAverage));
+  }, [redAverage]);
 
   const blueAvg = parseRating(blueRaw);
   const redAvg = parseRating(redRaw);
