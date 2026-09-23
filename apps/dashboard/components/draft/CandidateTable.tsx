@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Lane } from "@lolpamin/db";
 import { isCaptain, LANE_OPTIONS, laneLabel, seatOf, type DraftSide, type DraftState } from "@lolpamin/core";
 import { championIcon, championIdByKey, championName } from "@/lib/ddragon/assets";
@@ -27,6 +28,40 @@ function MasteryIcons({ candidate }: { candidate: Candidate }) {
         );
       })}
     </div>
+  );
+}
+
+// 게스트 MMR 입력칸은 자기 텍스트를 따로 들고 있다가 blur/Enter에만 onCommit을 부른다.
+// 매 타이핑마다 커밋하면 정렬이 바뀌어 행이 튀고 포커스를 잃는다.
+function GuestMmrInput({ mmr, onCommit }: { mmr: number; onCommit: (value: number) => void }) {
+  const [text, setText] = useState(String(mmr));
+
+  useEffect(() => {
+    setText(String(mmr));
+  }, [mmr]);
+
+  function commit() {
+    const value = Number(text);
+    // 비었거나 유효하지 않은 값은 이전 MMR로 되돌린다 — 지우는 순간 0이 되면 안 된다.
+    if (text.trim() === "" || !Number.isFinite(value)) {
+      setText(String(mmr));
+      return;
+    }
+    onCommit(value);
+  }
+
+  return (
+    <input
+      type="number"
+      step={10}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+      className="w-full rounded border border-ink/[.09] bg-inset px-1 py-0.5 text-right font-mono text-[12px] text-fg"
+    />
   );
 }
 
@@ -105,16 +140,7 @@ export function CandidateTable({
             <span className="text-right font-mono text-success-soft">{c.wins ?? "—"}</span>
             <span className="text-right font-mono text-danger-soft">{c.losses ?? "—"}</span>
             {c.isGuest ? (
-              <input
-                type="number"
-                step={10}
-                value={c.mmr}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (Number.isFinite(value)) onGuestChange(c.name, { mmr: value });
-                }}
-                className="w-full rounded border border-ink/[.09] bg-inset px-1 py-0.5 text-right font-mono text-[12px] text-fg"
-              />
+              <GuestMmrInput key={c.name} mmr={c.mmr} onCommit={(value) => onGuestChange(c.name, { mmr: value })} />
             ) : (
               <span className="text-right font-mono font-bold">{c.mmr}</span>
             )}
