@@ -68,6 +68,14 @@ export function loadDraft(
     }
     // 좌석에 없는 픽(손상된 저장본)은 되돌리기를 헛돌게 하니 버린다.
     draft = { ...draft, picks: draft.picks.filter((k) => seatOf(draft, k) !== null) };
+    // 좌석에 없는 팀장 키(손상된 저장본)도 마찬가지로 버린다.
+    draft = {
+      ...draft,
+      captains: {
+        blue: draft.captains.blue !== null && seatOf(draft, draft.captains.blue) === null ? null : draft.captains.blue,
+        red: draft.captains.red !== null && seatOf(draft, draft.captains.red) === null ? null : draft.captains.red,
+      },
+    };
 
     return { participantIds, guests, draft };
   } catch {

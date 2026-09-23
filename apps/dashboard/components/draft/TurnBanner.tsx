@@ -39,7 +39,12 @@ export function TurnBanner({
         <button onClick={onUndo} className="rounded-md border border-ink/[.12] px-2.5 py-1 text-[12px] text-muted">
           되돌리기
         </button>
-        <button onClick={onReset} className="rounded-md border border-ink/[.12] px-2.5 py-1 text-[12px] text-faint">
+        <button
+          onClick={() => {
+            if (window.confirm("드래프트를 초기화할까요? 되돌릴 수 없습니다.")) onReset();
+          }}
+          className="rounded-md border border-ink/[.12] px-2.5 py-1 text-[12px] text-faint"
+        >
           초기화
         </button>
       </div>

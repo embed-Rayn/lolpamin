@@ -58,6 +58,25 @@ describe("draft storage", () => {
     expect(() => saveDraft(hostile, sample())).not.toThrow();
   });
 
+  it("clears a captain key that is not seated (corrupt save)", () => {
+    const storage = memoryStorage({
+      [DRAFT_STORAGE_KEY]: JSON.stringify({
+        participantIds: ["a"],
+        guests: [],
+        draft: {
+          captains: { blue: "m:a", red: null },
+          slots: {
+            blue: { TOP: null, JUG: null, MID: null, AD: null, SUP: null },
+            red: { TOP: null, JUG: null, MID: null, AD: null, SUP: null },
+          },
+          picks: [],
+        },
+      }),
+    });
+    const loaded = loadDraft(storage, new Set(["a"]))!;
+    expect(loaded.draft.captains.blue).toBeNull();
+  });
+
   it("resets the draft but keeps participants and guests when a captain left the pool", () => {
     const storage = memoryStorage();
     saveDraft(storage, sample());

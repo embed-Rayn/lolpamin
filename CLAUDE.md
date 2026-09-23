@@ -101,9 +101,10 @@ cannot import the dashboard's lib. Deliberately **not** watermarked:
 `queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
 about to destroy, not a record.
 
-`/matches` is the **team draft**, not result entry — results come in only through
-`/replay-import`, so a game without a replay cannot be recorded. Two captains (agreed
-by the players, set by an admin) pick the other eight in snake order `B R R B B R R B`,
+`/matches` (내전 팀 빌더) is the **team draft**, not result entry — results come in only through
+`/replay-import`, so a game without a replay cannot be recorded. It needs no login and
+sits in the public nav: it writes nothing to the database. Two captains (agreed
+by the players, set on the shared screen) pick the other eight in snake order `B R R B B R R B`,
 blue first. The rules live in `packages/core/src/draft.ts`; the turn is derived from
 per-team seat counts rather than the pick list, so unchecking a picked participant hands
 the turn back, and cross-team moves are refused until the draft completes. Guests exist

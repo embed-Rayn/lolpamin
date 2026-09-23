@@ -65,7 +65,7 @@ export async function saveReplayImportAction(
   let result: Awaited<ReturnType<typeof saveReplayImport>>;
   try {
     // createdById는 세션에서만 온다. 클라이언트가 보낸 값을 쓰면 아무나 남의 이름으로
-    // 입력 기록을 남길 수 있다 — saveGameResultAction과 같은 규칙이다.
+    // 입력 기록을 남길 수 있다 — 경기 결과를 직접 입력할 때와 같은 규칙이다.
     result = await saveReplayImport(prisma, {
       ...input,
       playedAt: new Date(input.playedAt),

@@ -5,6 +5,7 @@ import {
   draftPickCount,
   draftReducer,
   emptyDraft,
+  isCaptain,
   isDraftComplete,
   seatOf,
   SNAKE_ORDER,
@@ -143,6 +144,27 @@ describe("move", () => {
     expect(swapped.slots.blue.JUG).toBe(b);
     expect(swapped.slots.red.JUG).toBe(a);
     expect(isDraftComplete(swapped)).toBe(true);
+  });
+
+  it("hands captaincy to the incoming player when a captain is moved across teams", () => {
+    const done = completed();
+    const incoming = done.slots.red.JUG!; // "p2"
+    const moved = draftReducer(done, { type: "move", from: { side: "blue", lane: "TOP" }, to: { side: "red", lane: "JUG" } });
+    expect(seatOf(moved, "bc")).toEqual({ side: "red", lane: "JUG" });
+    expect(seatOf(moved, incoming)).toEqual({ side: "blue", lane: "TOP" });
+    // The vacated blue captaincy passes to whoever landed in the captain's seat; bc is not
+    // captain on the other side, which keeps its own captain.
+    expect(moved.captains).toEqual({ blue: incoming, red: "rc" });
+    expect(isCaptain(moved, "bc")).toBe(false);
+    expect(isCaptain(moved, incoming)).toBe(true);
+  });
+
+  it("swaps the two captains with each other when they are moved across teams", () => {
+    const done = completed();
+    const swapped = draftReducer(done, { type: "move", from: { side: "blue", lane: "TOP" }, to: { side: "red", lane: "TOP" } });
+    expect(seatOf(swapped, "bc")).toEqual({ side: "red", lane: "TOP" });
+    expect(seatOf(swapped, "rc")).toEqual({ side: "blue", lane: "TOP" });
+    expect(swapped.captains).toEqual({ blue: "rc", red: "bc" });
   });
 });
 

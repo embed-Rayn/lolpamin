@@ -163,7 +163,23 @@ export function draftReducer(state: DraftState, action: DraftAction): DraftState
       // Crossing teams mid-draft would change seat counts and with them whose turn it is.
       if (from.side !== to.side && !isDraftComplete(state)) return state;
       const target = state.slots[to.side][to.lane];
-      return { ...state, slots: withSeat(withSeat(state.slots, to, moving), from, target) };
+      const slots = withSeat(withSeat(state.slots, to, moving), from, target);
+      if (from.side === to.side) return { ...state, slots };
+      // Cross-team moves only happen once the draft is complete (a swap, never a bare relocation).
+      // Captaincy follows its side, not the person: whoever lands in a vacated captain's seat
+      // inherits that side's captaincy, and the captain who moves away is not a captain on the
+      // team they land on — that team keeps its own captain.
+      const movingIsCaptain = state.captains[from.side] === moving;
+      const targetIsCaptain = target !== null && state.captains[to.side] === target;
+      let captains = state.captains;
+      if (movingIsCaptain && targetIsCaptain) {
+        captains = { ...state.captains, [from.side]: target, [to.side]: moving };
+      } else if (movingIsCaptain) {
+        captains = { ...state.captains, [from.side]: target };
+      } else if (targetIsCaptain) {
+        captains = { ...state.captains, [to.side]: moving };
+      }
+      return { ...state, captains, slots };
     }
 
     case "undo": {
