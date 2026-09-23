@@ -19,7 +19,7 @@ export interface DraftPoolMember {
 }
 
 /**
- * 팀 드래프트의 후보. 누가 뛸 수 있는지·MMR·협곡 승패는 getLinkedMembers가 이미 정하므로
+ * 내전 팀 빌더의 후보. 누가 뛸 수 있는지·MMR·협곡 승패는 getLinkedMembers가 이미 정하므로
  * 그 결과에 라인·계정·숙련도만 붙인다 — 두 화면이 서로 다른 회원 목록을 말하지 않게.
  */
 export async function getDraftPool(prisma: PrismaClient): Promise<DraftPoolMember[]> {
