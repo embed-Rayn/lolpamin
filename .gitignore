@@ -13,3 +13,10 @@ data/
 id_rsa*
 id_ed25519*
 .worktrees/
+
+# Raw Data Dragon dumps (e.g. 16.18.1/) — only the trimmed copy under
+# apps/dashboard/public/ddragon/ is committed; see apps/dashboard/scripts/sync-ddragon.ts
+/[0-9]*.[0-9]*.[0-9]*/
+
+# Reference screenshots and real replays — replays carry players' Riot IDs
+sample/
