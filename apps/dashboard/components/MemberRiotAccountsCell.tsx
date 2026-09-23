@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { MemberInfoRiotAccount } from "@/lib/queries/member-info";
-import { registerRiotAccountByLookupAction, removeRiotAccountAction } from "@/app/member-info/actions";
+import { registerRiotAccountByLookupAction, removeRiotAccountAction } from "@/app/member-admin/actions";
 
 export function MemberRiotAccountsCell({
   memberId,

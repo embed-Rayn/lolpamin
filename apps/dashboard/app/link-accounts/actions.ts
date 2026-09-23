@@ -146,6 +146,7 @@ export async function refreshRiotIdsAction(): Promise<RefreshRiotIdsActionResult
     const result = await refreshRiotAccountIds(prisma, lookupRiotAccountByPuuid);
     revalidatePath("/link-accounts");
     revalidatePath("/member-info");
+    revalidatePath("/member-admin");
     return { result, error: null };
   } catch (error) {
     // 하루 제한은 일부러 던진 안내다 — 그대로 보여 준다.

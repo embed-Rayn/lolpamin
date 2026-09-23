@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Lane } from "@lolpamin/db";
 import { LANE_OPTIONS, laneLabel } from "@lolpamin/core";
-import { updateMemberLaneAction } from "@/app/member-info/actions";
+import { updateMemberLaneAction } from "@/app/member-admin/actions";
 
 export function MemberLaneCell({
   memberId,

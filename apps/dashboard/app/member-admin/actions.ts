@@ -1,13 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Lane } from "@lolpamin/db";
-import { isLane, parseRiotId } from "@lolpamin/core";
+import type { Lane, MemberTier } from "@lolpamin/db";
+import { isLane, parseBirthYearInput, parseRiotId, TIER_SCORES } from "@lolpamin/core";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { updateMemberNote } from "@/lib/mutations/update-member-note";
 import { updateMemberLane, type LaneSlot } from "@/lib/mutations/update-member-lane";
+import { updateMemberPeakTier } from "@/lib/mutations/update-member-peak-tier";
+import { updateMemberAge } from "@/lib/mutations/update-member-age";
+import {
+  getMasteryRefreshAvailability,
+  refreshChampionMasteries,
+  REFRESH_MASTERIES_ERRORS,
+  type MasteryRefreshResult,
+} from "@/lib/mutations/refresh-champion-masteries";
 import { lookupRiotAccount } from "@/lib/riot-api/account";
+import { lookupChampionMasteries } from "@/lib/riot-api/mastery";
 import {
   isOwnedByOtherError,
   registerRiotAccount,
@@ -27,6 +36,7 @@ export async function updateMemberNoteAction(
     return { error: "비고를 저장하지 못했습니다." };
   }
 
+  revalidatePath("/member-admin");
   revalidatePath("/member-info");
   return { error: null };
 }
@@ -49,6 +59,7 @@ export async function updateMemberLaneAction(
     return { error: "라인을 저장하지 못했습니다." };
   }
 
+  revalidatePath("/member-admin");
   revalidatePath("/member-info");
   return { error: null };
 }
@@ -90,6 +101,7 @@ export async function registerRiotAccountByLookupAction(
   }
 
   // 계정이 붙으면 saveGameResult의 완화 조건이 바뀌므로 매치 입력 풀도 달라진다.
+  revalidatePath("/member-admin");
   revalidatePath("/member-info");
   revalidatePath("/matches");
   return { error: null };
@@ -105,7 +117,80 @@ export async function removeRiotAccountAction(riotAccountId: string): Promise<{ 
     return { error: "라이엇 계정을 떼지 못했습니다." };
   }
 
+  revalidatePath("/member-admin");
   revalidatePath("/member-info");
   revalidatePath("/matches");
   return { error: null };
+}
+
+export async function updateMemberPeakTierAction(
+  memberId: string,
+  peakTier: MemberTier,
+): Promise<{ error: string | null }> {
+  await requireAdmin();
+
+  // updateMemberTierAction과 같은 이유로 enum 값인지 여기서 확인한다.
+  if (!Object.hasOwn(TIER_SCORES, peakTier)) {
+    return { error: "알 수 없는 티어입니다." };
+  }
+
+  try {
+    await updateMemberPeakTier(prisma, memberId, peakTier);
+  } catch {
+    return { error: "최고티어를 저장하지 못했습니다." };
+  }
+
+  revalidatePath("/member-admin");
+  revalidatePath("/member-info");
+  return { error: null };
+}
+
+export async function updateMemberAgeAction(memberId: string, raw: string): Promise<{ error: string | null }> {
+  await requireAdmin();
+
+  const parsed = parseBirthYearInput(raw);
+  if (!parsed.ok) return { error: parsed.error };
+
+  try {
+    await updateMemberAge(prisma, memberId, parsed.age);
+  } catch {
+    return { error: "나이를 저장하지 못했습니다." };
+  }
+
+  revalidatePath("/member-admin");
+  revalidatePath("/member-info");
+  return { error: null };
+}
+
+export interface MasteryRefreshStatus {
+  allowed: boolean;
+  // 직렬화해 클라이언트로 넘기려고 ISO 문자열로 준다.
+  lastRefreshedAt: string | null;
+  accountCount: number;
+}
+
+/** 버튼을 누르기 전에 보여 줄 상태 — 남은 하루 제한과 갱신 대상 수. */
+export async function masteryRefreshStatusAction(): Promise<MasteryRefreshStatus> {
+  await requireAdmin();
+  const { allowed, lastRefreshedAt, accountCount } = await getMasteryRefreshAvailability(prisma);
+  return { allowed, lastRefreshedAt: lastRefreshedAt?.toISOString() ?? null, accountCount };
+}
+
+export async function refreshMasteriesAction(): Promise<{ result: MasteryRefreshResult | null; error: string | null }> {
+  await requireAdmin();
+
+  try {
+    const result = await refreshChampionMasteries(prisma, lookupChampionMasteries);
+    revalidatePath("/member-admin");
+    revalidatePath("/member-info");
+    revalidatePath("/matches");
+    return { result, error: null };
+  } catch (error) {
+    // 하루 제한은 일부러 던진 안내다 — 그대로 보여 준다.
+    if (error instanceof Error && error.message === REFRESH_MASTERIES_ERRORS.tooSoon) {
+      return { result: null, error: error.message };
+    }
+    console.error(error);
+    return { result: null, error: "숙련도 갱신 중 오류가 났습니다." };
+  }
 }
