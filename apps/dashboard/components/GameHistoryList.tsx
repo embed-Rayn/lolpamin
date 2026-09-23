@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { GameHistoryPlayer, GameHistoryRow } from "@/lib/queries/game-history";
 import { cancelGameResultAction } from "@/app/match-history/actions";
+import { GameDetailBoard } from "@/components/GameDetailBoard";
 
 function formatPlayedAt(playedAt: Date): string {
   const d = new Date(playedAt);
@@ -36,6 +37,17 @@ export function GameHistoryList({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // 펼친 판. 쪽을 넘기면 다른 판이 오므로 URL에 남기지 않는다.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   if (rows.length === 0) {
     return (
@@ -104,16 +116,29 @@ export function GameHistoryList({
               {row.cancelledByLabel !== null && ` · ${row.cancelledByLabel} 취소`}
             </span>
 
-            {isAdmin && row.canCancel && (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => handleCancel(row.id)}
-                className="ml-auto rounded-lg bg-raised px-3 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover disabled:opacity-35"
-              >
-                되돌리기
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {isAdmin && row.canCancel && (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => handleCancel(row.id)}
+                  className="rounded-lg bg-raised px-3 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover disabled:opacity-35"
+                >
+                  되돌리기
+                </button>
+              )}
+              {row.detail !== null && (
+                <button
+                  type="button"
+                  onClick={() => toggle(row.id)}
+                  aria-expanded={expanded.has(row.id)}
+                  aria-label={expanded.has(row.id) ? "상세 접기" : "상세 보기"}
+                  className="rounded-lg bg-raised px-2.5 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover"
+                >
+                  <span className={`inline-block transition-transform ${expanded.has(row.id) ? "rotate-180" : ""}`}>▾</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-3 flex flex-col gap-1.5 text-[13.5px]">
@@ -130,6 +155,12 @@ export function GameHistoryList({
               ))}
             </div>
           </div>
+
+          {row.detail !== null && expanded.has(row.id) && (
+            <div className="mt-4">
+              <GameDetailBoard detail={row.detail} />
+            </div>
+          )}
         </div>
       ))}
     </div>
