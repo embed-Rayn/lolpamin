@@ -30,6 +30,7 @@ export function MmrSimulator({
 }: {
   config: MmrConfig;
   // 드래프트 엔트리의 팀 평균. 바뀔 때마다 입력칸을 덮는다 — 손으로 고친 값은 다음 변경까지만 산다.
+  // null(팀이 비어 초기화·되돌리기로 평균이 없어짐)이면 기본값으로 되돌린다.
   blueAverage?: number | null;
   redAverage?: number | null;
 }) {
@@ -37,10 +38,10 @@ export function MmrSimulator({
   const [redRaw, setRedRaw] = useState(String(redAverage ?? DEFAULT_RED));
 
   useEffect(() => {
-    if (blueAverage !== null) setBlueRaw(String(blueAverage));
+    setBlueRaw(String(blueAverage ?? DEFAULT_BLUE));
   }, [blueAverage]);
   useEffect(() => {
-    if (redAverage !== null) setRedRaw(String(redAverage));
+    setRedRaw(String(redAverage ?? DEFAULT_RED));
   }, [redAverage]);
 
   const blueAvg = parseRating(blueRaw);
