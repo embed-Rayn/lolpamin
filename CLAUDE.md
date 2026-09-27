@@ -76,8 +76,8 @@ so an untouched 1000 neither drags the mean nor shows up as 0 in it.
 `/member-info` is read-only for everyone, admins included. Every member edit lives on
 `/member-admin` (operator, desktop-only; `/members` stays the `/rift` redirect because
 browsers cache a 308): 이름, 나이, 최고/산정티어, 주/부라인, 라이엇 계정, 최근 활동 날짜,
-비고, plus the two once-a-day Riot batches (PUUID → Riot ID, champion masteries) as
-`DailyRefreshButton`, which `/link-accounts` also uses for the Riot ID one. 나이 is
+비고, plus the two once-an-hour Riot batches (PUUID → Riot ID, champion masteries) as
+`RiotRefreshButton`, which `/link-accounts` also uses for the Riot ID one. 나이 is
 `Member.age` (the two-digit birth year imports read from the nickname) when set, else the
 nickname's (`fullBirthYear`) — both pages use that rule. 모스트 is `topMasteries` over every
 `ChampionMastery` row of the member's accounts, summed at read time.
@@ -121,7 +121,7 @@ Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
 
 Candidates show combined champion mastery: `ChampionMastery` caches Riot
 Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
-`refreshChampionMasteries` at most once per 24h (`SiteSetting.masteryRefreshedAt`, same
+`refreshChampionMasteries` at most once an hour (`SiteSetting.masteryRefreshedAt`, same
 rules as the Riot ID refresh). Its button lives on `/member-admin`, not `/matches`. Points add up across a member's accounts and the highest level stands for the
 champion (`topMasteries`). The API names champions by numeric key, mapped through
 `ddragon-map.json`'s `championKeys`.
@@ -205,13 +205,28 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 `removeRiotAccount`는 행을 **삭제**한다 — `memberId = null`은 "외부인 확정"이라 잘못 붙인
 계정을 뗀 것과 구별되지 않는다.
 
-저장된 표기는 늙는다 — 인게임에서 이름을 바꿔도 PUUID는 그대로라서다. `/link-accounts`의
-"PUUID로 라이엇 ID 갱신"(`refreshRiotAccountIds` + `lookupRiotAccountByPuuid`)이 회원에게
-붙은 계정만 골라 by-puuid로 되읽고 달라진 `gameName`/`tagLine`만 고쳐 쓴다. **하루 한 번**
-제한이고, 그 근거는 `SiteSetting.riotIdRefreshedAt` — 브라우저가 아니라 DB에 둬야 관리자가
-여럿이어도 같은 한도를 본다. 달력 날짜가 아니라 24시간으로 재는 이유는 서버가 UTC라 KST
-저녁 이후의 "오늘"이 서버의 내일이 되기 때문. 호출을 한 번이라도 쓴 실행만 시각을 남긴다 —
-대상이 없거나 키가 죽어 즉시 멈춘 실행까지 하루를 잡아먹으면 키를 고친 뒤 다시 못 돌린다.
+**PUUID가 두 개다.** `RiotAccount.puuid`는 리플레이 신원(매칭·`replayKey`·`replayPuuid`의
+기준)이고, 리플레이에서 온 행은 `.rofl`에 든 **암호화되지 않은 원본 UUID(36자)**라 Riot API가
+받지 않는다(400 "Exception decrypting"). API는 호출하는 키의 **앱**으로 암호화한 78자 PUUID만
+받고, 그 값은 `RiotAccount.apiPuuid`에 따로 둔다. 같은 앱이면 개발 키를 새로 받아도 값이 같아서
+계정마다 한 번만 채우면 된다 — 이름#태그 등록(`registerRiotAccount`)은 응답 PUUID를 바로 쓰고,
+리플레이 행은 배치가 처음 돌 때 `withApiPuuid`(`lib/mutations/api-puuid.ts`)가 저장된
+`gameName`/`tagLine`으로 받아 쓴다. 저장된 값이 400(`invalid_id`)을 받을 때도 한 번 다시 받는다
+(다른 앱의 키로 등록한 계정). 이름#태그로 등록한 행의 `puuid`도 API PUUID라, 같은 계정의 리플레이
+행과 절대 일치하지 않는다 — 두 행이 한 계정을 들고 있을 수 있고, 숙련도 배치는 같은 `apiPuuid`의
+두 번째 행 숙련도를 비워 합산이 두 번 되지 않게 한다(`duplicates`).
+
+모든 Riot 호출은 `riotGet` 앞의 프로세스 단위 제한기(`lib/riot-api/rate-limit.ts`, 개발 키 한도
+1초 20회·2분 100회)를 거친다 — 배치는 429로 끊기지 않고 느려진다.
+
+저장된 표기는 늙는다 — 인게임에서 이름을 바꿔도 PUUID는 그대로라서다. "PUUID로 라이엇 ID
+갱신"(`refreshRiotAccountIds` + `lookupRiotAccountByPuuid`, `/member-admin`·`/link-accounts`)이
+회원에게 붙은 계정만 골라 `apiPuuid`로 되읽고 달라진 `gameName`/`tagLine`만 고쳐 쓴다. 이 이름이
+최신이어야 `apiPuuid`를 다시 받아야 할 때 이름#태그 조회가 맞는다. **1시간에 한 번** 제한이고
+(`REFRESH_COOLDOWN_MS`, 숙련도 배치와 공유), 그 근거는 `SiteSetting.riotIdRefreshedAt` —
+브라우저가 아니라 DB에 둬야 관리자가 여럿이어도 같은 한도를 본다. 한 계정이라도 읽어 낸 실행만
+시각을 남긴다 — 대상이 없거나 키가 죽었거나 전부 실패한 실행까지 제한을 걸면 원인을 고친 뒤
+바로 다시 못 돌린다.
 
 `RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
 "연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.

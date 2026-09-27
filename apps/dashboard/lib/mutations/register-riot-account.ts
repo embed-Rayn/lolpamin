@@ -55,6 +55,8 @@ export async function registerRiotAccount(
       await tx.riotAccount.create({
         data: {
           puuid: account.puuid,
+          // 이 함수의 입력은 Riot API 응답뿐이라 이 PUUID는 지금 키의 앱으로 암호화된 값이다.
+          apiPuuid: account.puuid,
           memberId,
           gameName: account.gameName,
           tagLine: account.tagLine,
@@ -72,6 +74,7 @@ export async function registerRiotAccount(
       where: { puuid: account.puuid },
       data: {
         memberId,
+        apiPuuid: account.puuid,
         gameName: account.gameName,
         tagLine: account.tagLine,
         lastSeenAt: now,

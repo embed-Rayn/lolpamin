@@ -28,6 +28,21 @@ describe("lookupRiotAccount", () => {
     expect((init.headers as Record<string, string>)["X-Riot-Token"]).toBe("RGAPI-test");
   });
 
+  it("takes a rate-limit slot before every request", async () => {
+    const order: string[] = [];
+    const acquire = vi.fn(async () => {
+      order.push("acquire");
+    });
+    const fetchSpy = vi.fn(async () => {
+      order.push("fetch");
+      return new Response(JSON.stringify({ puuid: "p", gameName: "a", tagLine: "b" }), { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+
+    await lookupRiotAccount("a", "b", { fetch: fetchSpy, apiKey: "k", acquire });
+
+    expect(order).toEqual(["acquire", "fetch"]);
+  });
+
   it("maps 404 to not_found", async () => {
     expect(await lookupRiotAccount("x", "y", { fetch: fakeFetch(404), apiKey: "k" })).toEqual({
       ok: false,
@@ -50,6 +65,13 @@ describe("lookupRiotAccount", () => {
     expect(await lookupRiotAccount("x", "y", { fetch: fakeFetch(429), apiKey: "k" })).toEqual({
       ok: false,
       reason: "rate_limited",
+    });
+  });
+
+  it("maps 400 to invalid_id — a PUUID this API key cannot decrypt", async () => {
+    expect(await lookupRiotAccountByPuuid("72e2ebfc-e98c-5dca-831c-4e56b641dd7a", { fetch: fakeFetch(400), apiKey: "k" })).toEqual({
+      ok: false,
+      reason: "invalid_id",
     });
   });
 

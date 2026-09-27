@@ -143,7 +143,7 @@ export async function refreshRiotIdsAction(): Promise<RefreshRiotIdsActionResult
   await requireAdmin();
 
   try {
-    const result = await refreshRiotAccountIds(prisma, lookupRiotAccountByPuuid);
+    const result = await refreshRiotAccountIds(prisma, lookupRiotAccount, lookupRiotAccountByPuuid);
     revalidatePath("/link-accounts");
     revalidatePath("/member-info");
     revalidatePath("/member-admin");

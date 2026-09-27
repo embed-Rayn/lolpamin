@@ -36,6 +36,25 @@ describe("registerRiotAccount", () => {
     expect(row.tagLine).toBe("KR1");
   });
 
+  it("keeps the looked-up PUUID as the API PUUID — it came from this key's application", async () => {
+    const m = await member("가");
+
+    await registerRiotAccount(prisma, m.id, ACCOUNT);
+
+    const row = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "puuid-1" } });
+    expect(row.apiPuuid).toBe("puuid-1");
+  });
+
+  it("fills the API PUUID on an existing row that lacked it", async () => {
+    const m = await member("가");
+    await prisma.riotAccount.create({ data: { ...ACCOUNT, memberId: m.id, lastSeenAt: new Date("2026-01-01") } });
+
+    await registerRiotAccount(prisma, m.id, ACCOUNT);
+
+    const row = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "puuid-1" } });
+    expect(row.apiPuuid).toBe("puuid-1");
+  });
+
   it("refreshes the name on the same member's existing row", async () => {
     const m = await member("가");
     await prisma.riotAccount.create({

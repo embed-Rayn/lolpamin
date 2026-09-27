@@ -10,7 +10,7 @@ import {
   countRiotLookupTargetsAction,
   registerRiotAccountsFromHintsAction,
 } from "@/app/link-accounts/actions";
-import { DailyRefreshButton } from "./DailyRefreshButton";
+import { RiotRefreshButton } from "./RiotRefreshButton";
 
 export function AccountMappingPanel({
   discordAccounts,
@@ -151,7 +151,7 @@ export function AccountMappingPanel({
             {isLookingUp ? "조회 중..." : "닉네임에서 라이엇 계정 찾기"}
           </button>
           {riotStatus && <span className="text-[12.5px] text-muted">{riotStatus}</span>}
-          <DailyRefreshButton kind="riotIds" />
+          <RiotRefreshButton kind="riotIds" />
         </div>
       )}
       <div className="grid grid-cols-[1fr_210px_1fr] items-stretch gap-3.5">

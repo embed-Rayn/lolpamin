@@ -71,6 +71,7 @@ const RIOT_LOOKUP_MESSAGES = {
   unauthorized: "Riot API 키가 만료됐거나 없습니다 (.env RIOT_API_KEY).",
   rate_limited: "잠시 후 다시 시도해 주세요.",
   unavailable: "잠시 후 다시 시도해 주세요.",
+  invalid_id: "라이엇이 받지 않는 이름#태그입니다.",
 } as const;
 
 export async function registerRiotAccountByLookupAction(
@@ -180,7 +181,7 @@ export async function refreshMasteriesAction(): Promise<{ result: MasteryRefresh
   await requireAdmin();
 
   try {
-    const result = await refreshChampionMasteries(prisma, lookupChampionMasteries);
+    const result = await refreshChampionMasteries(prisma, lookupRiotAccount, lookupChampionMasteries);
     revalidatePath("/member-admin");
     revalidatePath("/member-info");
     revalidatePath("/matches");
