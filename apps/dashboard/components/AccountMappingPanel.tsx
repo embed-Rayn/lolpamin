@@ -3,7 +3,14 @@
 import { useState } from "react";
 import type { PendingDiscordAccount } from "@/lib/queries/pending-accounts";
 import type { KakaoAccountWithCandidates, MemberWithAliases } from "@/lib/queries/link-candidates";
-import { absorbMemberAction, releaseMemberAction, importDiscordMembersAction } from "@/app/link-accounts/actions";
+import {
+  absorbMemberAction,
+  releaseMemberAction,
+  importDiscordMembersAction,
+  countRiotLookupTargetsAction,
+  registerRiotAccountsFromHintsAction,
+} from "@/app/link-accounts/actions";
+import { DailyRefreshButton } from "./DailyRefreshButton";
 
 export function AccountMappingPanel({
   discordAccounts,
@@ -24,6 +31,8 @@ export function AccountMappingPanel({
   const [isPending, setIsPending] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [riotStatus, setRiotStatus] = useState<string | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState(false);
 
   const selectedKakao = kakaoAccounts.find((k) => k.id === selectedKakaoId) ?? null;
 
@@ -45,6 +54,39 @@ export function AccountMappingPanel({
       );
     } finally {
       setIsImporting(false);
+    }
+  }
+
+  async function handleRiotLookup() {
+    setIsLookingUp(true);
+    setRiotStatus(null);
+    try {
+      const targetCount = await countRiotLookupTargetsAction();
+      if (targetCount === 0) {
+        setRiotStatus("새로 조회할 라이엇 ID가 없습니다.");
+        return;
+      }
+      if (
+        !window.confirm(
+          `회원 ${targetCount}명의 닉네임에 적힌 라이엇 ID를 모두 Riot API로 조회합니다. 계속할까요?`,
+        )
+      ) {
+        return;
+      }
+
+      const { result, error } = await registerRiotAccountsFromHintsAction();
+      if (error || !result) {
+        setRiotStatus(error ?? "조회하지 못했습니다.");
+        return;
+      }
+      const summary = `등록 ${result.registered}개 · 못 찾음 ${result.notFound} · 충돌 ${result.conflicts} · 조회할 ID 없음 ${result.skipped}명`;
+      setRiotStatus(
+        result.unauthorized
+          ? `Riot API 키가 만료됐거나 없습니다 (.env RIOT_API_KEY). 중단 전까지 ${summary}`
+          : summary,
+      );
+    } finally {
+      setIsLookingUp(false);
     }
   }
 
@@ -84,7 +126,7 @@ export function AccountMappingPanel({
         </span>
       </div>
       {isAdmin && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={handleImportDiscord}
@@ -96,6 +138,20 @@ export function AccountMappingPanel({
             {isImporting ? "가져오는 중..." : "디스코드 회원 가져오기"}
           </button>
           {importStatus && <span className="text-[12.5px] text-muted">{importStatus}</span>}
+          <button
+            type="button"
+            onClick={handleRiotLookup}
+            disabled={isLookingUp}
+            className={`rounded-lg border px-3.5 py-2 text-[13px] font-extrabold ${
+              isLookingUp
+                ? "cursor-not-allowed border-ink/[.06] bg-hover text-ghost"
+                : "cursor-pointer border-accent/45 bg-accent/[.18] text-accent-soft"
+            }`}
+          >
+            {isLookingUp ? "조회 중..." : "닉네임에서 라이엇 계정 찾기"}
+          </button>
+          {riotStatus && <span className="text-[12.5px] text-muted">{riotStatus}</span>}
+          <DailyRefreshButton kind="riotIds" />
         </div>
       )}
       <div className="grid grid-cols-[1fr_210px_1fr] items-stretch gap-3.5">

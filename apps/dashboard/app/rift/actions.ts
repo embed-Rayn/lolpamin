@@ -37,6 +37,8 @@ export async function updateMemberRealNameAction(
 
   revalidatePath("/rift");
   revalidatePath("/inactive");
+  revalidatePath("/member-admin");
+  revalidatePath("/member-info");
   return { error: null };
 }
 
@@ -60,6 +62,8 @@ export async function updateMemberTierAction(
 
   revalidatePath("/rift");
   revalidatePath("/team-builder");
+  revalidatePath("/member-admin");
+  revalidatePath("/member-info");
   return { error: null };
 }
 

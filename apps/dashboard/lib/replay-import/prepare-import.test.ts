@@ -246,4 +246,16 @@ describe("prepareReplayImport", () => {
     expect(prepared.slots).toHaveLength(10);
     expect(prepared.slots.filter((s) => s.team === "BLUE")).toHaveLength(5);
   });
+
+  it("hands the preview every player's stats, members' ratings and the stored mmr config", async () => {
+    await prisma.member.create({ data: { realName: "레이팅", mmr: 1234, aramMmr: 987 } });
+    await prisma.mmrSetting.create({ data: { id: "singleton", k: 30, winPoint: 4, lossPoint: 2 } });
+
+    const prepared = await prepareReplayImport(prisma, buildRoflFixture(tenPlayers()));
+
+    expect(prepared.players).toHaveLength(10);
+    expect(prepared.players[0]).toHaveProperty("items");
+    expect(prepared.members.find((m) => m.label.startsWith("레이팅"))).toMatchObject({ mmr: 1234, aramMmr: 987 });
+    expect(prepared.mmrConfig).toEqual({ k: 30, winPoint: 4, lossPoint: 2 });
+  });
 });

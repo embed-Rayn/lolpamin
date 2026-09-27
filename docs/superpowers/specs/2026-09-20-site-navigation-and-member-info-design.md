@@ -30,9 +30,9 @@
 - 회원 정보 페이지(`/member-info`) — 표, 검색, 정렬
 - `Member.note` — 비고 칸(운영자만 인라인 수정)
 
-- **주 라인 / 부 라인** — 운영자가 드롭다운으로 고르는 값과 그 컬럼의 헤더 클릭 필터
-  (아래 "주/부 라인" 절). 처음에는 다음 스펙으로 미뤘다가, 손으로 고르는 방식은 저장된
-  경기 데이터가 필요 없어 이번에 함께 넣었다.
+- **주라인 / 부라인** — 운영자가 `/member-admin`에서 드롭다운으로 고르는 값과,
+  `/member-info` 쪽 컬럼의 헤더 클릭 필터(아래 "주/부 라인" 절). 처음에는 다음 스펙으로
+  미뤘다가, 손으로 고르는 방식은 저장된 경기 데이터가 필요 없어 이번에 함께 넣었다.
 
 **제외 (다음 스펙)**
 
@@ -107,8 +107,8 @@
 | 닉네임 | 카톡 닉네임(묘비 포함, `displayKakaoNickname`) | O |
 | 협곡 판/승/패/승률(%) | `GameParticipant` × `GameResult.mode = RIFT` | 판수·승률 각각 O |
 | 칼바람 판/승/패/승률(%) | 같은 집계의 `ARAM` 몫 | 판수·승률 각각 O |
-| 주 라인 | `Member.primaryLane` (`MemberLane?`) | 정렬 대신 필터 |
-| 부 라인 | `Member.secondaryLane` (`MemberLane?`) | 정렬 대신 필터 |
+| 주라인 | `Member.mainLane` (`Lane?`) | 정렬 대신 필터 |
+| 부라인 | `Member.subLane` (`Lane?`) | 정렬 대신 필터 |
 | 현재티어 | `Member.tier` (`MemberTier`) | O(점수 순) |
 | 비고 | `Member.note` (신규) | — |
 
@@ -142,34 +142,41 @@ JS 정렬을 섞어 쓴다). 회원 수가 ~40명이고, 승률·판수처럼 �
 ### 주/부 라인
 
 ```prisma
-enum MemberLane {
+enum Lane {
   TOP
-  JUNGLE
+  JUG
   MID
-  ADC
-  SUPPORT
+  AD
+  SUP
 }
 
 model Member {
   // ...
-  primaryLane   MemberLane?
-  secondaryLane MemberLane?
+  mainLane Lane?
+  subLane  Lane?
 }
 ```
+
+이름은 모임이 실제로 쓰는 표기를 따른다(정글=JUG, 원딜=AD, 서폿=SUP). 리플레이의
+`TEAM_POSITION`(JUNGLE/MIDDLE/BOTTOM/UTILITY)과는 표기가 다르고, 둘을 견줄 일이 생기면
+변환표를 둔다.
 
 티어와 달리 nullable이다. 티어가 `UNRANKED`를 enum 안에 둔 것은 「모른다」와 「언랭」의
 점수가 0으로 같아 null이 분기만 늘렸기 때문인데, 라인에는 그렇게 겹치는 상태가 없다.
 미지정은 그냥 값 없음이고 화면에서는 "미지정"으로 보인다.
 
 한글 라벨(탑·정글·미드·원딜·서폿)은 `packages/core/src/lane.ts`가 갖는다 — 티어 라벨과
-같은 자리다. `isMemberLane`이 클라이언트가 보낸 문자열을 좁히는 관문이고, 서버 액션이
+같은 자리다. `isLane`이 클라이언트가 보낸 문자열을 좁히는 관문이고, 서버 액션이
 그걸로 거른다.
 
-주와 부가 같아도 막지 않는다. 한 라인만 서는 사람에게 억지로 다른 라인을 적게 하는 것보다
-그대로 두는 편이 정직하다.
+한 라인이 주이면서 부일 수는 없다. 반대 칸에 이미 있는 라인을 고르면 `updateMemberLane`이
+반대 칸을 비운다 — 두 칸이 같은 값이면 부라인이 아무것도 말해 주지 않는다.
+
+**편집은 `/member-admin`.** `/member-info`는 관리자 포함 전원 읽기 전용이라 드롭다운
+(`MemberLaneCell`)은 운영자 화면에만 있다. `/member-info`가 갖는 것은 필터뿐이다.
 
 **헤더 필터.** 주/부 라인 헤더 이름을 누르면 체크박스 메뉴가 열린다(탑·정글·미드·원딜·
-서폿·미지정, 다중 선택). 고른 값은 `?lane=TOP,JUNGLE`처럼 URL에 실리고 미지정은 `-`
+서폿·미지정, 다중 선택). 고른 값은 `?lane=TOP,JUG`처럼 URL에 실리고 미지정은 `-`
 토큰이다. 아무것도 고르지 않은 상태는 **전체**이지 「아무도 아님」이 아니다 — 그러지 않으면
 필터를 처음 여는 순간 표가 빈다. 주와 부 필터는 AND이고, 정렬 링크는 걸린 필터를 유지한다.
 
@@ -209,8 +216,8 @@ model Member {
 - `lib/mutations/update-member-note.test.ts` — 트림 저장, 빈 문자열 → `null`, 다른 필드
   불변, 없는 회원이면 throw.
 - `lib/mutations/update-member-lane.test.ts` — 주/부 각각 저장, 다른 칸 불변, `null`로
-  되돌리기, 주와 부가 같아도 허용, 없는 회원이면 throw.
-- `packages/core/src/lane.test.ts` — 라벨·옵션 순서와 `isMemberLane`의 거부 범위.
+  되돌리기, 반대 칸과 같은 라인을 고르면 반대 칸이 비는 것, 없는 회원이면 throw.
+- `packages/core/src/lane.test.ts` — 라벨·옵션 순서와 `isLane`의 거부 범위.
 
 DB를 건드리는 세 파일은 기존 통합 테스트 패턴(`DATABASE_URL_TEST` 가드 + `resetDatabase`)을
 그대로 쓰고, core 쪽은 순수 단위 테스트다.

@@ -123,6 +123,70 @@ describe("parseRoflMetadata", () => {
 
     expect(() => parseRoflMetadata(twoPlayers)).toThrow(ROFL_PARSE_ERRORS.unexpectedPlayerCount);
   });
+
+  it("reads spells, runes, items, damage, wards, gold and objectives", () => {
+    const [first] = parseRoflMetadata(
+      buildTenPlayerRofl([
+        {
+          SUMMONER_SPELL_1: "14",
+          SUMMONER_SPELL_2: "4",
+          KEYSTONE_ID: "8008",
+          PERK_SUB_STYLE: "8400",
+          ITEM0: "3047",
+          ITEM1: "3076",
+          ITEM2: "0",
+          ITEM3: "3078",
+          ITEM4: "3153",
+          ITEM5: "1031",
+          ITEM6: "3363",
+          TOTAL_DAMAGE_DEALT_TO_CHAMPIONS: "19147",
+          TOTAL_DAMAGE_TAKEN: "40584",
+          VISION_WARDS_BOUGHT_IN_GAME: "2",
+          WARD_PLACED: "8",
+          WARD_KILLED: "3",
+          GOLD_EARNED: "10026",
+          BARON_KILLS: "1",
+          DRAGON_KILLS: "2",
+          RIFT_HERALD_KILLS: "1",
+          HORDE_KILLS: "3",
+          ATAKHAN_KILLS: "1",
+          TURRETS_KILLED: "4",
+          BARRACKS_KILLED: "1",
+        },
+      ]),
+    ).players;
+
+    expect(first).toMatchObject({
+      spell1: 14,
+      spell2: 4,
+      keystone: 8008,
+      subStyle: 8400,
+      items: [3047, 3076, 0, 3078, 3153, 1031, 3363],
+      damageDealt: 19147,
+      damageTaken: 40584,
+      controlWards: 2,
+      wardsPlaced: 8,
+      wardsKilled: 3,
+      gold: 10026,
+      baronKills: 1,
+      dragonKills: 2,
+      heraldKills: 1,
+      hordeKills: 3,
+      atakhanKills: 1,
+      turretKills: 4,
+      inhibitorKills: 1,
+    });
+  });
+
+  it("reads a missing stat key as 0 and a missing item slot as an empty slot", () => {
+    // The default fixture carries none of the new keys — a patch that drops one must not block the import.
+    const [first] = parseRoflMetadata(buildTenPlayerRofl()).players;
+
+    expect(first.items).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(first.spell1).toBe(0);
+    expect(first.damageDealt).toBe(0);
+    expect(first.turretKills).toBe(0);
+  });
 });
 
 // 실제 리플레이. data/는 gitignore이므로 파일이 있을 때만 돈다 — 합성 픽스처가 실제

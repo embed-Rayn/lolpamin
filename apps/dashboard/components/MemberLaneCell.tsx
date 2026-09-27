@@ -2,13 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { MemberLane } from "@lolpamin/db";
-import { LANE_OPTIONS, UNSET_LANE_LABEL, laneLabel } from "@lolpamin/core";
-import { updateMemberLaneAction } from "@/app/member-info/actions";
-import type { LaneSlot } from "@/lib/mutations/update-member-lane";
-
-// select의 빈 값. DOM에서는 빈 문자열이 "값 없음"이라 그대로 쓴다.
-const UNSET_VALUE = "";
+import type { Lane } from "@lolpamin/db";
+import { LANE_OPTIONS, laneLabel } from "@lolpamin/core";
+import { updateMemberLaneAction } from "@/app/member-admin/actions";
 
 export function MemberLaneCell({
   memberId,
@@ -17,8 +13,8 @@ export function MemberLaneCell({
   isAdmin,
 }: {
   memberId: string;
-  slot: LaneSlot;
-  lane: MemberLane | null;
+  slot: "main" | "sub";
+  lane: Lane | null;
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -26,12 +22,11 @@ export function MemberLaneCell({
   const [isPending, startTransition] = useTransition();
 
   if (!isAdmin) {
-    return (
-      <div className={`truncate text-center ${lane === null ? "text-ghost" : "text-fg-2"}`}>{laneLabel(lane)}</div>
-    );
+    return <div className={`truncate text-center ${lane === null ? "text-ghost" : "text-fg-2"}`}>{laneLabel(lane)}</div>;
   }
 
-  function save(next: MemberLane | null) {
+  function save(value: string) {
+    const next = value === "" ? null : (value as Lane);
     if (next === lane) return;
     setError(null);
     startTransition(async () => {
@@ -41,20 +36,19 @@ export function MemberLaneCell({
     });
   }
 
-  // 티어 셀과 같은 이유로 "클릭해서 편집기 열기" 단계를 두지 않는다 — 네이티브 select가
-  // 한 번의 클릭으로 열린다.
+  // MemberTierCell처럼 편집기 여는 단계 없이 네이티브 select를 바로 둔다.
   return (
     <div className="flex min-w-0 items-center gap-1">
       <select
-        value={lane ?? UNSET_VALUE}
+        value={lane ?? ""}
         disabled={isPending}
-        onChange={(e) => save(e.target.value === UNSET_VALUE ? null : (e.target.value as MemberLane))}
-        title={slot === "primary" ? "주 라인 수정" : "부 라인 수정"}
-        className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-center text-[13px] outline-none focus:border-accent disabled:opacity-40 ${
+        onChange={(e) => save(e.target.value)}
+        title={slot === "main" ? "주라인 수정" : "부라인 수정"}
+        className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1 py-1 text-center text-[13.5px] outline-none focus:border-accent disabled:opacity-40 ${
           lane === null ? "text-ghost" : "text-fg"
         }`}
       >
-        <option value={UNSET_VALUE}>{UNSET_LANE_LABEL}</option>
+        <option value="">-</option>
         {LANE_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

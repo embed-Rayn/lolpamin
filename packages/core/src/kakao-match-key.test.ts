@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kakaoMatchKey, normalizeForMatch, readKakaoConvention } from "./kakao-match-key";
+import { kakaoBirthYear, kakaoMatchKey, normalizeForMatch, readKakaoConvention } from "./kakao-match-key";
 
 describe("normalizeForMatch", () => {
   it("folds case, whitespace and decoration away", () => {
@@ -127,5 +127,25 @@ describe("kakaoMatchKey", () => {
   it("returns an empty key for an empty nickname", () => {
     expect(kakaoMatchKey("")).toBe("");
     expect(kakaoMatchKey("(8시 도착)")).toBe("");
+  });
+});
+
+describe("kakaoBirthYear", () => {
+  it("reads the second segment of 이름/나이/RiotID as a four-digit year", () => {
+    expect(kakaoBirthYear("박병준/94/늑구#KR1")).toBe(1994);
+    expect(kakaoBirthYear("박병준/1994/늑구#KR1")).toBe(1994);
+    expect(kakaoBirthYear("김막내/01/막내#KR1")).toBe(2001);
+  });
+
+  it("accepts the looser shapes the match key accepts", () => {
+    expect(kakaoBirthYear("박병준/94/늑구#KR1/정글")).toBe(1994);
+    expect(kakaoBirthYear("선동엽 95/glenone#5022")).toBe(1995);
+    expect(kakaoBirthYear("박병준/94/늑 구#kr1 (5시)")).toBe(1994);
+  });
+
+  it("returns null off convention", () => {
+    expect(kakaoBirthYear("올빼미")).toBeNull();
+    expect(kakaoBirthYear("박병준/구사/늑구#KR1")).toBeNull();
+    expect(kakaoBirthYear("박병준/500/늑구#KR1")).toBeNull();
   });
 });

@@ -8,7 +8,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Member list, account linking, match entry, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
 - `apps/discord-bot` — discord.js read-only slash commands: `/mmr` (본인 MMR·칼바람 MMR과 각 순위), `/랭킹` (MMR TOP 10), `/ranking-aram` (칼바람 MMR TOP 10), `/전적` (지정한 디스코드 유저의 MMR과 내전 횟수), `/사이트` (사이트 주소 안내, 유일하게 DB를 보지 않는 명령어). A new command must be added in three places — its own file under `src/commands/`, the `commands` collection in `src/index.ts`, and `commandPayloads` in `src/deploy-commands.ts` — and only takes effect after `npm run deploy-commands --workspace=discord-bot`.
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
@@ -73,6 +73,23 @@ per mode beside each 판 column, and its 평균 MMR cards average the **stored**
 rating over members with counted games in that mode (`getMemberInfoSummary`),
 so an untouched 1000 neither drags the mean nor shows up as 0 in it.
 
+`/member-info` is read-only for everyone, admins included. Every member edit lives on
+`/member-admin` (operator, desktop-only; `/members` stays the `/rift` redirect because
+browsers cache a 308): 이름, 나이, 최고/산정티어, 주/부라인, 라이엇 계정, 최근 활동 날짜,
+비고, plus the two once-a-day Riot batches (PUUID → Riot ID, champion masteries) as
+`DailyRefreshButton`, which `/link-accounts` also uses for the Riot ID one. 나이 is
+`Member.age` (the two-digit birth year imports read from the nickname) when set, else the
+nickname's (`fullBirthYear`) — both pages use that rule. 모스트 is `topMasteries` over every
+`ChampionMastery` row of the member's accounts, summed at read time.
+
+`/member-info`의 주라인·부라인 헤더만 정렬 링크가 아니라 체크박스 메뉴다(`LaneFilterMenu`)
+— 한 헤더가 정렬과 필터 두 제스처를 다 가질 수 없고, 걸러 볼 값이 있는 칸은 이 둘뿐이다.
+고른 값은 URL에 `?lane=TOP,JUG` / `?sublane=-`로 실리고 `-`가 미지정을 뜻한다
+(`parseLaneFilter`/`serializeLaneFilter`). 빈 선택은 아무도 아닌 전체다 — 아무것도 고르지
+않은 필터가 모두를 걸러내면 화면이 이유 없이 빈다. 두 필터는 AND이고, 정렬 링크가 걸어 둔
+필터를 같이 들고 간다. 표 칸의 라인 없음은 `laneLabel(null)` = `-`이지만 메뉴에서는
+「미지정」이라는 낱말을 쓴다 — 체크박스 옆의 대시는 무엇을 고르는 건지 읽히지 않는다.
+
 Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
 behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**
 reset (`applySoftReset`) pulls every active member's rating halfway back to 1000, so
@@ -92,18 +109,42 @@ cannot import the dashboard's lib. Deliberately **not** watermarked:
 `queries/members.ts`'s `gameCount`, which counts rows the delete-confirm dialog is
 about to destroy, not a record.
 
+`/matches` (내전 팀 빌더) is the **team draft**, not result entry — results come in only through
+`/replay-import`, so a game without a replay cannot be recorded. It needs no login and
+sits in the public nav: it writes nothing to the database. Two captains (agreed
+by the players, set on the shared screen) pick the other eight in snake order `B R R B B R R B`,
+blue first. The rules live in `packages/core/src/draft.ts`; the turn is derived from
+per-team seat counts rather than the pick list, so unchecking a picked participant hands
+the turn back, and cross-team moves are refused until the draft completes. Guests exist
+only in the browser (name, hand-typed MMR and lanes) and count in the team averages.
+Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
+
+Candidates show combined champion mastery: `ChampionMastery` caches Riot
+Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
+`refreshChampionMasteries` at most once per 24h (`SiteSetting.masteryRefreshedAt`, same
+rules as the Riot ID refresh). Its button lives on `/member-admin`, not `/matches`. Points add up across a member's accounts and the highest level stands for the
+champion (`topMasteries`). The API names champions by numeric key, mapped through
+`ddragon-map.json`'s `championKeys`.
+
 `/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and pages
 20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
 page). `canCancel` is decided **per mode** across the whole table, not the
 current page or filter, because `cancelGameResult` accepts the newest live game
 of the game's own mode — so 협곡 and 칼바람 each have one cancellable row.
 
+`/player-stats` aggregates rift results per member per lane from `ReplayPlayerStat`
+only — a hand-entered game has no position or KDA, so its count can be lower than
+`/rift`'s. `?period=season` (default) uses the same reset baseline as `counted-games`;
+`?period=all` drops it. The math is `aggregatePlayerStats` in `packages/core`; member
+selection and block folding are browser memory only.
+
 A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
 member's old score. Right after a reset nothing is cancellable, which is correct.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
-`UNRANKED`) that an admin sets by hand. Its score comes from a reference table in
+`UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a
+second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
 moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
@@ -143,10 +184,17 @@ header line (`@태그해서 작성해주세요`) becomes a member too. Idempoten
 의존성도 패치 종속성도 없다. 참가자 값은 전부 문자열이고 `NAME`은 비어 있다 — 신원은
 `PUUID`와 `RIOT_ID_GAME_NAME`/`RIOT_ID_TAG_LINE`에서 온다.
 
-`RiotAccount`는 **리플레이에서 관측된 계정으로만** 만든다. 카톡·디코 닉네임에 적힌 Riot
+`RiotAccount`는 **검증된 PUUID 소스로만** 만든다 — 리플레이 메타데이터, 그리고 Riot
+Account-V1 조회 응답(`lib/riot-api/account.ts`). 등록 경로는 셋: 리플레이 업로드,
+`/member-info`에서 "이름#태그" 입력(`registerRiotAccount`), `/link-accounts`의 배치
+(`registerRiotAccountsFromHints` — 디코 별명·카톡 닉네임(묘비 포함)·`Member.riotId`에 적힌
+Riot ID를 **전부** 조회해 찾은 수만큼 계정을 붙인다. 부계정을 서로 다른 닉네임에 나눠 적는
+일이 흔해서다. 이미 등록된 계정과 같은 ID는 대소문자를 접어 비교해 조회를 건너뛰므로,
+한도에 걸려 중단돼도 다시 돌리면 남은 ID부터 이어서 한다. 첫 `unauthorized`에서 중단). `RIOT_API_KEY`는
+`.env`; 개발 키는 24시간 만료라 "키 만료" 안내가 나면 갱신한다. 카톡·디코 닉네임에 적힌 Riot
 ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누락이 흔하고, 그대로 저장하면
-한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **매칭 힌트**이며
-`scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 그 위에 실명 조각 신호가 따로
+한 사람의 계정이 표기별로 여러 행이 된다. 그 값들은 계정이 아니라 **조회의 입력이자 매칭
+힌트**이며 `scoreRiotAccountMatch`가 셋 중 가장 센 신호 하나만 센다. 그 위에 실명 조각 신호가 따로
 더해진다 — 인게임 닉에 "우성정글"처럼 실명 조각이 남는 경우를 잡으려고, 회원 실명(없으면
 카톡 닉네임 첫 조각)의 전체와 첫 글자를 뗀 조각 둘 다로 게임 닉을 검사해 하나라도 포함되면
 `REAL_NAME_FRAGMENT`(45점)를 더한다 — 성을 빼고 짓는 게임 닉이 흔해서다. 포지션은 가산점
@@ -154,6 +202,16 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 `점수 >= 100 && 1위−2위 >= 40`일 때만 한다 — 100점은 손으로 적은 Riot ID가 정확히
 맞아떨어진 경우에만 단독으로 나오고, 실명 조각(45)과 포지션(25)은 그 문턱에 못 미쳐
 후보 화면에서 관리자 확인을 거치게 할 뿐 자동 배정을 트리거하지 않는다.
+`removeRiotAccount`는 행을 **삭제**한다 — `memberId = null`은 "외부인 확정"이라 잘못 붙인
+계정을 뗀 것과 구별되지 않는다.
+
+저장된 표기는 늙는다 — 인게임에서 이름을 바꿔도 PUUID는 그대로라서다. `/link-accounts`의
+"PUUID로 라이엇 ID 갱신"(`refreshRiotAccountIds` + `lookupRiotAccountByPuuid`)이 회원에게
+붙은 계정만 골라 by-puuid로 되읽고 달라진 `gameName`/`tagLine`만 고쳐 쓴다. **하루 한 번**
+제한이고, 그 근거는 `SiteSetting.riotIdRefreshedAt` — 브라우저가 아니라 DB에 둬야 관리자가
+여럿이어도 같은 한도를 본다. 달력 날짜가 아니라 24시간으로 재는 이유는 서버가 UTC라 KST
+저녁 이후의 "오늘"이 서버의 내일이 되기 때문. 호출을 한 번이라도 쓴 실행만 시각을 남긴다 —
+대상이 없거나 키가 죽어 즉시 멈춘 실행까지 하루를 잡아먹으면 키를 고친 뒤 다시 못 돌린다.
 
 `RiotAccount.memberId`는 FK가 `onDelete: Restrict`다. 이 테이블에서 `memberId = null`은
 "연결 안 됨"이 아니라 "우리 회원이 아님을 확인함, 다시 묻지 말 것"이라는 확정 상태라서다.
@@ -165,6 +223,21 @@ Prisma가 옵셔널 관계에 기본으로 넣는 `SET NULL`을 그대로 뒀다
 리플레이에는 시간 축이 없어 카톡 임포트의 워터마크 방식을 쓸 수 없다. 유니크 제약 자체는
 취소 여부를 보지 않지만, `cancelGameResult`가 취소할 때 그 행의 `replayKey`를 함께
 지운다 — 그러지 않으면 매칭을 잘못 지정해 취소한 경기를 고쳐서 다시 올릴 방법이 없어진다.
+
+리플레이로 저장한 판은 **10명 전원**(외부인 포함)의 스탯을 `ReplayPlayerStat`에 남긴다 —
+챔피언·주문·룬·KDA·피해량·와드·CS·골드·아이템·오브젝트 킬. 회원 FK가 없고, 회원과 그 판의
+MMR 변화는 같은 경기의 `GameParticipant.replayPuuid`(그 회원이 뛴 계정)로 찾는다. 읽는 시점의
+`RiotAccount`를 보지 않으므로 계정 주인을 나중에 바꿔도 과거 경기 표시는 그대로이고, 흡수는
+`GameParticipant.memberId`를 옮기므로 생존자 이름이 따라온다. 저장 액션은 파일을 다시 받지 않고
+미리보기가 받은 선수 배열을 돌려받는다 — 그래서 `saveReplayImport`가 그 배열로 `replayKey`를
+다시 계산해 요청의 키와 다르면 `"리플레이 정보가 일치하지 않습니다."`로 거부한다. 이 기능 이전에
+올린 판과 손 입력 판은 스탯이 없어 `/match-history`에 확장 버튼이 붙지 않는다(보강하지 않는다).
+`GameResult.gameLengthMs`도 리플레이 판에만 있다.
+
+아이콘은 `apps/dashboard/public/ddragon/`에 커밋된 Data Dragon 일부다. 원본 덤프(`16.18.1/` 같은
+버전 폴더, 101MB)는 gitignore이고, `npx tsx scripts/sync-ddragon.ts <덤프>`(apps/dashboard에서)가
+보드에 쓰는 이미지만 복사하고 `lib/ddragon/ddragon-map.json`을 만든다. 새 패치의 아이템·챔피언은
+덤프를 교체해 스크립트를 다시 돌리기 전까지 빈 칸으로 나온다 — 모르는 id는 예외 없이 빈 칸이다.
 
 `saveGameResult`의 "디코 AND 카톡" 규칙에 "PUUID가 있는 `RiotAccount`가 붙어 있으면 갈음"이
 더해져 있다(`getLinkedMembers`도 같다). `saveReplayImport`가 계정을 먼저 등록하고 경기를
@@ -218,10 +291,10 @@ server → client boundary.
 
 ## Mobile
 
-Five read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`) work down to a 375px phone; the eight operator
+Six read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/inactive`, `/player-stats`) work down to a 375px phone; the nine operator
 screens (`matches`, `replay-import`, `team-builder`, `kakao-import`,
-`link-accounts`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
+`link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
 content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
 mode still reaches it.
@@ -243,25 +316,31 @@ transition actually plays.
 ## Branding
 
 The sidebar/drawer logo tile's glyph, the site name/tagline next to it, and the
-home page banner (desktop + mobile) are admin-editable from `/admins`
-(`BrandingPanel`) and stored on the same `SiteSetting` singleton row the skin
-lives on — never in `public/`, since this server's deploy replaces the whole
-file tree from git each time. All six fields are nullable; null means "use the
-built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게임",
-`public/banner.png`).
+home page banners are admin-editable from `/admins` (`BrandingPanel`) and stored
+in Postgres — never in `public/`, since this server's deploy replaces the whole
+file tree from git each time. Logo and name/tagline live on the same `SiteSetting`
+singleton row the skin lives on; all three are nullable, and null means "use the
+built-in default" (`gamepad` icon, "롤파민"/"함께라서 더 즐거운 게임").
 
 A pasted logo SVG is denylist-sanitized exactly once, at save time
 (`sanitizeSvg` in `packages/core`, strips `<script>`, event-handler attributes,
-`javascript:` URIs, `<foreignObject>`/`<iframe>`/`<object>`) — it renders site-wide
+`javascript:` URIs, `<foreignObject>`/`<iframe>`/`<object>`) and drops everything before the
+first `<svg` (the `<?xml …?>`, generator comment and DOCTYPE that Illustrator
+exports prepend) — it renders site-wide
 to every visitor, logged in or not, so a malicious or careless paste from any
 admin account is a stored-XSS risk otherwise. `BrandLogo` trusts the stored
 value and never re-sanitizes on render.
 
-Banners are `Bytes` columns, served by `/api/branding/banner/{desktop,mobile}`
-route handlers that read straight from Postgres on every request. Neither route
-404s when nothing is stored: desktop redirects to `/banner.png`, and mobile
-redirects to the desktop route — so "no mobile banner" naturally resolves to
-"whatever the desktop banner currently is," without a separate code path.
+Banners are rows of `HomeBanner` — up to four per variant (`DESKTOP`/`MOBILE`,
+slot 0–3, an empty slot has no row). `BannerSlotGrid` uploads or deletes one slot
+immediately, outside the branding form's 저장. The home page stacks the filled
+slots top to bottom in slot order; the fallback is decided by the whole set, not
+per slot (`resolveHomeBannerSources`): no desktop banner at all → `/banner.png`,
+no mobile banner at all → the desktop set. Both sets are rendered and CSS shows
+one; `loading="lazy"` keeps the hidden set from downloading. Images are served by
+`/api/branding/banners/{desktop,mobile}/{slot}`, which 404s on an empty slot and
+caches as immutable — every page links it with `?v=updatedAt`, so replacing a slot
+changes the URL.
 
 ## Deployment
 

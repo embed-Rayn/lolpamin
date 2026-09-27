@@ -23,5 +23,6 @@ export async function updateMemberLastActiveAction(
   }
   revalidatePath("/inactive");
   revalidatePath("/rift");
+  revalidatePath("/member-admin");
   return { error: null };
 }

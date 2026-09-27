@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LANE_OPTIONS, UNSET_LANE_LABEL } from "@lolpamin/core";
+import { LANE_OPTIONS } from "@lolpamin/core";
 
 // 「미지정」을 고른 상태를 URL에 실을 때 쓰는 토큰. 서버 쪽 UNSET_LANE_PARAM과 같은 값이고,
 // 거기 모듈은 prisma를 끌고 들어와서 클라이언트 번들에 넣을 수 없어 값만 맞춰 둔다.
 const UNSET_TOKEN = "-";
+
+// 표 칸에서는 라인 없음이 laneLabel(null) = "-"지만, 체크박스 옆에 붙는 대시는 무엇을 고르는
+// 건지 읽히지 않는다 — 메뉴에서만 낱말로 쓴다.
+const UNSET_LABEL = "미지정";
 
 export function LaneFilterMenu({
   param,
@@ -23,7 +27,7 @@ export function LaneFilterMenu({
 
   const options = [...LANE_OPTIONS.map((o) => ({ token: o.value as string, label: o.label })), {
     token: UNSET_TOKEN,
-    label: UNSET_LANE_LABEL,
+    label: UNSET_LABEL,
   }];
 
   function apply(tokens: string[]) {

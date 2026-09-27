@@ -1,5 +1,7 @@
 import type { GameMode, PrismaClient } from "@lolpamin/db";
+import type { ReplayPlayer } from "@lolpamin/core";
 import { saveGameResultTx, type SaveGameResultOutput } from "./save-game-result";
+import { computeReplayKey } from "../replay-import/replay-key";
 
 export interface ReplayAssignment {
   puuid: string;
@@ -12,6 +14,11 @@ export interface ReplayAssignment {
 
 export interface SaveReplayImportInput {
   replayKey: string;
+  /**
+   * 미리보기가 파일에서 읽은 그대로의 경기 정보. 파일을 다시 올리지 않으려고 클라이언트가
+   * 돌려보내므로, 저장 전에 replayKey를 다시 계산해 같은 경기인지 확인한다.
+   */
+  replay: { gameLengthMs: number; players: ReplayPlayer[] };
   /** 리플레이에 벽시계 시각이 없어 관리자가 고른 값이다(기본값은 파일의 lastModified). */
   playedAt: Date;
   winner: "BLUE" | "RED";
@@ -25,6 +32,7 @@ export const SAVE_REPLAY_IMPORT_ERRORS = {
   alreadyImported: "이미 등록된 경기입니다.",
   duplicateMember: "같은 회원이 두 슬롯에 배정돼 있습니다.",
   emptyTeam: "한 팀에 회원이 한 명도 없습니다. 최소 한 명은 회원이어야 합니다.",
+  replayMismatch: "리플레이 정보가 일치하지 않습니다.",
 } as const;
 
 /**
@@ -39,7 +47,14 @@ export async function saveReplayImport(
   prisma: PrismaClient,
   input: SaveReplayImportInput
 ): Promise<SaveGameResultOutput> {
-  const { replayKey, playedAt, winner, assignments, createdById = null, mode = "RIFT" } = input;
+  const { replayKey, replay, playedAt, winner, assignments, createdById = null, mode = "RIFT" } = input;
+
+  // 클라이언트가 돌려보낸 스탯이 이 키의 경기인지 확인한다. 수치 조작까지 막지는 않는다 —
+  // 관리자 전용 경로이고, 막으려는 것은 다른 경기(오래된 탭, 재업로드)의 스탯이 끼어드는 일이다.
+  const replayPuuids = new Set(replay.players.map((p) => p.puuid));
+  if (computeReplayKey(replay) !== replayKey || assignments.some((a) => !replayPuuids.has(a.puuid))) {
+    throw new Error(SAVE_REPLAY_IMPORT_ERRORS.replayMismatch);
+  }
 
   const memberIds = assignments.map((a) => a.memberId).filter((id): id is string => id !== null);
   if (new Set(memberIds).size !== memberIds.length) {
@@ -105,6 +120,54 @@ export async function saveReplayImport(
         createdById,
         replayKey,
         mode,
+      });
+
+      for (const a of assignments) {
+        if (a.memberId === null) continue;
+        await tx.gameParticipant.update({
+          where: { gameResultId_memberId: { gameResultId: result.gameResultId, memberId: a.memberId } },
+          data: { replayPuuid: a.puuid },
+        });
+      }
+      await tx.gameResult.update({
+        where: { id: result.gameResultId },
+        data: { gameLengthMs: replay.gameLengthMs },
+      });
+      // 필드를 하나씩 고른다 — 클라이언트가 보낸 객체를 그대로 펼치면 모르는 키가 섞여 들어와
+      // createMany가 거부한다.
+      await tx.replayPlayerStat.createMany({
+        data: replay.players.map((p) => ({
+          gameResultId: result.gameResultId,
+          puuid: p.puuid,
+          gameName: p.gameName,
+          tagLine: p.tagLine,
+          team: p.team,
+          position: p.position,
+          champion: p.champion,
+          level: p.level,
+          kills: p.kills,
+          deaths: p.deaths,
+          assists: p.assists,
+          cs: p.cs,
+          spell1: p.spell1,
+          spell2: p.spell2,
+          keystone: p.keystone,
+          subStyle: p.subStyle,
+          items: p.items,
+          damageDealt: p.damageDealt,
+          damageTaken: p.damageTaken,
+          controlWards: p.controlWards,
+          wardsPlaced: p.wardsPlaced,
+          wardsKilled: p.wardsKilled,
+          gold: p.gold,
+          baronKills: p.baronKills,
+          dragonKills: p.dragonKills,
+          heraldKills: p.heraldKills,
+          hordeKills: p.hordeKills,
+          atakhanKills: p.atakhanKills,
+          turretKills: p.turretKills,
+          inhibitorKills: p.inhibitorKills,
+        })),
       });
 
       // 같이 게임을 했는데 카톡에 글을 안 썼다고 비활동으로 잡히는 구멍을 메운다.

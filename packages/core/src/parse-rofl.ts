@@ -1,18 +1,43 @@
-export interface ReplayPlayer {
+/** What a replay says about one player and what the detail board shows. Stored per game in ReplayPlayerStat. */
+export interface ReplayPlayerStats {
   /** 계정 정체성. 인게임 닉을 바꿔도 변하지 않는다. */
   puuid: string;
   gameName: string;
   tagLine: string;
   team: "BLUE" | "RED";
-  win: boolean;
   /** TOP / JUNGLE / MIDDLE / BOTTOM / UTILITY. 특수한 판에서는 빈 문자열일 수 있다. */
   position: string;
   champion: string;
+  level: number;
   kills: number;
   deaths: number;
   assists: number;
-  level: number;
   cs: number;
+  /** summoner.json의 key. */
+  spell1: number;
+  spell2: number;
+  /** runesReforged.json의 핵심 룬 id와 보조 계열 id. */
+  keystone: number;
+  subStyle: number;
+  /** ITEM0..ITEM6. 0은 빈 칸, 마지막은 장신구. */
+  items: number[];
+  damageDealt: number;
+  damageTaken: number;
+  controlWards: number;
+  wardsPlaced: number;
+  wardsKilled: number;
+  gold: number;
+  baronKills: number;
+  dragonKills: number;
+  heraldKills: number;
+  hordeKills: number;
+  atakhanKills: number;
+  turretKills: number;
+  inhibitorKills: number;
+}
+
+export interface ReplayPlayer extends ReplayPlayerStats {
+  win: boolean;
   wasAfk: boolean;
   wasLeaver: boolean;
   secondsDisconnected: number;
@@ -36,6 +61,7 @@ export const ROFL_PARSE_ERRORS = {
 const MAGIC = [0x52, 0x49, 0x4f, 0x54, 0x02, 0x00]; // "RIOT" + 02 00
 const VERSION_LENGTH_OFFSET = 0x0e;
 const PLAYER_COUNT = 10;
+const ITEM_SLOTS = 7;
 
 function toInt(value: unknown): number {
   // 참가자 값은 전부 문자열로 온다("14"). 빠진 키는 0으로 본다 — 화면 표시용 숫자라
@@ -50,7 +76,7 @@ function toBool(value: unknown): boolean {
 
 /**
  * .rofl에서 꼬리의 평문 JSON만 읽는다. 앞쪽 zstd 청크는 열지 않으므로 압축 의존성도,
- * 패치 종속성도 생기지 않는다 — 필요한 값(참가자·팀·승패·길이)이 전부 꼬리에 있다.
+ * 패치 종속성도 생기지 않는다 — 필요한 값(참가자·팀·승패·길이·상세 스탯)이 전부 꼬리에 있다.
  *
  * 파일 I/O는 호출자가 한다. packages/core의 "I/O 없음" 규칙을 지키려는 것이다.
  */
@@ -102,6 +128,24 @@ export function parseRoflMetadata(bytes: Uint8Array): ReplayMetadata {
     wasAfk: toBool(raw.WAS_AFK),
     wasLeaver: toBool(raw.WAS_LEAVER),
     secondsDisconnected: toInt(raw.TIME_SPENT_DISCONNECTED),
+    spell1: toInt(raw.SUMMONER_SPELL_1),
+    spell2: toInt(raw.SUMMONER_SPELL_2),
+    keystone: toInt(raw.KEYSTONE_ID),
+    subStyle: toInt(raw.PERK_SUB_STYLE),
+    items: Array.from({ length: ITEM_SLOTS }, (_, i) => toInt(raw[`ITEM${i}`])),
+    damageDealt: toInt(raw.TOTAL_DAMAGE_DEALT_TO_CHAMPIONS),
+    damageTaken: toInt(raw.TOTAL_DAMAGE_TAKEN),
+    controlWards: toInt(raw.VISION_WARDS_BOUGHT_IN_GAME),
+    wardsPlaced: toInt(raw.WARD_PLACED),
+    wardsKilled: toInt(raw.WARD_KILLED),
+    gold: toInt(raw.GOLD_EARNED),
+    baronKills: toInt(raw.BARON_KILLS),
+    dragonKills: toInt(raw.DRAGON_KILLS),
+    heraldKills: toInt(raw.RIFT_HERALD_KILLS),
+    hordeKills: toInt(raw.HORDE_KILLS),
+    atakhanKills: toInt(raw.ATAKHAN_KILLS),
+    turretKills: toInt(raw.TURRETS_KILLED),
+    inhibitorKills: toInt(raw.BARRACKS_KILLED),
   }));
 
   const winner = players.some((p) => p.team === "BLUE" && p.win) ? "BLUE" : "RED";

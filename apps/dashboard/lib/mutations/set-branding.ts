@@ -4,32 +4,14 @@ import { SITE_SETTING_ID } from "../queries/site-theme";
 
 export const SITE_NAME_MAX_LENGTH = 40;
 export const SITE_TAGLINE_MAX_LENGTH = 80;
-export const BANNER_MAX_BYTES = 5 * 1024 * 1024;
-export const ALLOWED_BANNER_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export class SetBrandingValidationError extends Error {}
-
-export interface BannerUpload {
-  bytes: Buffer;
-  type: string;
-}
 
 export interface SetBrandingInput {
   // undefined = 이 필드는 안 건드림. null = 기본값으로 리셋. 값 있음 = 새로 저장.
   logoSvg?: string | null;
   siteName?: string | null;
   siteTagline?: string | null;
-  homeBannerDesktop?: BannerUpload | null;
-  homeBannerMobile?: BannerUpload | null;
-}
-
-function validateBanner(upload: BannerUpload): void {
-  if (!ALLOWED_BANNER_TYPES.includes(upload.type)) {
-    throw new SetBrandingValidationError("지원하지 않는 이미지 형식입니다(png, jpg, webp, gif만 가능합니다).");
-  }
-  if (upload.bytes.byteLength > BANNER_MAX_BYTES) {
-    throw new SetBrandingValidationError("이미지 용량은 5MB를 넘을 수 없습니다.");
-  }
 }
 
 export async function setBranding(
@@ -63,28 +45,6 @@ export async function setBranding(
       throw new SetBrandingValidationError(`부제는 ${SITE_TAGLINE_MAX_LENGTH}자를 넘을 수 없습니다.`);
     }
     data.siteTagline = input.siteTagline || null;
-  }
-
-  if (input.homeBannerDesktop !== undefined) {
-    if (input.homeBannerDesktop === null) {
-      data.homeBannerDesktop = null;
-      data.homeBannerDesktopType = null;
-    } else {
-      validateBanner(input.homeBannerDesktop);
-      data.homeBannerDesktop = input.homeBannerDesktop.bytes;
-      data.homeBannerDesktopType = input.homeBannerDesktop.type;
-    }
-  }
-
-  if (input.homeBannerMobile !== undefined) {
-    if (input.homeBannerMobile === null) {
-      data.homeBannerMobile = null;
-      data.homeBannerMobileType = null;
-    } else {
-      validateBanner(input.homeBannerMobile);
-      data.homeBannerMobile = input.homeBannerMobile.bytes;
-      data.homeBannerMobileType = input.homeBannerMobile.type;
-    }
   }
 
   await prisma.siteSetting.upsert({

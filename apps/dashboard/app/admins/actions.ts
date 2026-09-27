@@ -7,8 +7,9 @@ import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
 import { resetAllRatings } from "@/lib/mutations/reset-ratings";
 import { setSiteTheme } from "@/lib/mutations/set-site-theme";
 import { SetBrandingValidationError, setBranding } from "@/lib/mutations/set-branding";
+import { deleteHomeBanner, HomeBannerValidationError, setHomeBanner } from "@/lib/mutations/home-banners";
 import { MmrConfigValidationError, updateMmrConfig } from "@/lib/mutations/update-mmr-config";
-import type { RatingResetKind } from "@lolpamin/db";
+import type { BannerVariant, RatingResetKind } from "@lolpamin/db";
 
 interface AdminActionResult {
   error: string | null;
@@ -123,27 +124,13 @@ export async function setSiteThemeAction(theme: string): Promise<{ error: string
   return { error: null };
 }
 
-// FormData로 받는 이유: 텍스트 필드와 파일 입력(배너 이미지)을 한 폼에서 함께 받는다.
-// BrandingPanel이 <form>에서 직접 만든 FormData를 넘긴다.
-//
-// "기본값으로" 버튼은 그 배너만 리셋한다는 별도 신호(resetDesktop/resetMobile)를
-// 같이 보낸다 — 파일 입력이 비어 있는 것("이번엔 안 바꿈")과 명시적 리셋("기본값으로
-// 되돌림")은 뜻이 달라서, 파일이 없다고 무조건 리셋하면 안 된다.
-async function toBannerUpload(
-  entry: FormDataEntryValue | null,
-): Promise<{ bytes: Buffer; type: string } | undefined> {
-  if (!(entry instanceof File) || entry.size === 0) return undefined;
-  return { bytes: Buffer.from(await entry.arrayBuffer()), type: entry.type };
-}
-
+// FormData로 받는 이유: BrandingPanel이 <form>에서 직접 만든 FormData를 넘긴다.
 export async function setBrandingAction(formData: FormData): Promise<{ error: string | null }> {
   const acting = await requireAdmin();
 
   const logoSvgRaw = formData.get("logoSvg");
   const siteNameRaw = formData.get("siteName");
   const siteTaglineRaw = formData.get("siteTagline");
-  const resetDesktop = formData.get("resetDesktop") === "1";
-  const resetMobile = formData.get("resetMobile") === "1";
 
   try {
     await setBranding(
@@ -152,8 +139,6 @@ export async function setBrandingAction(formData: FormData): Promise<{ error: st
         logoSvg: typeof logoSvgRaw === "string" && logoSvgRaw.trim() ? logoSvgRaw : null,
         siteName: typeof siteNameRaw === "string" ? siteNameRaw.trim() || null : undefined,
         siteTagline: typeof siteTaglineRaw === "string" ? siteTaglineRaw.trim() || null : undefined,
-        homeBannerDesktop: resetDesktop ? null : await toBannerUpload(formData.get("homeBannerDesktop")),
-        homeBannerMobile: resetMobile ? null : await toBannerUpload(formData.get("homeBannerMobile")),
       },
       acting.id,
     );
@@ -162,8 +147,47 @@ export async function setBrandingAction(formData: FormData): Promise<{ error: st
     return { error: "브랜딩 설정을 저장하지 못했습니다." };
   }
 
-  // 로고·이름은 사이드바/드로어(모든 페이지), 배너는 홈 화면 — 스킨과 같은 이유로
+  // 로고·이름은 사이드바/드로어(모든 페이지)에 나온다 — 스킨과 같은 이유로
   // layout 단위로 재검증한다.
   revalidatePath("/", "layout");
+  return { error: null };
+}
+
+// 배너 칸 하나를 바로 올리거나 비운다 — 브랜딩 폼의 "저장"과 묶지 않는다.
+export async function setHomeBannerAction(formData: FormData): Promise<{ error: string | null }> {
+  const acting = await requireAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "이미지 파일을 골라주세요." };
+
+  try {
+    await setHomeBanner(
+      prisma,
+      String(formData.get("variant")) as BannerVariant,
+      Number(formData.get("slot")),
+      { bytes: Buffer.from(await file.arrayBuffer()), type: file.type },
+      acting.id,
+    );
+  } catch (error) {
+    if (error instanceof HomeBannerValidationError) return { error: error.message };
+    return { error: "배너를 저장하지 못했습니다." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admins");
+  return { error: null };
+}
+
+export async function deleteHomeBannerAction(variant: BannerVariant, slot: number): Promise<{ error: string | null }> {
+  await requireAdmin();
+
+  try {
+    await deleteHomeBanner(prisma, variant, slot);
+  } catch (error) {
+    if (error instanceof HomeBannerValidationError) return { error: error.message };
+    return { error: "배너를 삭제하지 못했습니다." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admins");
   return { error: null };
 }

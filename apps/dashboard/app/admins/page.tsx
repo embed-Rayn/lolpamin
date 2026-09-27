@@ -8,6 +8,7 @@ import { BrandingPanel } from "@/components/BrandingPanel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { getBranding } from "@/lib/queries/branding";
+import { getHomeBanners } from "@/lib/queries/home-banners";
 import { getStoredMmrConfig } from "@/lib/queries/mmr-config";
 import { SITE_SETTING_ID, getSiteTheme } from "@/lib/queries/site-theme";
 
@@ -19,7 +20,7 @@ export default async function AdminsPage() {
     redirect("/login");
   }
 
-  const [admins, mmrConfig, theme, themeRow, branding] = await Promise.all([
+  const [admins, mmrConfig, theme, themeRow, branding, banners] = await Promise.all([
     prisma.admin.findMany({ orderBy: { createdAt: "asc" } }),
     getStoredMmrConfig(prisma),
     getSiteTheme(prisma),
@@ -28,6 +29,7 @@ export default async function AdminsPage() {
       select: { updatedAt: true, updatedById: true },
     }),
     getBranding(prisma),
+    getHomeBanners(prisma),
   ]);
   const byId = new Map(admins.map((a) => [a.id, a.username]));
 
@@ -57,7 +59,7 @@ export default async function AdminsPage() {
     <AppShell activeNav="admins" pageTitle="관리자 · 설정" pageDesc="계정, 스킨, MMR 계산식, 시즌 리셋" desktopOnly>
       <div className="flex flex-col gap-5 px-7 pb-10 pt-6">
         <ThemePanel current={theme} updatedLabel={themeUpdatedLabel} />
-        <BrandingPanel current={branding} updatedLabel={themeUpdatedLabel} />
+        <BrandingPanel current={branding} banners={banners} updatedLabel={themeUpdatedLabel} />
         <AdminPanel rows={rows} />
         <MmrConfigPanel config={mmrConfig} updatedLabel={mmrUpdatedLabel} />
         <RatingResetPanel />

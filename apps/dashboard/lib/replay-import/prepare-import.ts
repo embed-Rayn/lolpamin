@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@lolpamin/db";
 import { getDisplayName, isAutoAssignable, parseRoflMetadata, scoreRiotAccountMatch } from "@lolpamin/core";
-import type { ReplayPlayer } from "@lolpamin/core";
+import type { MmrConfig, ReplayPlayer } from "@lolpamin/core";
 import { computeReplayKey } from "./replay-key";
+import { getMmrConfig } from "../queries/mmr-config";
 
 /** confirmed는 PUUID로 확정, auto는 점수로 자동 배정, outsider는 "회원 아님"으로 확정한 계정. */
 export type SlotStatus = "confirmed" | "auto" | "unresolved" | "outsider";
@@ -35,6 +36,9 @@ export interface ImportSlot {
 export interface MemberOption {
   id: string;
   label: string;
+  /** 미리보기의 예상 MMR용. 모드에 따라 둘 중 하나를 쓴다. */
+  mmr: number;
+  aramMmr: number;
 }
 
 export interface PreparedReplayImport {
@@ -46,6 +50,10 @@ export interface PreparedReplayImport {
   slots: ImportSlot[];
   /** 후보가 빗나갔을 때 관리자가 직접 고르는 전체 명단. */
   members: MemberOption[];
+  /** 파일에서 읽은 10명 전체. 미리보기 보드가 그리고, 저장할 때 그대로 돌려보낸다. */
+  players: ReplayPlayer[];
+  /** 미리보기가 저장과 같은 계산을 하도록 /admins에 저장된 설정을 함께 내린다. */
+  mmrConfig: MmrConfig;
 }
 
 export const REPLAY_IMPORT_ERRORS = {
@@ -103,7 +111,7 @@ export async function prepareReplayImport(
   const already = await prisma.gameResult.findUnique({ where: { replayKey } });
   if (already) throw new Error(REPLAY_IMPORT_ERRORS.alreadyImported);
 
-  const [accounts, members] = await Promise.all([
+  const [accounts, members, mmrConfig] = await Promise.all([
     prisma.riotAccount.findMany({
       where: { puuid: { in: meta.players.map((p) => p.puuid) } },
       include: { member: { select: { id: true, mergedIntoId: true } } },
@@ -118,6 +126,8 @@ export async function prepareReplayImport(
         discordHandle: true,
         discordDisplayName: true,
         riotId: true,
+        mmr: true,
+        aramMmr: true,
         // absorbMember는 카톡 닉네임을 생존자에게 복사하지 않고 묘비에 남긴다(그래야
         // processKakaoExport가 묘비를 집어 멘션을 이어붙인다). 그래서 실제로 연결이 끝난
         // 회원은 대부분 자기 행의 kakaoNickname이 비어 있고, 묘비까지 봐야 카톡 힌트가
@@ -126,6 +136,7 @@ export async function prepareReplayImport(
       },
       orderBy: [{ realName: "asc" }, { createdAt: "asc" }],
     }),
+    getMmrConfig(prisma),
   ]);
 
   const byPuuid = new Map(accounts.map((a) => [a.puuid, a]));
@@ -204,6 +215,8 @@ export async function prepareReplayImport(
     winner: meta.winner,
     endedInSurrender: meta.endedInSurrender,
     slots,
-    members: members.map((m) => ({ id: m.id, label: memberLabel(m) })),
+    members: members.map((m) => ({ id: m.id, label: memberLabel(m), mmr: m.mmr, aramMmr: m.aramMmr })),
+    players: meta.players,
+    mmrConfig,
   };
 }

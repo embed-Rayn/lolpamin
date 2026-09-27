@@ -1,16 +1,33 @@
 import { prisma } from "@/lib/prisma";
-import type { Member, MemberLane, MemberTier } from "@lolpamin/db";
-import { displayedRating, isMemberLane, tierScore } from "@lolpamin/core";
+import type { Lane, Member, MemberTier } from "@lolpamin/db";
+import {
+  displayedRating,
+  fullBirthYear,
+  isLane,
+  kakaoBirthYear,
+  tierScore,
+  topMasteries,
+  type MasteryEntry,
+} from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
+
+export interface MemberInfoRiotAccount {
+  id: string;
+  gameName: string;
+  tagLine: string;
+}
 
 type MemberWithAbsorbed = Member & {
   absorbed: Array<{ id: string; kakaoNickname: string | null }>;
+  // getMemberInfoSummary는 싣지 않는다 — 집계에 필요 없다.
+  riotAccounts?: Array<MemberInfoRiotAccount & { masteries?: MasteryEntry[] }>;
 };
 
 export type MemberInfoSort =
   | "realName"
-  | "kakaoNickname"
+  | "age"
   | "tier"
+  | "peakTier"
   | "riftMmr"
   | "riftGames"
   | "riftWinRate"
@@ -21,8 +38,9 @@ export type SortDirection = "asc" | "desc";
 
 const MEMBER_INFO_SORTS: MemberInfoSort[] = [
   "realName",
-  "kakaoNickname",
+  "age",
   "tier",
+  "peakTier",
   "riftMmr",
   "riftGames",
   "riftWinRate",
@@ -39,9 +57,9 @@ export function parseSortDirection(value: string | undefined): SortDirection {
   return value === "desc" ? "desc" : "asc";
 }
 
-// 라인 필터는 체크박스 다중 선택이라 URL에 "TOP,JUNGLE"처럼 실린다. `null`은 미지정
+// 라인 필터는 체크박스 다중 선택이라 URL에 "TOP,JUG"처럼 실린다. `null`은 미지정
 // 회원을 고른 것이고(빈 값 `-`로 들어온다), 아무것도 고르지 않으면 빈 배열 = 전체다.
-export type LaneFilter = Array<MemberLane | null>;
+export type LaneFilter = Array<Lane | null>;
 
 export const UNSET_LANE_PARAM = "-";
 
@@ -54,7 +72,7 @@ export function parseLaneFilter(value: string | undefined): LaneFilter {
     if (token === "" || seen.has(token)) continue;
     seen.add(token);
     if (token === UNSET_LANE_PARAM) lanes.push(null);
-    else if (isMemberLane(token)) lanes.push(token);
+    else if (isLane(token)) lanes.push(token);
   }
   return lanes;
 }
@@ -78,13 +96,28 @@ export interface MemberInfoRow {
   id: string;
   realName: string;
   kakaoNickname: string;
+  // Member.age(관리자가 고칠 수 있는 출생연도 두 자리)가 있으면 그것, 없으면 카톡 닉네임
+  // `이름/출생연도/RiotID`의 두 번째 조각. 출생연도는 매칭 키의 일부라 닉네임을 바꿔도
+  // 변하지 않으므로 저장값이 낡을 일이 없다. 화면은 두 자리로 줄여 보여준다.
+  birthYear: number | null;
+  // 산정티어 — 팀빌더 점수의 근거.
   tier: MemberTier;
-  primaryLane: MemberLane | null;
-  secondaryLane: MemberLane | null;
+  // 최고티어 — 참고값.
+  peakTier: MemberTier;
+  // null은 「모름」.
+  mainLane: Lane | null;
+  subLane: Lane | null;
   rift: ModeRecord;
   aram: ModeRecord;
-  note: string | null;
+  // 검증된 PUUID로 등록된 라이엇 계정. 묘비의 계정은 absorbMember가 생존자로 옮기므로
+  // 자기 것만 보면 된다. 최근 관측순.
+  riotAccounts: MemberInfoRiotAccount[];
+  // 모든 라이엇 계정의 숙련도를 합산한 상위 3개. 계정이 없거나 아직 갱신 전이면 빈 배열.
+  masteries: MasteryEntry[];
 }
+
+/** 모임이 닉네임에 적는 대로 두 자리("94", "01")로 보여준다. */
+export { birthYearLabel } from "@lolpamin/core";
 
 // 흡수해도 카톡 닉네임은 묘비에 남는다 — queries/members.ts의 displayKakaoNickname과
 // 같은 이유로 여기서도 묘비를 본다.
@@ -210,10 +243,15 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
   switch (sort) {
     case "realName":
       return compareNullableString(a.realName, b.realName, sign, a.id, b.id);
-    case "kakaoNickname":
-      return compareNullableString(a.kakaoNickname, b.kakaoNickname, sign, a.id, b.id);
+    case "age":
+      // 나이를 모르는 회원은 방향과 무관하게 뒤로 보낸다 — 승률의 "기록 없음"과 같은 규칙.
+      return compareWinRate(a.birthYear, b.birthYear, sign, a.id, b.id);
     case "tier": {
       const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
+      return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
+    }
+    case "peakTier": {
+      const byScore = (tierScore(a.peakTier) - tierScore(b.peakTier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
     }
     case "riftMmr":
@@ -237,13 +275,22 @@ export async function getMemberInfoListData(
   query: string,
   sort: MemberInfoSort = "realName",
   dir: SortDirection = "asc",
-  primaryLanes: LaneFilter = [],
-  secondaryLanes: LaneFilter = [],
+  mainLanes: LaneFilter = [],
+  subLanes: LaneFilter = [],
 ): Promise<MemberInfoRow[]> {
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
     include: {
       absorbed: { select: { id: true, kakaoNickname: true }, orderBy: { createdAt: "desc" } },
+      riotAccounts: {
+        select: {
+          id: true,
+          gameName: true,
+          tagLine: true,
+          masteries: { select: { championId: true, level: true, points: true } },
+        },
+        orderBy: { lastSeenAt: "desc" },
+      },
     },
   });
 
@@ -259,13 +306,15 @@ export async function getMemberInfoListData(
 
   // 빈 목록은 "고른 것이 없다" = 전체다. 아무것도 고르지 않은 필터가 모두를 걸러내면
   // 화면이 이유 없이 비어 보인다.
-  function matchesLane(lane: MemberLane | null, selected: LaneFilter): boolean {
+  function matchesLane(lane: Lane | null, selected: LaneFilter): boolean {
     return selected.length === 0 || selected.includes(lane);
   }
 
   const rows: MemberInfoRow[] = members
     .map((m) => {
       const realName = m.realName ?? "-";
+      const kakaoNickname = displayKakaoNickname(m);
+      const accounts = m.riotAccounts ?? [];
       const record = records.get(m.id) ?? {
         rift: toModeRecord(m.mmr, 0, 0),
         aram: toModeRecord(m.aramMmr, 0, 0),
@@ -276,19 +325,25 @@ export async function getMemberInfoListData(
         row: {
           id: m.id,
           realName,
-          kakaoNickname: displayKakaoNickname(m),
+          kakaoNickname,
+          // 읽을 수 없는 저장값(옛 연결 때 들어간 150 같은 수)은 닉네임 값을 가리지 않는다.
+          birthYear:
+            (m.age !== null ? fullBirthYear(m.age) : null) ??
+            (kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname)),
           tier: m.tier,
-          primaryLane: m.primaryLane,
-          secondaryLane: m.secondaryLane,
+          peakTier: m.peakTier,
+          mainLane: m.mainLane,
+          subLane: m.subLane,
           rift: record.rift,
           aram: record.aram,
-          note: m.note,
+          riotAccounts: accounts.map(({ id, gameName, tagLine }) => ({ id, gameName, tagLine })),
+          masteries: topMasteries(accounts.flatMap((a) => a.masteries ?? [])),
         },
       };
     })
     .filter(({ m, realName, row }) => {
-      if (!matchesLane(row.primaryLane, primaryLanes)) return false;
-      if (!matchesLane(row.secondaryLane, secondaryLanes)) return false;
+      if (!matchesLane(row.mainLane, mainLanes)) return false;
+      if (!matchesLane(row.subLane, subLanes)) return false;
       return matchesQuery(m, realName);
     })
     .map(({ row }) => row);

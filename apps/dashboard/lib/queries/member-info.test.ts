@@ -17,6 +17,7 @@ vi.mock("@/lib/prisma", async () => {
 });
 
 const {
+  birthYearLabel,
   getMemberInfoListData,
   getMemberInfoSummary,
   parseMemberInfoSort,
@@ -63,6 +64,14 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+describe("birthYearLabel", () => {
+  it("shows two digits the way the nickname writes them", () => {
+    expect(birthYearLabel(1994)).toBe("94");
+    expect(birthYearLabel(2001)).toBe("01");
+    expect(birthYearLabel(null)).toBe("-");
+  });
+});
+
 describe("parseMemberInfoSort / parseSortDirection", () => {
   it("defaults to realName ascending", () => {
     expect(parseMemberInfoSort(undefined)).toBe("realName");
@@ -75,6 +84,8 @@ describe("parseMemberInfoSort / parseSortDirection", () => {
     expect(parseMemberInfoSort("riftWinRate")).toBe("riftWinRate");
     expect(parseMemberInfoSort("aramGames")).toBe("aramGames");
     expect(parseMemberInfoSort("tier")).toBe("tier");
+    expect(parseMemberInfoSort("peakTier")).toBe("peakTier");
+    expect(parseMemberInfoSort("age")).toBe("age");
     expect(parseSortDirection("desc")).toBe("desc");
   });
 });
@@ -86,12 +97,12 @@ describe("parseLaneFilter / serializeLaneFilter", () => {
   });
 
   it("reads a multi-select list", () => {
-    expect(parseLaneFilter("TOP,JUNGLE")).toEqual(["TOP", "JUNGLE"]);
+    expect(parseLaneFilter("TOP,JUG")).toEqual(["TOP", "JUG"]);
   });
 
   it("reads the 미지정 token as null", () => {
     expect(parseLaneFilter("-")).toEqual([null]);
-    expect(parseLaneFilter("ADC,-")).toEqual(["ADC", null]);
+    expect(parseLaneFilter("AD,-")).toEqual(["AD", null]);
   });
 
   it("drops unknown tokens and duplicates", () => {
@@ -99,15 +110,15 @@ describe("parseLaneFilter / serializeLaneFilter", () => {
   });
 
   it("round-trips through serialize", () => {
-    expect(serializeLaneFilter(parseLaneFilter("SUPPORT,-"))).toBe("SUPPORT,-");
+    expect(serializeLaneFilter(parseLaneFilter("SUP,-"))).toBe("SUP,-");
   });
 });
 
 describe("getMemberInfoListData lane filter", () => {
   beforeEach(async () => {
-    await prisma.member.create({ data: { realName: "탑주정글부", primaryLane: "TOP", secondaryLane: "JUNGLE" } });
-    await prisma.member.create({ data: { realName: "정글주미드부", primaryLane: "JUNGLE", secondaryLane: "MID" } });
-    await prisma.member.create({ data: { realName: "원딜주", primaryLane: "ADC" } });
+    await prisma.member.create({ data: { realName: "탑주정글부", mainLane: "TOP", subLane: "JUG" } });
+    await prisma.member.create({ data: { realName: "정글주미드부", mainLane: "JUG", subLane: "MID" } });
+    await prisma.member.create({ data: { realName: "원딜주", mainLane: "AD" } });
     await prisma.member.create({ data: { realName: "미지정" } });
   });
 
@@ -118,14 +129,14 @@ describe("getMemberInfoListData lane filter", () => {
     expect(rows).toHaveLength(4);
   });
 
-  it("filters by one primary lane", async () => {
-    const rows = await getMemberInfoListData("", "realName", "asc", ["ADC"], []);
+  it("filters by one main lane", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", ["AD"], []);
 
     expect(rows.map((r) => r.realName)).toEqual(["원딜주"]);
   });
 
-  it("filters by several primary lanes at once", async () => {
-    const rows = await getMemberInfoListData("", "realName", "asc", ["TOP", "ADC"], []);
+  it("filters by several main lanes at once", async () => {
+    const rows = await getMemberInfoListData("", "realName", "asc", ["TOP", "AD"], []);
 
     expect(rows.map((r) => r.realName).sort()).toEqual(["원딜주", "탑주정글부"]);
   });
@@ -136,7 +147,7 @@ describe("getMemberInfoListData lane filter", () => {
     expect(rows.map((r) => r.realName)).toEqual(["미지정"]);
   });
 
-  it("filters the secondary lane independently", async () => {
+  it("filters the sub lane independently", async () => {
     const rows = await getMemberInfoListData("", "realName", "asc", [], ["MID"]);
 
     expect(rows.map((r) => r.realName)).toEqual(["정글주미드부"]);
@@ -144,15 +155,15 @@ describe("getMemberInfoListData lane filter", () => {
 
   // 두 필터는 AND다 — 주 라인이 정글이면서 부 라인이 미드인 사람.
   it("combines the two lane filters", async () => {
-    const both = await getMemberInfoListData("", "realName", "asc", ["JUNGLE"], ["MID"]);
+    const both = await getMemberInfoListData("", "realName", "asc", ["JUG"], ["MID"]);
     expect(both.map((r) => r.realName)).toEqual(["정글주미드부"]);
 
-    const none = await getMemberInfoListData("", "realName", "asc", ["JUNGLE"], ["SUPPORT"]);
+    const none = await getMemberInfoListData("", "realName", "asc", ["JUG"], ["SUP"]);
     expect(none).toHaveLength(0);
   });
 
   it("combines with the search box", async () => {
-    const rows = await getMemberInfoListData("주", "realName", "asc", ["TOP", "ADC"], []);
+    const rows = await getMemberInfoListData("주", "realName", "asc", ["TOP", "AD"], []);
 
     expect(rows.map((r) => r.realName).sort()).toEqual(["원딜주", "탑주정글부"]);
   });
@@ -160,7 +171,7 @@ describe("getMemberInfoListData lane filter", () => {
   it("carries the lanes onto the row", async () => {
     const rows = await getMemberInfoListData("탑주정글부");
 
-    expect(rows[0]).toMatchObject({ primaryLane: "TOP", secondaryLane: "JUNGLE" });
+    expect(rows[0]).toMatchObject({ mainLane: "TOP", subLane: "JUG" });
   });
 });
 
@@ -268,6 +279,25 @@ describe("getMemberInfoListData records", () => {
     // 묘비 자체는 목록에 나오지 않는다.
     expect(rows.some((r) => r.kakaoNickname === "옛닉/94/old#KR1" && r.realName === "-")).toBe(false);
   });
+
+  it("lists each member's riot accounts, newest-seen first", async () => {
+    const m = await prisma.member.create({ data: { realName: "가", discordUserId: "d-1" } });
+    await prisma.riotAccount.create({
+      data: { puuid: "p-old", memberId: m.id, gameName: "옛계정", tagLine: "KR1", lastSeenAt: new Date("2026-01-01") },
+    });
+    await prisma.riotAccount.create({
+      data: { puuid: "p-new", memberId: m.id, gameName: "새계정", tagLine: "KR2", lastSeenAt: new Date("2026-09-01") },
+    });
+    await prisma.member.create({ data: { realName: "나", discordUserId: "d-2" } });
+
+    const rows = await getMemberInfoListData("", "realName", "asc");
+
+    expect(rows.map((r) => r.riotAccounts.map((a) => `${a.gameName}#${a.tagLine}`))).toEqual([
+      ["새계정#KR2", "옛계정#KR1"],
+      [],
+    ]);
+    expect(rows[0].riotAccounts[0].id).toBeTruthy();
+  });
 });
 
 describe("getMemberInfoListData search", () => {
@@ -327,6 +357,18 @@ describe("getMemberInfoListData sorting", () => {
     expect(descending.map((r) => r.realName)).toEqual(["나회원", "가회원", "-"]);
   });
 
+  it("sorts by birth year — stored age first, else the kakao nickname — unknown last", async () => {
+    // 관리자가 /member-admin에서 고친 Member.age가 닉네임보다 앞선다.
+    await prisma.member.updateMany({ where: { realName: "가회원" }, data: { kakaoNickname: "가회원/98/가#KR1", age: 99 } });
+    await prisma.member.updateMany({ where: { realName: "나회원" }, data: { kakaoNickname: "나회원/1994/나#KR1" } });
+
+    const ascending = await getMemberInfoListData("", "age", "asc");
+    expect(ascending.map((r) => r.birthYear)).toEqual([1994, 1999, null]);
+
+    const descending = await getMemberInfoListData("", "age", "desc");
+    expect(descending.map((r) => r.birthYear)).toEqual([1999, 1994, null]);
+  });
+
   it("sorts by tier score, not enum declaration order", async () => {
     const descending = await getMemberInfoListData("", "tier", "desc");
 
@@ -381,5 +423,76 @@ describe("getMemberInfoSummary", () => {
     await prisma.member.create({ data: { realName: "가" } });
 
     expect(await getMemberInfoSummary()).toEqual({ totalCount: 1, averageRiftMmr: 0, averageAramMmr: 0 });
+  });
+});
+
+describe("getMemberInfoListData — admin fields", () => {
+  it("carries the peak tier beside the rated tier", async () => {
+    await prisma.member.create({ data: { realName: "가", tier: "GOLD_1", peakTier: "DIAMOND_2" } });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.tier).toBe("GOLD_1");
+    expect(row.peakTier).toBe("DIAMOND_2");
+  });
+
+  it("sums masteries across every riot account and keeps the top three", async () => {
+    const m = await prisma.member.create({ data: { realName: "가" } });
+    const main = await prisma.riotAccount.create({
+      data: { puuid: "p-1", memberId: m.id, gameName: "본캐", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    const smurf = await prisma.riotAccount.create({
+      data: { puuid: "p-2", memberId: m.id, gameName: "부캐", tagLine: "KR1", lastSeenAt: new Date() },
+    });
+    await prisma.championMastery.createMany({
+      data: [
+        { riotAccountId: main.id, championId: 1, level: 7, points: 100 },
+        { riotAccountId: main.id, championId: 2, level: 7, points: 90 },
+        { riotAccountId: main.id, championId: 3, level: 5, points: 80 },
+        { riotAccountId: smurf.id, championId: 4, level: 5, points: 70 },
+        { riotAccountId: smurf.id, championId: 3, level: 5, points: 60 },
+      ],
+    });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.masteries.map((e) => [e.championId, e.points])).toEqual([
+      [3, 140],
+      [1, 100],
+      [2, 90],
+    ]);
+  });
+
+  it("gives an empty mastery list to a member without accounts", async () => {
+    await prisma.member.create({ data: { realName: "가" } });
+    const [row] = await getMemberInfoListData("");
+    expect(row.masteries).toEqual([]);
+  });
+
+  it("prefers the stored age over the nickname's birth year", async () => {
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/94/닉#KR1", age: 96 } });
+    await prisma.member.create({ data: { realName: "나", kakaoNickname: "나/01/닉#KR1" } });
+
+    const rows = await getMemberInfoListData("", "realName", "asc");
+
+    expect(rows.map((r) => r.birthYear)).toEqual([1996, 2001]);
+  });
+
+  it("falls back to the nickname when the stored age is not a readable year", async () => {
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/94/닉#KR1", age: 150 } });
+
+    const [row] = await getMemberInfoListData("");
+
+    expect(row.birthYear).toBe(1994);
+  });
+
+  it("sorts by peak tier score", async () => {
+    await prisma.member.create({ data: { realName: "가", peakTier: "SILVER_1" } });
+    await prisma.member.create({ data: { realName: "나", peakTier: "MASTER_0_200" } });
+    await prisma.member.create({ data: { realName: "다", peakTier: "GOLD_4" } });
+
+    const rows = await getMemberInfoListData("", "peakTier", "desc");
+
+    expect(rows.map((r) => r.realName)).toEqual(["나", "다", "가"]);
   });
 });

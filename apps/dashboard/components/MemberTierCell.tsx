@@ -5,15 +5,19 @@ import { useRouter } from "next/navigation";
 import type { MemberTier } from "@lolpamin/db";
 import { TIER_OPTIONS, tierLabel, tierScore } from "@lolpamin/core";
 import { updateMemberTierAction } from "@/app/rift/actions";
+import { updateMemberPeakTierAction } from "@/app/member-admin/actions";
 
 export function MemberTierCell({
   memberId,
   tier,
   isAdmin,
+  field = "tier",
 }: {
   memberId: string;
   tier: MemberTier;
   isAdmin: boolean;
+  // 같은 셀이 산정티어(Member.tier)와 최고티어(Member.peakTier) 둘 다 편집한다.
+  field?: "tier" | "peakTier";
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +34,8 @@ export function MemberTierCell({
     if (next === tier) return;
     setError(null);
     startTransition(async () => {
-      const { error: actionError } = await updateMemberTierAction(memberId, next);
+      const action = field === "peakTier" ? updateMemberPeakTierAction : updateMemberTierAction;
+      const { error: actionError } = await action(memberId, next);
       setError(actionError);
       router.refresh();
     });
@@ -44,7 +49,7 @@ export function MemberTierCell({
         value={tier}
         disabled={isPending}
         onChange={(e) => save(e.target.value as MemberTier)}
-        title="티어 수정"
+        title={field === "peakTier" ? "최고티어 수정" : "산정티어 수정"}
         className={`w-full min-w-0 cursor-pointer rounded-md border border-ink/[.09] bg-inset px-1.5 py-1 text-center text-[13.5px] outline-none focus:border-accent disabled:opacity-40 ${
           muted ? "text-ghost" : "text-fg"
         }`}

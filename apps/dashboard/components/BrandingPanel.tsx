@@ -5,10 +5,20 @@ import { useRouter } from "next/navigation";
 import { setBrandingAction } from "@/app/admins/actions";
 import { BrandLogo } from "./BrandLogo";
 import type { Branding } from "@/lib/queries/branding";
+import type { HomeBanners } from "@/lib/queries/home-banners";
+import { BannerSlotGrid } from "./BannerSlotGrid";
 
 const GUIDE_URL = "https://icon-icons.com/ko/ui-icons";
 
-export function BrandingPanel({ current, updatedLabel }: { current: Branding; updatedLabel: string | null }) {
+export function BrandingPanel({
+  current,
+  banners,
+  updatedLabel,
+}: {
+  current: Branding;
+  banners: HomeBanners;
+  updatedLabel: string | null;
+}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [showGuide, setShowGuide] = useState(false);
@@ -19,10 +29,6 @@ export function BrandingPanel({ current, updatedLabel }: { current: Branding; up
     e.preventDefault();
     if (!formRef.current) return;
     const formData = new FormData(formRef.current);
-    // 어느 버튼을 눌렀는지 폼 하나로는 자동으로 안 실린다 — 누른 버튼의 name/value를
-    // 직접 얹는다. 엔터로 제출하면(submitter 없음) 주 저장 버튼을 누른 것과 같다.
-    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    if (submitter?.name) formData.set(submitter.name, submitter.value);
 
     setError(null);
     startTransition(async () => {
@@ -115,63 +121,6 @@ export function BrandingPanel({ current, updatedLabel }: { current: Branding; up
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] font-bold text-fg-2">홈 배너 · 데스크톱</label>
-            {current.hasDesktopBanner ? (
-              <img src="/api/branding/banner/desktop" alt="" className="h-20 w-full rounded-lg object-cover" />
-            ) : (
-              <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-ink/[.12] text-[12px] text-faint">
-                기본 이미지 사용 중
-              </div>
-            )}
-            <input
-              type="file"
-              name="homeBannerDesktop"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="text-[12px]"
-            />
-            {current.hasDesktopBanner && (
-              <button
-                type="submit"
-                name="resetDesktop"
-                value="1"
-                disabled={isPending}
-                className="self-start text-[12px] font-semibold text-danger-soft hover:underline disabled:opacity-40"
-              >
-                기본값으로
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] font-bold text-fg-2">홈 배너 · 모바일</label>
-            {current.hasMobileBanner ? (
-              <img src="/api/branding/banner/mobile" alt="" className="h-20 w-full rounded-lg object-cover" />
-            ) : (
-              <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-ink/[.12] text-[12px] text-faint">
-                데스크톱 배너를 그대로 씀
-              </div>
-            )}
-            <input
-              type="file"
-              name="homeBannerMobile"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="text-[12px]"
-            />
-            {current.hasMobileBanner && (
-              <button
-                type="submit"
-                name="resetMobile"
-                value="1"
-                disabled={isPending}
-                className="self-start text-[12px] font-semibold text-danger-soft hover:underline disabled:opacity-40"
-              >
-                기본값으로
-              </button>
-            )}
-          </div>
-        </div>
-
         <div className="flex items-center gap-3">
           <button
             type="submit"
@@ -183,6 +132,22 @@ export function BrandingPanel({ current, updatedLabel }: { current: Branding; up
           {error && <span className="text-[12.5px] text-danger-soft">{error}</span>}
         </div>
       </form>
+
+      {/* 배너 칸은 폼 밖에 둔다 — 파일을 고르거나 지우는 즉시 저장되고, 위 "저장"과 섞이지 않는다. */}
+      <div className="flex flex-col gap-5 border-t border-ink/[.06] p-5">
+        <BannerSlotGrid
+          variant="DESKTOP"
+          label="홈 배너 · 데스크톱"
+          hint="최대 4장, 홈에서 순서대로 아래로 이어집니다. 비워두면 기본 이미지를 씁니다."
+          filled={banners.desktop}
+        />
+        <BannerSlotGrid
+          variant="MOBILE"
+          label="홈 배너 · 모바일"
+          hint="하나도 없으면 데스크톱 배너를 그대로 씁니다."
+          filled={banners.mobile}
+        />
+      </div>
     </section>
   );
 }

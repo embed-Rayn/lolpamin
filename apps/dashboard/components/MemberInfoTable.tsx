@@ -1,14 +1,21 @@
 import Link from "next/link";
-import type { MemberInfoRow, MemberInfoSort, ModeRecord, SortDirection } from "@/lib/queries/member-info";
-import { MemberTierCell } from "@/components/MemberTierCell";
-import { MemberNoteCell } from "@/components/MemberNoteCell";
+import {
+  birthYearLabel,
+  type MemberInfoRow,
+  type MemberInfoSort,
+  type ModeRecord,
+  type SortDirection,
+} from "@/lib/queries/member-info";
+import { laneLabel, tierLabel, tierScore } from "@lolpamin/core";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
-import { MemberLaneCell } from "@/components/MemberLaneCell";
+import { MasteryChampions } from "@/components/MasteryChampions";
 import { LaneFilterMenu } from "@/components/LaneFilterMenu";
 
-// 이름은 실명이라 석 자 안팎이다 — 고정폭으로 두고 남는 폭은 닉네임과 비고가 가져간다.
-// 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 — METRICS_GRID 참고.
-const GRID = "grid-cols-[44px_80px_1.3fr_600px_88px_88px_120px_1fr]";
+// 이름은 실명이라 석 자 안팎, 나이는 두 자리다 — 둘 다 고정폭으로 두고 남는 폭은 라이엇
+// 계정이 가져간다. 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 —
+// METRICS_GRID 참고. 주라인·부라인은 두 글자라 좁다. 모스트는 아이콘 세 개와 레벨이 들어간다.
+// 이 화면은 보기 전용이라 편집 칸이 없다 — 편집은 /member-admin.
+const GRID = "grid-cols-[80px_56px_600px_80px_80px_56px_56px_1.2fr_132px]";
 
 // 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
 // 곧 협곡·칼바람 경계다.
@@ -33,15 +40,22 @@ function mmrClassName(mmr: number): string {
 
 // 이름은 오름차순, 숫자는 내림차순으로 시작한다 — 가나다순으로 찾는 칸과 "가장 많이/잘한
 // 사람"을 찾는 칸의 기대가 서로 반대다. 같은 칸을 다시 누르면 방향만 뒤집는다.
-const TEXT_SORTS: MemberInfoSort[] = ["realName", "kakaoNickname"];
+// 나이 칸은 출생연도라, 오름차순이 곧 연장자부터다.
+const TEXT_SORTS: MemberInfoSort[] = ["realName", "age"];
 
 function winRateLabel(record: ModeRecord): string {
   return record.winRate === null ? "-" : `${record.winRate}%`;
 }
 
+// 점수 0(아이언·언랭)은 "점수를 매기지 않는 구간"이라 흐리게 둔다 — MemberTierCell의 보기 모드와 같다.
+function TierText({ tier }: { tier: MemberInfoRow["tier"] }) {
+  return (
+    <div className={`truncate text-center ${tierScore(tier) === 0 ? "text-ghost" : "text-fg-2"}`}>{tierLabel(tier)}</div>
+  );
+}
+
 export function MemberInfoTable({
   rows,
-  isAdmin,
   sort,
   dir,
   query,
@@ -49,7 +63,6 @@ export function MemberInfoTable({
   sublaneTokens,
 }: {
   rows: MemberInfoRow[];
-  isAdmin: boolean;
   sort: MemberInfoSort;
   dir: SortDirection;
   query: string;
@@ -87,7 +100,6 @@ export function MemberInfoTable({
         <div className={`grid ${GRID} gap-3 bg-surface-2 px-5 pt-2 text-[12.5px] font-bold tracking-wide`}>
           <div />
           <div />
-          <div />
           {/* 협곡·칼바람 이름표는 서로 떨어진 두 상자다 — 아래 행들의 그라데이션과 달리
               여기서만 둘 사이에 틈을 두고 위 모서리를 둥글린다. */}
           <div className="grid grid-cols-2 gap-1">
@@ -98,13 +110,14 @@ export function MemberInfoTable({
           <div />
           <div />
           <div />
+          <div />
+          <div />
         </div>
         <div
           className={`grid ${GRID} gap-3 border-b border-ink/[.06] bg-surface-2 px-5 pb-3 pt-1.5 text-[12.5px] font-bold tracking-wide text-faint`}
         >
-          <div className="text-center">NO.</div>
           <SortLink sortKey="realName" label="이름" align="center" />
-          <SortLink sortKey="kakaoNickname" label="닉네임" />
+          <SortLink sortKey="age" label="나이" align="center" />
           {/* -mt-1.5 pt-1.5 -mb-3 pb-3: 이 행의 위·아래 여백이 서로 다르다(pt-1.5,
               pb-3) — 양쪽 다 값이 다른 만큼 밀어내고 되채워야 배경이 정확히 여백까지
               닿는다. */}
@@ -120,10 +133,14 @@ export function MemberInfoTable({
             <div className="text-center">패</div>
             <SortLink sortKey="aramWinRate" label="승률" align="center" />
           </div>
-          <LaneFilterMenu param="lane" label="주 라인" selected={laneTokens} />
-          <LaneFilterMenu param="sublane" label="부 라인" selected={sublaneTokens} />
-          <SortLink sortKey="tier" label="현재티어" align="center" />
-          <div className="text-center">비고</div>
+          <SortLink sortKey="peakTier" label="최고티어" align="center" />
+          <SortLink sortKey="tier" label="산정티어" align="center" />
+          {/* 이 둘만 정렬 대신 체크박스 메뉴를 연다 — 헤더 하나가 두 제스처를 다 가질 수
+              없고, 걸러 볼 값이 있는 칸은 이 둘이다. */}
+          <LaneFilterMenu param="lane" label="주라인" selected={laneTokens} />
+          <LaneFilterMenu param="sublane" label="부라인" selected={sublaneTokens} />
+          <div className="text-center">라이엇 계정</div>
+          <div className="text-center">모스트</div>
         </div>
         {rows.length === 0 && (
           <div className="px-5 py-8 text-center text-[13.5px] text-ghost">조건에 맞는 회원이 없습니다.</div>
@@ -135,10 +152,9 @@ export function MemberInfoTable({
               index % 2 === 1 ? "bg-surface-2" : ""
             }`}
           >
-            <div className="text-center text-[13px] text-ghost">{index + 1}</div>
             <div className={`truncate text-center font-bold ${m.realName === "-" ? "text-ghost" : ""}`}>{m.realName}</div>
-            <div className={`truncate text-[13.5px] ${m.kakaoNickname === "-" ? "text-ghost" : "text-muted"}`}>
-              {m.kakaoNickname}
+            <div className={`text-center text-[13.5px] ${m.birthYear === null ? "text-ghost" : "text-muted"}`}>
+              {birthYearLabel(m.birthYear)}
             </div>
 
             {/* -my-3 py-3: 그리드 컨테이너의 py-3는 이 셀이 아니라 컨테이너 자신의
@@ -174,10 +190,25 @@ export function MemberInfoTable({
               </div>
             </div>
 
-            <MemberLaneCell memberId={m.id} slot="primary" lane={m.primaryLane} isAdmin={isAdmin} />
-            <MemberLaneCell memberId={m.id} slot="secondary" lane={m.secondaryLane} isAdmin={isAdmin} />
-            <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
-            <MemberNoteCell memberId={m.id} note={m.note} isAdmin={isAdmin} />
+            <TierText tier={m.peakTier} />
+            <TierText tier={m.tier} />
+            <div className={`text-center ${m.mainLane ? "text-fg-2" : "text-ghost"}`}>{laneLabel(m.mainLane)}</div>
+            <div className={`text-center ${m.subLane ? "text-fg-2" : "text-ghost"}`}>{laneLabel(m.subLane)}</div>
+            <div className="flex flex-wrap justify-center gap-1">
+              {m.riotAccounts.length === 0 ? (
+                <span className="text-ghost">-</span>
+              ) : (
+                m.riotAccounts.map((a) => (
+                  <span
+                    key={a.id}
+                    className="rounded-md border border-ink/[.09] bg-inset px-1.5 py-0.5 font-mono text-[12px] text-success-soft"
+                  >
+                    {a.gameName}#{a.tagLine}
+                  </span>
+                ))
+              )}
+            </div>
+            <MasteryChampions masteries={m.masteries} />
           </div>
         ))}
       </div>
@@ -185,8 +216,8 @@ export function MemberInfoTable({
         {rows.length === 0 && (
           <div className="px-5 py-8 text-center text-[13.5px] text-ghost">조건에 맞는 회원이 없습니다.</div>
         )}
-        {rows.map((m, index) => (
-          <MemberInfoCard key={m.id} row={m} index={index} />
+        {rows.map((m) => (
+          <MemberInfoCard key={m.id} row={m} />
         ))}
       </div>
     </>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getInactiveMembers, LONG_INACTIVITY_THRESHOLD_DAYS } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
+import { toLocalDate } from "@/lib/local-date";
 
 export interface InactiveRow {
   id: string;
@@ -29,13 +30,6 @@ export function effectiveKakaoNickname(m: {
   absorbed: Array<{ kakaoNickname: string | null }>;
 }): string | null {
   return m.kakaoNickname ?? m.absorbed.find((a) => a.kakaoNickname !== null)?.kakaoNickname ?? null;
-}
-
-function toLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
 }
 
 export async function getInactiveReportData(): Promise<InactiveReportData> {

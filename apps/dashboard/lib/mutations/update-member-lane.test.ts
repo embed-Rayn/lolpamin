@@ -18,52 +18,50 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+async function lanesOf(id: string) {
+  return prisma.member.findUniqueOrThrow({ where: { id }, select: { mainLane: true, subLane: true } });
+}
+
 describe("updateMemberLane", () => {
-  it("stores the primary lane", async () => {
-    const member = await prisma.member.create({ data: { realName: "유승수" } });
-
-    await updateMemberLane(prisma, member.id, "primary", "JUNGLE");
-
-    const updated = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
-    expect(updated.primaryLane).toBe("JUNGLE");
-    expect(updated.secondaryLane).toBeNull();
+  it("starts every member with no lanes", async () => {
+    const member = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
+    expect(await lanesOf(member.id)).toEqual({ mainLane: null, subLane: null });
   });
 
-  it("stores the secondary lane without touching the primary one", async () => {
-    const member = await prisma.member.create({ data: { realName: "유승수", primaryLane: "TOP" } });
+  it("stores main and sub lanes independently", async () => {
+    const member = await prisma.member.create({ data: { kakaoNickname: "유대혁/95/유대혁#KR1" } });
 
-    await updateMemberLane(prisma, member.id, "secondary", "SUPPORT");
+    await updateMemberLane(prisma, member.id, "main", "JUG");
+    await updateMemberLane(prisma, member.id, "sub", "SUP");
 
-    const updated = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
-    expect(updated.primaryLane).toBe("TOP");
-    expect(updated.secondaryLane).toBe("SUPPORT");
+    expect(await lanesOf(member.id)).toEqual({ mainLane: "JUG", subLane: "SUP" });
   });
 
-  // 드롭다운의 "미지정"을 고르면 null이 온다 — 한번 고른 라인을 다시 비울 수 있어야 한다.
-  it("clears a lane back to null", async () => {
-    const member = await prisma.member.create({ data: { realName: "유승수", primaryLane: "MID" } });
+  it("clears a lane back to unknown", async () => {
+    const member = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", mainLane: "TOP", subLane: "MID" },
+    });
 
-    await updateMemberLane(prisma, member.id, "primary", null);
+    await updateMemberLane(prisma, member.id, "sub", null);
 
-    const updated = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
-    expect(updated.primaryLane).toBeNull();
+    expect(await lanesOf(member.id)).toEqual({ mainLane: "TOP", subLane: null });
   });
 
-  // 주/부가 같아도 막지 않는다. 한 라인만 서는 사람에게 억지로 다른 라인을 적게 하는 것보다
-  // 그대로 두는 편이 정직하다.
-  it("allows the same lane in both slots", async () => {
-    const member = await prisma.member.create({ data: { realName: "원딜만" } });
+  it("empties the other slot when it already holds the chosen lane", async () => {
+    const member = await prisma.member.create({
+      data: { kakaoNickname: "유대혁/95/유대혁#KR1", mainLane: "TOP", subLane: "MID" },
+    });
 
-    await updateMemberLane(prisma, member.id, "primary", "ADC");
-    await updateMemberLane(prisma, member.id, "secondary", "ADC");
+    await updateMemberLane(prisma, member.id, "main", "MID");
+    expect(await lanesOf(member.id)).toEqual({ mainLane: "MID", subLane: null });
 
-    const updated = await prisma.member.findUniqueOrThrow({ where: { id: member.id } });
-    expect([updated.primaryLane, updated.secondaryLane]).toEqual(["ADC", "ADC"]);
+    await updateMemberLane(prisma, member.id, "sub", "MID");
+    expect(await lanesOf(member.id)).toEqual({ mainLane: null, subLane: "MID" });
   });
 
-  it("throws for a member that does not exist", async () => {
+  it("throws when the member does not exist", async () => {
     await expect(
-      updateMemberLane(prisma, "5f1a1a2e-0000-4000-8000-000000000000", "primary", "TOP")
+      updateMemberLane(prisma, "00000000-0000-0000-0000-000000000000", "main", "TOP"),
     ).rejects.toThrow();
   });
 });

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateMemberNoteAction } from "@/app/member-info/actions";
+import { updateMemberNoteAction } from "@/app/member-admin/actions";
 
 export function MemberNoteCell({
   memberId,

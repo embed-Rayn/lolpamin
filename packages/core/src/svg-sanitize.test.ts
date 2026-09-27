@@ -56,6 +56,20 @@ describe("sanitizeSvg", () => {
     expect(out).toContain("<circle");
   });
 
+  it("drops an XML declaration, comment and DOCTYPE in front of <svg>", () => {
+    const icon = '<svg version="1.1" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>';
+    const exported =
+      '<?xml version="1.0" encoding="iso-8859-1"?>\n' +
+      "<!-- Generator: Adobe Illustrator 21.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n" +
+      '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n' +
+      icon;
+    expect(sanitizeSvg(exported)).toBe(icon);
+  });
+
+  it("does not mistake <svgfoo> for the root", () => {
+    expect(sanitizeSvg("<svgfoo></svgfoo>")).toBeNull();
+  });
+
   it("rejects input that isn't an <svg> root", () => {
     expect(sanitizeSvg("<div>not an icon</div>")).toBeNull();
     expect(sanitizeSvg("")).toBeNull();

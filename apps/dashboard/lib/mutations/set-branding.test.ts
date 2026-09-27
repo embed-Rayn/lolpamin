@@ -3,8 +3,6 @@ import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
 import { getBranding } from "../queries/branding";
 import {
-  ALLOWED_BANNER_TYPES,
-  BANNER_MAX_BYTES,
   SetBrandingValidationError,
   SITE_NAME_MAX_LENGTH,
   SITE_TAGLINE_MAX_LENGTH,
@@ -34,8 +32,6 @@ describe("getBranding defaults", () => {
       logoSvg: null,
       siteName: "롤파민",
       siteTagline: "함께라서 더 즐거운 게임",
-      hasDesktopBanner: false,
-      hasMobileBanner: false,
     });
   });
 });
@@ -75,39 +71,5 @@ describe("setBranding name/tagline", () => {
     await expect(
       setBranding(prisma, { siteTagline: "a".repeat(SITE_TAGLINE_MAX_LENGTH + 1) }, null),
     ).rejects.toThrow(SetBrandingValidationError);
-  });
-});
-
-describe("setBranding banners", () => {
-  const png = { bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]), type: "image/png" };
-
-  it("stores a banner and reports it present", async () => {
-    await setBranding(prisma, { homeBannerDesktop: png }, null);
-    expect((await getBranding(prisma)).hasDesktopBanner).toBe(true);
-    expect((await getBranding(prisma)).hasMobileBanner).toBe(false);
-  });
-
-  it("rejects a disallowed image type", async () => {
-    await expect(
-      setBranding(prisma, { homeBannerDesktop: { bytes: png.bytes, type: "image/svg+xml" } }, null),
-    ).rejects.toThrow(SetBrandingValidationError);
-    expect(ALLOWED_BANNER_TYPES).not.toContain("image/svg+xml");
-  });
-
-  it("rejects a file over the size cap", async () => {
-    const huge = { bytes: Buffer.alloc(BANNER_MAX_BYTES + 1), type: "image/png" };
-    await expect(setBranding(prisma, { homeBannerDesktop: huge }, null)).rejects.toThrow(
-      SetBrandingValidationError,
-    );
-  });
-
-  it("resetting one banner leaves the other and other fields untouched", async () => {
-    await setBranding(prisma, { logoSvg: VALID_SVG, homeBannerDesktop: png, homeBannerMobile: png }, null);
-    await setBranding(prisma, { homeBannerDesktop: null }, null);
-
-    const branding = await getBranding(prisma);
-    expect(branding.hasDesktopBanner).toBe(false);
-    expect(branding.hasMobileBanner).toBe(true);
-    expect(branding.logoSvg).toBe(VALID_SVG);
   });
 });

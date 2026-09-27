@@ -10,7 +10,6 @@ import {
   parseSortDirection,
   serializeLaneFilter,
 } from "@/lib/queries/member-info";
-import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
 // AppShell과 명부 조회 모두 살아 있는 DB 행을 읽는다. 없으면 next build가 스냅샷을 굽는다.
 export const dynamic = "force-dynamic";
@@ -23,16 +22,15 @@ export default async function MemberInfoPage({
   const query = searchParams.q ?? "";
   const sort = parseMemberInfoSort(searchParams.sort);
   const dir = parseSortDirection(searchParams.dir);
-  const primaryLanes = parseLaneFilter(searchParams.lane);
-  const secondaryLanes = parseLaneFilter(searchParams.sublane);
-  const [rows, summary, currentAdmin] = await Promise.all([
-    getMemberInfoListData(query, sort, dir, primaryLanes, secondaryLanes),
+  const mainLanes = parseLaneFilter(searchParams.lane);
+  const subLanes = parseLaneFilter(searchParams.sublane);
+  const [rows, summary] = await Promise.all([
+    getMemberInfoListData(query, sort, dir, mainLanes, subLanes),
     getMemberInfoSummary(),
-    getCurrentAdmin(),
   ]);
 
   return (
-    <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어">
+    <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어 · 모스트 챔피언">
       <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:gap-6 md:px-7 md:pb-10 md:pt-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
           <StatCard
@@ -66,12 +64,11 @@ export default async function MemberInfoPage({
           <MemberInfoSearch query={query} sort={sort} dir={dir} />
           <MemberInfoTable
             rows={rows}
-            isAdmin={currentAdmin !== null}
             sort={sort}
             dir={dir}
             query={query}
-            laneTokens={primaryLanes.length > 0 ? serializeLaneFilter(primaryLanes).split(",") : []}
-            sublaneTokens={secondaryLanes.length > 0 ? serializeLaneFilter(secondaryLanes).split(",") : []}
+            laneTokens={mainLanes.length > 0 ? serializeLaneFilter(mainLanes).split(",") : []}
+            sublaneTokens={subLanes.length > 0 ? serializeLaneFilter(subLanes).split(",") : []}
           />
         </section>
       </div>
