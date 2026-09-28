@@ -86,6 +86,8 @@ model Member {
   // 「최고티어」. 관리자가 손으로 적는 참고값이고 점수에 쓰지 않는다 — Riot API는 역대 최고
   // 티어를 주지 않는다.
   peakTier           MemberTier @default(UNRANKED)
+  peakTierManual     Boolean @default(false)
+  peakTierInitializedAt DateTime?
   // 회원 정보 페이지의 비고 칸 — 운영자가 손으로 남기는 자유 텍스트 메모.
   note               String?
   // 회원 정보 페이지의 주라인·부라인. 운영자가 손으로 고른다. null은 「아직 모름」.

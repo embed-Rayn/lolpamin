@@ -86,6 +86,7 @@ export async function absorbMember(
 
       const survivorLastActiveAt = await effectiveLastActiveAt(tx, survivor.id, survivor.lastActiveAt);
       const loserLastActiveAt = await effectiveLastActiveAt(tx, loser.id, loser.lastActiveAt);
+      const peakSource = survivor.peakTier === "UNRANKED" && !survivor.peakTierManual && !survivor.peakTierInitializedAt ? loser : survivor;
 
       // mmr은 건드리지 않는다 — 경기 기록에서 계산된 값이라 병합으로 만들어낼 수 없다.
       await tx.member.update({
@@ -96,7 +97,9 @@ export async function absorbMember(
           riotId: survivor.riotId ?? loser.riotId,
           // tier는 not-null이라 ??가 통하지 않는다 — UNRANKED를 "값 없음"으로 취급한다.
           tier: survivor.tier === "UNRANKED" ? loser.tier : survivor.tier,
-          peakTier: survivor.peakTier === "UNRANKED" ? loser.peakTier : survivor.peakTier,
+          peakTier: peakSource.peakTier,
+          peakTierManual: peakSource.peakTierManual,
+          peakTierInitializedAt: peakSource.peakTierInitializedAt,
           // 반쪽 회원 행에도 /member-admin에서 손으로 적은 값이 있다 — 묘비에 묻히지 않게 옮긴다.
           mainLane: survivor.mainLane ?? loser.mainLane,
           subLane: survivor.subLane ?? loser.subLane,

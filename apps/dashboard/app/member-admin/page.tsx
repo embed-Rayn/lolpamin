@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { RiotRefreshButton } from "@/components/RiotRefreshButton";
 import { MemberAdminTable } from "@/components/MemberAdminTable";
+import { PeakTierInitializeButton } from "@/components/PeakTierInitializeButton";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
 import { getMemberAdminRows, parseMemberAdminDirection, parseMemberAdminSort } from "@/lib/queries/member-admin";
@@ -30,6 +31,7 @@ export default async function MemberAdminPage({
           <RiotRefreshButton kind="riotIds" />
           <RiotRefreshButton kind="masteries" />
         </div>
+        <PeakTierInitializeButton members={rows.map(m => ({ id: m.id, label: m.realName }))} />
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberAdminTable rows={rows} sort={sort} dir={dir} />
         </section>

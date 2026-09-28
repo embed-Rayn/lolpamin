@@ -79,7 +79,7 @@ export function MemberAdminTable({
           <div className="text-center font-mono text-[12.5px] text-faint">{index + 1}</div>
           <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin />
           <MemberAgeCell memberId={m.id} age={m.age} birthYear={m.birthYear} />
-          <MemberTierCell memberId={m.id} tier={m.peakTier} field="peakTier" isAdmin />
+          <div><MemberTierCell memberId={m.id} tier={m.peakTier} field="peakTier" isAdmin /><small className="mt-1 block text-center text-[10px] text-muted">{m.peakTierManual ? "운영진 입력" : m.peakTierInitializedAt ? "API 초깃값" : "미입력"}</small></div>
           <MemberTierCell memberId={m.id} tier={m.tier} field="tier" isAdmin />
           <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin />
           <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin />

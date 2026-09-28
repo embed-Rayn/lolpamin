@@ -6,5 +6,5 @@ export async function updateMemberPeakTier(
   memberId: string,
   peakTier: MemberTier,
 ): Promise<void> {
-  await prisma.member.update({ where: { id: memberId }, data: { peakTier } });
+  await prisma.member.update({ where: { id: memberId }, data: { peakTier, peakTierManual: true } });
 }
