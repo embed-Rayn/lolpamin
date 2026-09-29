@@ -9,6 +9,7 @@ import {
 import { laneLabel, tierLabel, tierScore } from "@lolpamin/core";
 import { MemberInfoCard } from "@/components/MemberInfoCard";
 import { MasteryChampions } from "@/components/MasteryChampions";
+import { LaneFilterMenu } from "@/components/LaneFilterMenu";
 
 // 이름은 실명이라 석 자 안팎, 나이는 두 자리다 — 둘 다 고정폭으로 두고 남는 폭은 라이엇
 // 계정이 가져간다. 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 —
@@ -58,17 +59,24 @@ export function MemberInfoTable({
   sort,
   dir,
   query,
+  laneTokens,
+  sublaneTokens,
 }: {
   rows: MemberInfoRow[];
   sort: MemberInfoSort;
   dir: SortDirection;
   query: string;
+  laneTokens: string[];
+  sublaneTokens: string[];
 }) {
   function sortHref(key: MemberInfoSort): string {
     const startDir: SortDirection = TEXT_SORTS.includes(key) ? "asc" : "desc";
     const nextDir = sort === key ? (dir === "asc" ? "desc" : "asc") : startDir;
     const params = new URLSearchParams({ sort: key, dir: nextDir });
     if (query) params.set("q", query);
+    // 정렬을 바꿔도 걸어 둔 라인 필터는 유지된다.
+    if (laneTokens.length > 0) params.set("lane", laneTokens.join(","));
+    if (sublaneTokens.length > 0) params.set("sublane", sublaneTokens.join(","));
     return `/member-info?${params.toString()}`;
   }
 
@@ -127,8 +135,10 @@ export function MemberInfoTable({
           </div>
           <SortLink sortKey="peakTier" label="최고티어" align="center" />
           <SortLink sortKey="tier" label="산정티어" align="center" />
-          <div className="text-center">주라인</div>
-          <div className="text-center">부라인</div>
+          {/* 이 둘만 정렬 대신 체크박스 메뉴를 연다 — 헤더 하나가 두 제스처를 다 가질 수
+              없고, 걸러 볼 값이 있는 칸은 이 둘이다. */}
+          <LaneFilterMenu param="lane" label="주라인" selected={laneTokens} />
+          <LaneFilterMenu param="sublane" label="부라인" selected={sublaneTokens} />
           <div className="text-center">라이엇 계정</div>
           <div className="text-center">모스트</div>
         </div>

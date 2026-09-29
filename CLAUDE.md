@@ -9,7 +9,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 npm-workspaces monorepo, one shared Postgres:
 
 - `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
-- `apps/discord-bot` — discord.js read-only slash commands (`/mmr`, `/랭킹`, `/전적`).
+- `apps/discord-bot` — discord.js read-only slash commands: `/mmr` (본인 MMR·칼바람 MMR과 각 순위), `/랭킹` (MMR TOP 10), `/ranking-aram` (칼바람 MMR TOP 10), `/전적` (지정한 디스코드 유저의 MMR과 내전 횟수), `/사이트` (사이트 주소 안내, 유일하게 DB를 보지 않는 명령어). A new command must be added in three places — its own file under `src/commands/`, the `commands` collection in `src/index.ts`, and `commandPayloads` in `src/deploy-commands.ts` — and only takes effect after `npm run deploy-commands --workspace=discord-bot`.
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
 
@@ -81,6 +81,14 @@ browsers cache a 308): 이름, 나이, 최고/산정티어, 주/부라인, 라�
 `Member.age` (the two-digit birth year imports read from the nickname) when set, else the
 nickname's (`fullBirthYear`) — both pages use that rule. 모스트 is `topMasteries` over every
 `ChampionMastery` row of the member's accounts, summed at read time.
+
+`/member-info`의 주라인·부라인 헤더만 정렬 링크가 아니라 체크박스 메뉴다(`LaneFilterMenu`)
+— 한 헤더가 정렬과 필터 두 제스처를 다 가질 수 없고, 걸러 볼 값이 있는 칸은 이 둘뿐이다.
+고른 값은 URL에 `?lane=TOP,JUG` / `?sublane=-`로 실리고 `-`가 미지정을 뜻한다
+(`parseLaneFilter`/`serializeLaneFilter`). 빈 선택은 아무도 아닌 전체다 — 아무것도 고르지
+않은 필터가 모두를 걸러내면 화면이 이유 없이 빈다. 두 필터는 AND이고, 정렬 링크가 걸어 둔
+필터를 같이 들고 간다. 표 칸의 라인 없음은 `laneLabel(null)` = `-`이지만 메뉴에서는
+「미지정」이라는 낱말을 쓴다 — 체크박스 옆의 대시는 무엇을 고르는 건지 읽히지 않는다.
 
 Two **quarterly resets** sit at the bottom of `/admins`, both manual admin actions
 behind a two-step confirm and neither undoable (`resetAllRatings`). The **soft**

@@ -5,8 +5,10 @@ import { StatCard } from "@/components/StatCard";
 import {
   getMemberInfoListData,
   getMemberInfoSummary,
+  parseLaneFilter,
   parseMemberInfoSort,
   parseSortDirection,
+  serializeLaneFilter,
 } from "@/lib/queries/member-info";
 
 // AppShell과 명부 조회 모두 살아 있는 DB 행을 읽는다. 없으면 next build가 스냅샷을 굽는다.
@@ -15,12 +17,17 @@ export const dynamic = "force-dynamic";
 export default async function MemberInfoPage({
   searchParams,
 }: {
-  searchParams: { q?: string; sort?: string; dir?: string };
+  searchParams: { q?: string; sort?: string; dir?: string; lane?: string; sublane?: string };
 }) {
   const query = searchParams.q ?? "";
   const sort = parseMemberInfoSort(searchParams.sort);
   const dir = parseSortDirection(searchParams.dir);
-  const [rows, summary] = await Promise.all([getMemberInfoListData(query, sort, dir), getMemberInfoSummary()]);
+  const mainLanes = parseLaneFilter(searchParams.lane);
+  const subLanes = parseLaneFilter(searchParams.sublane);
+  const [rows, summary] = await Promise.all([
+    getMemberInfoListData(query, sort, dir, mainLanes, subLanes),
+    getMemberInfoSummary(),
+  ]);
 
   return (
     <AppShell activeNav="member-info" pageTitle="회원 정보" pageDesc="회원 명부 · 협곡/칼바람 전적과 티어 · 모스트 챔피언">
@@ -55,7 +62,14 @@ export default async function MemberInfoPage({
         </div>
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberInfoSearch query={query} sort={sort} dir={dir} />
-          <MemberInfoTable rows={rows} sort={sort} dir={dir} query={query} />
+          <MemberInfoTable
+            rows={rows}
+            sort={sort}
+            dir={dir}
+            query={query}
+            laneTokens={mainLanes.length > 0 ? serializeLaneFilter(mainLanes).split(",") : []}
+            sublaneTokens={subLanes.length > 0 ? serializeLaneFilter(subLanes).split(",") : []}
+          />
         </section>
       </div>
     </AppShell>

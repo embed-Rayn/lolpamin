@@ -3,6 +3,7 @@ import type { Lane, Member, MemberTier } from "@lolpamin/db";
 import {
   displayedRating,
   fullBirthYear,
+  isLane,
   kakaoBirthYear,
   tierScore,
   topMasteries,
@@ -54,6 +55,30 @@ export function parseMemberInfoSort(value: string | undefined): MemberInfoSort {
 
 export function parseSortDirection(value: string | undefined): SortDirection {
   return value === "desc" ? "desc" : "asc";
+}
+
+// 라인 필터는 체크박스 다중 선택이라 URL에 "TOP,JUG"처럼 실린다. `null`은 미지정
+// 회원을 고른 것이고(빈 값 `-`로 들어온다), 아무것도 고르지 않으면 빈 배열 = 전체다.
+export type LaneFilter = Array<Lane | null>;
+
+export const UNSET_LANE_PARAM = "-";
+
+export function parseLaneFilter(value: string | undefined): LaneFilter {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const lanes: LaneFilter = [];
+  for (const raw of value.split(",")) {
+    const token = raw.trim();
+    if (token === "" || seen.has(token)) continue;
+    seen.add(token);
+    if (token === UNSET_LANE_PARAM) lanes.push(null);
+    else if (isLane(token)) lanes.push(token);
+  }
+  return lanes;
+}
+
+export function serializeLaneFilter(lanes: LaneFilter): string {
+  return lanes.map((lane) => lane ?? UNSET_LANE_PARAM).join(",");
 }
 
 export interface ModeRecord {
@@ -250,6 +275,8 @@ export async function getMemberInfoListData(
   query: string,
   sort: MemberInfoSort = "realName",
   dir: SortDirection = "asc",
+  mainLanes: LaneFilter = [],
+  subLanes: LaneFilter = [],
 ): Promise<MemberInfoRow[]> {
   const members = await prisma.member.findMany({
     where: { mergedIntoId: null },
@@ -275,6 +302,12 @@ export async function getMemberInfoListData(
     return [realName, m.kakaoNickname, ...m.absorbed.map((a) => a.kakaoNickname)].some(
       (v) => v !== null && v !== "-" && v.toLowerCase().includes(trimmedQuery),
     );
+  }
+
+  // 빈 목록은 "고른 것이 없다" = 전체다. 아무것도 고르지 않은 필터가 모두를 걸러내면
+  // 화면이 이유 없이 비어 보인다.
+  function matchesLane(lane: Lane | null, selected: LaneFilter): boolean {
+    return selected.length === 0 || selected.includes(lane);
   }
 
   const rows: MemberInfoRow[] = members
@@ -308,7 +341,11 @@ export async function getMemberInfoListData(
         },
       };
     })
-    .filter(({ m, realName }) => matchesQuery(m, realName))
+    .filter(({ m, realName, row }) => {
+      if (!matchesLane(row.mainLane, mainLanes)) return false;
+      if (!matchesLane(row.subLane, subLanes)) return false;
+      return matchesQuery(m, realName);
+    })
     .map(({ row }) => row);
 
   return rows.sort((a, b) => compareRows(a, b, sort, dir));
