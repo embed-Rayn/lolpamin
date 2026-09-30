@@ -31,6 +31,16 @@ describe("parse helpers", () => {
 });
 
 describe("getMemberAdminRows", () => {
+  it("counts what deleting the member would take, tombstones included", async () => {
+    const survivor = await prisma.member.create({ data: { realName: "가", discordUserId: "d-1" } });
+    const tombstone = await prisma.member.create({ data: { kakaoNickname: "가/94/닉#KR1", mergedIntoId: survivor.id } });
+    await prisma.mentionLog.create({ data: { memberId: tombstone.id, mentionedAt: new Date() } });
+
+    const [row] = await getMemberAdminRows(prisma, "realName", "asc", NOW);
+
+    expect(row).toMatchObject({ mentionCount: 1, gameCount: 0, aliasCount: 1 });
+  });
+
   it("returns every editable field for an active member", async () => {
     await prisma.member.create({
       data: {

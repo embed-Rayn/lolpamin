@@ -80,10 +80,13 @@ describe("parseMemberInfoSort / parseSortDirection", () => {
     expect(parseSortDirection("nonsense")).toBe("asc");
   });
 
+  it("no longer sorts by 산정티어 — the column is gone, so a stale ?sort=tier falls back", () => {
+    expect(parseMemberInfoSort("tier")).toBe(parseMemberInfoSort(undefined));
+  });
+
   it("accepts the supported values", () => {
     expect(parseMemberInfoSort("riftWinRate")).toBe("riftWinRate");
     expect(parseMemberInfoSort("aramGames")).toBe("aramGames");
-    expect(parseMemberInfoSort("tier")).toBe("tier");
     expect(parseMemberInfoSort("peakTier")).toBe("peakTier");
     expect(parseMemberInfoSort("age")).toBe("age");
     expect(parseSortDirection("desc")).toBe("desc");
@@ -369,12 +372,6 @@ describe("getMemberInfoListData sorting", () => {
     expect(descending.map((r) => r.birthYear)).toEqual([1999, 1994, null]);
   });
 
-  it("sorts by tier score, not enum declaration order", async () => {
-    const descending = await getMemberInfoListData("", "tier", "desc");
-
-    expect(descending.map((r) => r.tier)).toEqual(["DIAMOND_4", "GOLD_1", "UNRANKED"]);
-  });
-
   it("sorts by 협곡 판수", async () => {
     const descending = await getMemberInfoListData("", "riftGames", "desc");
 
@@ -427,13 +424,13 @@ describe("getMemberInfoSummary", () => {
 });
 
 describe("getMemberInfoListData — admin fields", () => {
-  it("carries the peak tier beside the rated tier", async () => {
+  it("carries the peak tier and leaves the rated tier to /member-admin", async () => {
     await prisma.member.create({ data: { realName: "가", tier: "GOLD_1", peakTier: "DIAMOND_2" } });
 
     const [row] = await getMemberInfoListData("");
 
-    expect(row.tier).toBe("GOLD_1");
     expect(row.peakTier).toBe("DIAMOND_2");
+    expect("tier" in row).toBe(false);
   });
 
   it("sums masteries across every riot account and keeps the top three", async () => {

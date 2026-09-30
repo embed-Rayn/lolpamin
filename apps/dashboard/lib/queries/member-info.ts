@@ -26,7 +26,6 @@ type MemberWithAbsorbed = Member & {
 export type MemberInfoSort =
   | "realName"
   | "age"
-  | "tier"
   | "peakTier"
   | "riftMmr"
   | "riftGames"
@@ -39,7 +38,6 @@ export type SortDirection = "asc" | "desc";
 const MEMBER_INFO_SORTS: MemberInfoSort[] = [
   "realName",
   "age",
-  "tier",
   "peakTier",
   "riftMmr",
   "riftGames",
@@ -100,8 +98,6 @@ export interface MemberInfoRow {
   // `이름/출생연도/RiotID`의 두 번째 조각. 출생연도는 매칭 키의 일부라 닉네임을 바꿔도
   // 변하지 않으므로 저장값이 낡을 일이 없다. 화면은 두 자리로 줄여 보여준다.
   birthYear: number | null;
-  // 산정티어 — 팀빌더 점수의 근거.
-  tier: MemberTier;
   // 최고티어 — 참고값.
   peakTier: MemberTier;
   // null은 「모름」.
@@ -246,10 +242,6 @@ function compareRows(a: MemberInfoRow, b: MemberInfoRow, sort: MemberInfoSort, d
     case "age":
       // 나이를 모르는 회원은 방향과 무관하게 뒤로 보낸다 — 승률의 "기록 없음"과 같은 규칙.
       return compareWinRate(a.birthYear, b.birthYear, sign, a.id, b.id);
-    case "tier": {
-      const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
-      return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
-    }
     case "peakTier": {
       const byScore = (tierScore(a.peakTier) - tierScore(b.peakTier)) * sign;
       return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
@@ -330,7 +322,6 @@ export async function getMemberInfoListData(
           birthYear:
             (m.age !== null ? fullBirthYear(m.age) : null) ??
             (kakaoNickname === "-" ? null : kakaoBirthYear(kakaoNickname)),
-          tier: m.tier,
           peakTier: m.peakTier,
           mainLane: m.mainLane,
           subLane: m.subLane,

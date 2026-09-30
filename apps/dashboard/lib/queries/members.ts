@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { GameMode, Member, MemberTier, Prisma } from "@lolpamin/db";
-import { displayedRating, INACTIVITY_THRESHOLD_DAYS, tierScore } from "@lolpamin/core";
+import type { GameMode, Lane, Member, MemberTier, Prisma } from "@lolpamin/db";
+import { displayedRating, INACTIVITY_THRESHOLD_DAYS, type MasteryEntry, tierScore, topMasteries } from "@lolpamin/core";
 import { getCountedGameFilter } from "./counted-games";
 import { ratingField } from "../rating-field";
 
@@ -8,6 +8,7 @@ type ActivityCounts = { mentionLogs: number; participants: number };
 type MemberWithCounts = Member & {
   _count: ActivityCounts;
   absorbed: Array<{ id: string; kakaoNickname: string | null; _count: ActivityCounts }>;
+  riotAccounts: Array<{ masteries: MasteryEntry[] }>;
 };
 
 export interface MemberRecord {
@@ -69,10 +70,10 @@ export function parseMemberActivityFilter(value: string | undefined): MemberActi
     : "all";
 }
 
-export type MemberSort = "mmr" | "realName" | "kakaoNickname" | "tier";
+export type MemberSort = "mmr" | "realName" | "kakaoNickname" | "peakTier";
 export type SortDirection = "asc" | "desc";
 
-const MEMBER_SORTS: MemberSort[] = ["mmr", "realName", "kakaoNickname", "tier"];
+const MEMBER_SORTS: MemberSort[] = ["mmr", "realName", "kakaoNickname", "peakTier"];
 
 export function parseMemberSort(value: string | undefined): MemberSort {
   return MEMBER_SORTS.includes(value as MemberSort) ? (value as MemberSort) : "mmr";
@@ -94,14 +95,14 @@ function orderByFor(sort: MemberSort, dir: SortDirection): Prisma.MemberOrderByW
   // 티어는 점수 순으로 정렬해야 하는데 Postgres는 enum을 선언 순서로 정렬한다. 지금은
   // 두 순서가 우연히 같지만 그 우연에 기대면 enum 순서를 바꾸는 순간 정렬이 조용히
   // 틀어진다. 여기서는 순서를 고정만 하고, 실제 정렬은 조회 뒤 sortByTierScore가 한다.
-  if (sort === "tier") return [{ id: "asc" }];
+  if (sort === "peakTier") return [{ id: "asc" }];
   return [{ kakaoNickname: { sort: dir, nulls: "last" } }, { id: "asc" }];
 }
 
 function sortByTierScore(rows: MemberRow[], dir: SortDirection): MemberRow[] {
   const sign = dir === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
-    const byScore = (tierScore(a.tier) - tierScore(b.tier)) * sign;
+    const byScore = (tierScore(a.peakTier) - tierScore(b.peakTier)) * sign;
     // 동점(아이언·언랭, 그리고 같은 티어)일 때 순서를 고정한다 — 다른 정렬 기준들이
     // id를 2차 키로 쓰는 것과 같다.
     return byScore !== 0 ? byScore : a.id.localeCompare(b.id);
@@ -127,8 +128,15 @@ export interface MemberRow {
   // 이 모드의 MMR 순위(1부터). 정렬·필터·검색과 무관하게 전체 회원 기준이라, 이름순으로
   // 보거나 검색으로 좁혀도 같은 사람에게 같은 순위가 붙어 있다. 0점(판수 0)은 순위 밖(null).
   rank: number | null;
-  tier: MemberTier;
+  // 최고티어 — 표의 티어 칸. 산정티어(Member.tier)는 /member-admin에서만 보인다.
+  peakTier: MemberTier;
+  // /rift의 주라인·부라인 칸. 운영진은 그 자리에서 고친다(MemberLaneCell).
+  mainLane: Lane | null;
+  subLane: Lane | null;
   riotId: string | null;
+  // 회원의 모든 라이엇 계정 숙련도를 합친 상위 10개(topMasteries). /aram은 10개 전부를,
+  // /rift는 앞의 5개만 보인다.
+  masteries: MasteryEntry[];
   // 되돌린 경기와 마지막 리셋 이전 경기를 뺀 전적. gameCount와 다른 숫자다 — gameCount는
   // 삭제 확인창용이라 실제로 함께 지워지는 기록 수를 세지만, 이쪽은 전적표라 빠져야 한다.
   wins: number;
@@ -188,8 +196,11 @@ function toRow(m: MemberWithCounts, now: Date, record: MemberRecord, mode: GameM
     discordName: displayDiscordName(m),
     mmr: displayedRating(m[ratingField(mode)], playedCount),
     rank: null,
-    tier: m.tier,
+    peakTier: m.peakTier,
+    mainLane: m.mainLane,
+    subLane: m.subLane,
     riotId: m.riotId,
+    masteries: topMasteries(m.riotAccounts.flatMap((a) => a.masteries), 10),
     wins: record.wins,
     losses: record.losses,
     playedCount,
@@ -265,6 +276,7 @@ export async function getMemberListData(
         // 최신순 — displayKakaoNickname이 첫 번째를 현재 닉네임으로 집는다.
         orderBy: { createdAt: "desc" },
       },
+      riotAccounts: { select: { masteries: { select: { championId: true, level: true, points: true } } } },
     },
   });
 
@@ -310,7 +322,7 @@ export async function getMemberListData(
     .map(({ row }) => row);
 
   const sortedRows =
-    sort === "tier" ? sortByTierScore(rows, dir) : sort === "mmr" ? sortByDisplayedMmr(rows, dir) : rows;
+    sort === "peakTier" ? sortByTierScore(rows, dir) : sort === "mmr" ? sortByDisplayedMmr(rows, dir) : rows;
 
   return { rows: sortedRows };
 }

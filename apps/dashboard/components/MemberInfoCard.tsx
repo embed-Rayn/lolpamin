@@ -40,8 +40,6 @@ export function MemberInfoCard({ row }: { row: MemberInfoRow }) {
         )}
         <span className="ml-auto flex-none text-[12.5px] text-fg-2">
           <span className={tierScore(row.peakTier) === 0 ? "text-ghost" : ""}>최고 {tierLabel(row.peakTier)}</span>
-          {" · "}
-          <span className={tierScore(row.tier) === 0 ? "text-ghost" : ""}>산정 {tierLabel(row.tier)}</span>
         </span>
       </div>
       {(row.mainLane !== null || row.subLane !== null) && (

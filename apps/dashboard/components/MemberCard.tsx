@@ -57,7 +57,8 @@ function winRateLabel(wins: number, played: number): string {
   return `${Math.round((wins / played) * 100)}%`;
 }
 
-export function MemberCard({ row }: { row: MemberRow }) {
+// showTier: /aram has no tier column (champions are random there), so its cards drop it too.
+export function MemberCard({ row, showTier = true }: { row: MemberRow; showTier?: boolean }) {
   const podium = podiumOf(row.rank);
   const nickname = [row.kakaoNickname, row.discordName].filter((v) => v !== "-").join(" · ");
   const card = (
@@ -85,7 +86,13 @@ export function MemberCard({ row }: { row: MemberRow }) {
           </span>
         </div>
         <div className="mt-0.5 truncate text-[12.5px] text-muted">
-          {nickname || "-"} · <span className={tierScore(row.tier) === 0 ? "text-ghost" : ""}>{tierLabel(row.tier)}</span>
+          {nickname || "-"}
+          {showTier && (
+            <>
+              {" · "}
+              <span className={tierScore(row.peakTier) === 0 ? "text-ghost" : ""}>최고 {tierLabel(row.peakTier)}</span>
+            </>
+          )}
         </div>
         <div className="mt-1 flex items-center justify-between text-[12px]">
           <span className="text-faint">

@@ -286,16 +286,22 @@ describe("닉네임을 바꾼 회원의 카톡 칸", () => {
   });
 });
 
-describe("tier and riot id", () => {
-  it("carries both onto the row", async () => {
+describe("peak tier, masteries and riot id", () => {
+  it("carries the peak tier onto the row", async () => {
     await resetDatabase(prisma);
     await prisma.member.create({
-      data: { realName: "유대혁", kakaoNickname: "유대혁/95/유대혁#KR1", tier: "EMERALD_2", riotId: "늑 구#1003" },
+      data: {
+        realName: "유대혁",
+        kakaoNickname: "유대혁/95/유대혁#KR1",
+        tier: "EMERALD_2",
+        peakTier: "DIAMOND_1",
+        riotId: "늑 구#1003",
+      },
     });
 
     const { rows } = await getMemberListData("all", "");
 
-    expect(rows[0].tier).toBe("EMERALD_2");
+    expect(rows[0].peakTier).toBe("DIAMOND_1");
     expect(rows[0].riotId).toBe("늑 구#1003");
   });
 
@@ -305,25 +311,66 @@ describe("tier and riot id", () => {
 
     const { rows } = await getMemberListData("all", "");
 
-    expect(rows[0].tier).toBe("UNRANKED");
+    expect(rows[0].peakTier).toBe("UNRANKED");
     expect(rows[0].riotId).toBeNull();
   });
 
-  it("sorts by score, not by the order the enum happens to be declared in", async () => {
+  it("sorts by peak tier score, not by the order the enum happens to be declared in", async () => {
     await resetDatabase(prisma);
-    await prisma.member.create({ data: { realName: "골드", kakaoNickname: "골드/95/g#1", tier: "GOLD_3" } });
-    await prisma.member.create({ data: { realName: "마스터", kakaoNickname: "마스터/95/m#1", tier: "MASTER_400_600" } });
+    await prisma.member.create({ data: { realName: "골드", kakaoNickname: "골드/95/g#1", peakTier: "GOLD_3", tier: "MASTER_400_600" } });
+    await prisma.member.create({ data: { realName: "마스터", kakaoNickname: "마스터/95/m#1", peakTier: "MASTER_400_600" } });
     await prisma.member.create({ data: { realName: "언랭", kakaoNickname: "언랭/95/u#1" } });
 
-    const desc = await getMemberListData("all", "", "tier", "desc");
+    const desc = await getMemberListData("all", "", "peakTier", "desc");
     expect(desc.rows.map((r) => r.realName)).toEqual(["마스터", "골드", "언랭"]);
 
-    const asc = await getMemberListData("all", "", "tier", "asc");
+    const asc = await getMemberListData("all", "", "peakTier", "asc");
     expect(asc.rows.map((r) => r.realName)).toEqual(["언랭", "골드", "마스터"]);
   });
 
-  it("accepts tier as a sort key", () => {
-    expect(parseMemberSort("tier")).toBe("tier");
+  it("sorts by 최고티어; the old 산정티어 key falls back to MMR", () => {
+    expect(parseMemberSort("peakTier")).toBe("peakTier");
+    expect(parseMemberSort("tier")).toBe("mmr");
+  });
+
+  it("sums champion masteries across the member's accounts", async () => {
+    await resetDatabase(prisma);
+    const m = await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/95/g#1" } });
+    for (const [puuid, points] of [["p1", 100], ["p2", 50]] as const) {
+      const account = await prisma.riotAccount.create({
+        data: { puuid, gameName: puuid, tagLine: "KR1", memberId: m.id, lastSeenAt: new Date() },
+      });
+      await prisma.championMastery.create({ data: { riotAccountId: account.id, championId: 1, level: 5, points } });
+    }
+
+    const { rows } = await getMemberListData("all", "");
+
+    expect(rows[0].masteries).toEqual([{ championId: 1, level: 5, points: 150 }]);
+  });
+
+  it("carries main and sub lane for the /rift lane columns", async () => {
+    await resetDatabase(prisma);
+    await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/95/g#1", mainLane: "JUG", subLane: "MID" } });
+    await prisma.member.create({ data: { realName: "나", kakaoNickname: "나/95/n#1" } });
+
+    const { rows } = await getMemberListData("all", "", "realName", "asc");
+
+    expect(rows.map((r) => [r.mainLane, r.subLane])).toEqual([["JUG", "MID"], [null, null]]);
+  });
+
+  it("keeps the top ten champions — /aram shows ten, /rift the first five", async () => {
+    await resetDatabase(prisma);
+    const m = await prisma.member.create({ data: { realName: "가", kakaoNickname: "가/95/g#1" } });
+    const account = await prisma.riotAccount.create({
+      data: { puuid: "p1", gameName: "p1", tagLine: "KR1", memberId: m.id, lastSeenAt: new Date() },
+    });
+    for (let championId = 1; championId <= 11; championId++) {
+      await prisma.championMastery.create({ data: { riotAccountId: account.id, championId, level: 5, points: championId * 1000 } });
+    }
+
+    const { rows } = await getMemberListData("all", "", "mmr", "desc", "ARAM");
+
+    expect(rows[0].masteries.map((x) => x.championId)).toEqual([11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
   });
 });
 

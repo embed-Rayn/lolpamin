@@ -48,6 +48,7 @@ export default async function MembersPage({
             activity={activity}
             query={query}
             basePath="/rift"
+            mode="RIFT"
           />
         </section>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { topMasteries } from "./mastery";
+import { formatMasteryPoints, topMasteries } from "./mastery";
 
 describe("topMasteries", () => {
   it("sums points across accounts and keeps the highest level", () => {
@@ -46,5 +46,18 @@ describe("topMasteries", () => {
   it("returns fewer than n, or none, when there is not enough data", () => {
     expect(topMasteries([])).toEqual([]);
     expect(topMasteries([{ championId: 1, level: 2, points: 3 }])).toHaveLength(1);
+  });
+});
+
+describe("formatMasteryPoints", () => {
+  it("keeps small numbers whole with separators", () => {
+    expect(formatMasteryPoints(0)).toBe("0");
+    expect(formatMasteryPoints(9876)).toBe("9,876");
+  });
+
+  it("shortens to 만 with one decimal, dropping a trailing .0", () => {
+    expect(formatMasteryPoints(10000)).toBe("1만");
+    expect(formatMasteryPoints(123456)).toBe("12.3만");
+    expect(formatMasteryPoints(1_234_567)).toBe("123.5만");
   });
 });

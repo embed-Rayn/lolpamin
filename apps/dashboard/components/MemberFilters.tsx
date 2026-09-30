@@ -25,8 +25,8 @@ const SORT_OPTIONS: Array<{ value: string; label: string; sort: MemberSort; dir:
   { value: "mmr:asc", label: "MMR 낮은 순", sort: "mmr", dir: "asc" },
   { value: "realName:asc", label: "이름 가나다순", sort: "realName", dir: "asc" },
   { value: "realName:desc", label: "이름 가나다 역순", sort: "realName", dir: "desc" },
-  { value: "tier:desc", label: "티어 높은 순", sort: "tier", dir: "desc" },
-  { value: "tier:asc", label: "티어 낮은 순", sort: "tier", dir: "asc" },
+  { value: "peakTier:desc", label: "최고티어 높은 순", sort: "peakTier", dir: "desc" },
+  { value: "peakTier:asc", label: "최고티어 낮은 순", sort: "peakTier", dir: "asc" },
   { value: "kakaoNickname:asc", label: "카톡 닉네임순", sort: "kakaoNickname", dir: "asc" },
 ];
 
@@ -55,6 +55,8 @@ export function MemberFilters({
   // 칼바람에서 필터를 누를 때 협곡으로 넘어간다.
   basePath: string;
 }) {
+  // 칼바람 표에는 티어 칸이 없다 — 보이지 않는 기준으로 정렬하는 옵션도 두지 않는다.
+  const sortOptions = basePath === "/aram" ? SORT_OPTIONS.filter((o) => o.sort !== "peakTier") : SORT_OPTIONS;
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -75,7 +77,7 @@ export function MemberFilters({
   }
 
   function onSortSelect(value: string) {
-    const option = SORT_OPTIONS.find((o) => o.value === value);
+    const option = sortOptions.find((o) => o.value === value);
     if (!option) return;
     updateParams({ sort: option.sort, dir: option.dir });
   }
@@ -111,8 +113,8 @@ export function MemberFilters({
         </div>
         <div className="md:hidden">
           <SortSelect
-            value={SORT_OPTIONS.find((o) => o.sort === sort && o.dir === dir)?.value ?? SORT_OPTIONS[0].value}
-            options={SORT_OPTIONS}
+            value={sortOptions.find((o) => o.sort === sort && o.dir === dir)?.value ?? sortOptions[0].value}
+            options={sortOptions}
             onChange={onSortSelect}
           />
         </div>
