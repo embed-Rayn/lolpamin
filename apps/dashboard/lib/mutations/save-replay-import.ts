@@ -86,6 +86,29 @@ export async function saveReplayImport(
       for (const a of assignments) {
         const existing = await tx.riotAccount.findUnique({ where: { puuid: a.puuid } });
         if (!existing) {
+          // A name#tag registration stores the API PUUID as puuid, which never equals the
+          // replay's unencrypted UUID — so the same account can already be here under that
+          // id. Adopt it when it is this member's and the Riot ID matches (case aside); the
+          // replay UUID becomes its puuid because games and stats are keyed on it.
+          const registered = a.memberId
+            ? (
+                await tx.riotAccount.findMany({
+                  where: {
+                    memberId: a.memberId,
+                    apiPuuid: { not: null },
+                    gameName: { equals: a.gameName, mode: "insensitive" },
+                    tagLine: { equals: a.tagLine, mode: "insensitive" },
+                  },
+                })
+              ).find((r) => r.puuid === r.apiPuuid)
+            : undefined;
+          if (registered) {
+            await tx.riotAccount.update({
+              where: { id: registered.id },
+              data: { puuid: a.puuid, gameName: a.gameName, tagLine: a.tagLine, lastSeenAt: playedAt },
+            });
+            continue;
+          }
           await tx.riotAccount.create({
             data: {
               puuid: a.puuid,

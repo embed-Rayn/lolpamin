@@ -126,3 +126,64 @@ describe("removeRiotAccount", () => {
     await expect(removeRiotAccount(prisma, "00000000-0000-0000-0000-000000000000")).resolves.toBeUndefined();
   });
 });
+
+// A replay stores the unencrypted UUID as puuid; a name#tag registration stores the API
+// PUUID. Matching only on puuid made the two paths create two rows for one account.
+describe("registerRiotAccount — one row per account across both PUUIDs", () => {
+  it("reuses the replay row that already carries this API PUUID", async () => {
+    const m = await member("가");
+    await prisma.riotAccount.create({
+      data: { puuid: "raw-uuid", apiPuuid: "puuid-1", gameName: "늑 구", tagLine: "KR1", memberId: m.id, lastSeenAt: new Date() },
+    });
+
+    await registerRiotAccount(prisma, m.id, ACCOUNT);
+
+    const rows = await prisma.riotAccount.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].puuid).toBe("raw-uuid");
+    expect(rows[0].apiPuuid).toBe("puuid-1");
+  });
+
+  it("fills the API PUUID on the same member's replay row with the same Riot ID, case aside", async () => {
+    const m = await member("가");
+    await prisma.riotAccount.create({
+      data: { puuid: "raw-uuid", gameName: "늑 구", tagLine: "kr1", memberId: m.id, lastSeenAt: new Date() },
+    });
+
+    await registerRiotAccount(prisma, m.id, ACCOUNT);
+
+    const rows = await prisma.riotAccount.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].puuid).toBe("raw-uuid");
+    expect(rows[0].apiPuuid).toBe("puuid-1");
+    expect(rows[0].tagLine).toBe("KR1");
+  });
+
+  it("refuses when the row carrying this API PUUID belongs to another member", async () => {
+    const owner = await member("가");
+    const other = await member("나");
+    await prisma.riotAccount.create({
+      data: { puuid: "raw-uuid", apiPuuid: "puuid-1", gameName: "늑 구", tagLine: "KR1", memberId: owner.id, lastSeenAt: new Date() },
+    });
+
+    await expect(registerRiotAccount(prisma, other.id, ACCOUNT)).rejects.toThrow(
+      REGISTER_RIOT_ACCOUNT_ERRORS.ownedByOther("가"),
+    );
+    expect(await prisma.riotAccount.count()).toBe(1);
+  });
+
+  it("does not borrow another member's replay row just because the Riot ID matches", async () => {
+    const owner = await member("가");
+    const other = await member("나");
+    await prisma.riotAccount.create({
+      data: { puuid: "raw-uuid", gameName: "늑 구", tagLine: "KR1", memberId: owner.id, lastSeenAt: new Date() },
+    });
+
+    await registerRiotAccount(prisma, other.id, ACCOUNT);
+
+    const raw = await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "raw-uuid" } });
+    expect(raw.memberId).toBe(owner.id);
+    expect(raw.apiPuuid).toBeNull();
+    expect(await prisma.riotAccount.count()).toBe(2);
+  });
+});

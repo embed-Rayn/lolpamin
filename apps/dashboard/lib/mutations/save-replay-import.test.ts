@@ -421,3 +421,52 @@ describe("saveReplayImport", () => {
     ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.replayMismatch);
   });
 });
+
+describe("saveReplayImport — one row per account across both PUUIDs", () => {
+  async function apiRegistered(memberId: string, gameName: string, tagLine: string) {
+    const row = await prisma.riotAccount.create({
+      data: { puuid: "api-puuid", apiPuuid: "api-puuid", gameName, tagLine, memberId, lastSeenAt: new Date("2026-09-01") },
+    });
+    await prisma.championMastery.create({ data: { riotAccountId: row.id, championId: 1, level: 7, points: 100000 } });
+    return row;
+  }
+
+  it("adopts the same member's name#tag row instead of creating a second one", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    const registered = await apiRegistered(blue.id, "NAME-P-BLUE", "kr1");
+
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
+    await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    const rows = await prisma.riotAccount.findMany({ where: { memberId: blue.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(registered.id);
+    expect(rows[0].puuid).toBe("p-blue");
+    expect(rows[0].apiPuuid).toBe("api-puuid");
+    expect(rows[0].gameName).toBe("name-p-blue");
+    expect(await prisma.championMastery.count({ where: { riotAccountId: registered.id } })).toBe(1);
+  });
+
+  it("leaves another member's name#tag row alone", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    await apiRegistered(red.id, "name-p-blue", "KR1");
+
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
+    await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    expect((await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "api-puuid" } })).memberId).toBe(red.id);
+    expect((await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-blue" } })).memberId).toBe(blue.id);
+  });
+});

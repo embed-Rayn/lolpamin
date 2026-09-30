@@ -46,10 +46,23 @@ export async function registerRiotAccount(
     if (!member) throw new Error(REGISTER_RIOT_ACCOUNT_ERRORS.memberMissing);
 
     const now = new Date();
-    const existing = await tx.riotAccount.findUnique({
-      where: { puuid: account.puuid },
-      include: { member: { select: { realName: true, kakaoNickname: true, discordDisplayName: true } } },
-    });
+    const include = { member: { select: { realName: true, kakaoNickname: true, discordDisplayName: true } } };
+    // One account can already sit here under its replay UUID (RiotAccount.puuid of a replay
+    // row is the unencrypted id, never equal to this API PUUID). Find it by the API PUUID a
+    // batch filled in, or — before any batch ran — as this member's replay row with the same
+    // Riot ID. Only this member's: a Riot ID alone is not proof across members.
+    const existing =
+      (await tx.riotAccount.findUnique({ where: { puuid: account.puuid }, include })) ??
+      (await tx.riotAccount.findFirst({ where: { apiPuuid: account.puuid }, include })) ??
+      (await tx.riotAccount.findFirst({
+        where: {
+          memberId,
+          apiPuuid: null,
+          gameName: { equals: account.gameName, mode: "insensitive" },
+          tagLine: { equals: account.tagLine, mode: "insensitive" },
+        },
+        include,
+      }));
 
     if (!existing) {
       await tx.riotAccount.create({
@@ -71,7 +84,7 @@ export async function registerRiotAccount(
     }
 
     await tx.riotAccount.update({
-      where: { puuid: account.puuid },
+      where: { id: existing.id },
       data: {
         memberId,
         apiPuuid: account.puuid,
