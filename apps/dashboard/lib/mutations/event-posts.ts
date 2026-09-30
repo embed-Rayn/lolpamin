@@ -4,6 +4,7 @@ export const EVENT_TITLE_MAX = 100;
 export const EVENT_BODY_MAX = 5000;
 export const EVENT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const EVENT_IMAGES_PER_KIND = 20;
+export const EVENT_REVEAL_LABEL_MAX = 40;
 export const ALLOWED_EVENT_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const EVENT_IMAGE_KINDS: EventImageKind[] = ["MAIN", "HIDDEN"];
 
@@ -72,6 +73,37 @@ export async function setEventPostRevealed(
     where: { id },
     data: { revealedAt: revealed ? new Date() : null, updatedById: adminId },
   });
+  if (count === 0) throw new EventPostValidationError(POST_NOT_FOUND);
+}
+
+// Schedules (future), performs (past) or cancels (null) the reveal of the hidden images.
+// The label is the countdown's caption for visitors; blank falls back to the default.
+export async function setEventPostRevealAt(
+  prisma: PrismaClient,
+  id: string,
+  at: Date | null,
+  label: string | null,
+  adminId: string | null,
+): Promise<void> {
+  if (at !== null && Number.isNaN(at.getTime())) throw new EventPostValidationError("공개 시각이 올바르지 않습니다.");
+  const revealLabel = label?.trim() || null;
+  if (revealLabel && revealLabel.length > EVENT_REVEAL_LABEL_MAX) {
+    throw new EventPostValidationError(`설명은 ${EVENT_REVEAL_LABEL_MAX}자를 넘을 수 없습니다.`);
+  }
+  const { count } = await prisma.eventPost.updateMany({
+    where: { id },
+    data: { revealedAt: at, revealLabel, updatedById: adminId },
+  });
+  if (count === 0) throw new EventPostValidationError(POST_NOT_FOUND);
+}
+
+// null goes back to the automatic pick. Deleting the chosen image clears it by FK.
+export async function setEventThumbnail(prisma: PrismaClient, postId: string, imageId: string | null): Promise<void> {
+  if (imageId !== null) {
+    const image = await prisma.eventImage.findUnique({ where: { id: imageId }, select: { postId: true } });
+    if (image?.postId !== postId) throw new EventPostValidationError("이 글의 사진이 아닙니다.");
+  }
+  const { count } = await prisma.eventPost.updateMany({ where: { id: postId }, data: { thumbnailImageId: imageId } });
   if (count === 0) throw new EventPostValidationError(POST_NOT_FOUND);
 }
 

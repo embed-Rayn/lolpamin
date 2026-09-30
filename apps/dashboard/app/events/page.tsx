@@ -39,7 +39,7 @@ export default async function EventsPage() {
               >
                 <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-inset">
                   {post.thumbnailSrc ? (
-                    <img src={post.thumbnailSrc} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    <img src={post.thumbnailSrc} alt="" loading="lazy" className="h-full w-full object-contain" />
                   ) : (
                     <NavIcon name="megaphone" size={36} className="text-faint" />
                   )}

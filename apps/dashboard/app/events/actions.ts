@@ -11,7 +11,9 @@ import {
   deleteEventPost,
   EventPostValidationError,
   moveEventImage,
+  setEventPostRevealAt,
   setEventPostRevealed,
+  setEventThumbnail,
   updateEventPost,
 } from "@/lib/mutations/event-posts";
 
@@ -79,6 +81,34 @@ export async function setEventPostRevealedAction(id: string, revealed: boolean):
     return { error: toMessage(error, revealed ? "공개하지 못했습니다." : "숨기지 못했습니다.") };
   }
   revalidatePost(id);
+  return { error: null };
+}
+
+// atIso comes from the browser, which turns the operator's local (Seoul) input into an
+// ISO instant; null cancels a schedule.
+export async function setEventPostRevealAtAction(
+  id: string,
+  atIso: string | null,
+  label: string | null,
+): Promise<EventActionResult> {
+  const acting = await requireAdmin();
+  try {
+    await setEventPostRevealAt(prisma, id, atIso === null ? null : new Date(atIso), label, acting.id);
+  } catch (error) {
+    return { error: toMessage(error, "공개 시각을 저장하지 못했습니다.") };
+  }
+  revalidatePost(id);
+  return { error: null };
+}
+
+export async function setEventThumbnailAction(postId: string, imageId: string | null): Promise<EventActionResult> {
+  await requireAdmin();
+  try {
+    await setEventThumbnail(prisma, postId, imageId);
+  } catch (error) {
+    return { error: toMessage(error, "대표 사진을 바꾸지 못했습니다.") };
+  }
+  revalidatePost(postId);
   return { error: null };
 }
 

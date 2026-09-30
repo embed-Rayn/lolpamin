@@ -75,7 +75,7 @@ enum GameMode {
 }
 
 model Member {
-  id                 String   @id @default(uuid())
+  id                 String     @id @default(uuid())
   realName           String?
   age                Int?
   riotId             String?
@@ -91,17 +91,17 @@ model Member {
   // 회원 정보 페이지의 주라인·부라인. 운영자가 손으로 고른다. null은 「아직 모름」.
   mainLane           Lane?
   subLane            Lane?
-  discordUserId      String?  @unique
+  discordUserId      String?    @unique
   discordHandle      String?
   discordDisplayName String?
   discordJoinedAt    DateTime?
-  kakaoUserId        String?  @unique
+  kakaoUserId        String?    @unique
   kakaoNickname      String?
-  mmr                Int      @default(1000)
-  aramMmr            Int      @default(1000)
+  mmr                Int        @default(1000)
+  aramMmr            Int        @default(1000)
   lastActiveAt       DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   // 흡수된 행(묘비)이 가리키는 생존자. null이면 활성 회원이다.
   // 묘비는 자기 kakaoNickname을 과거 닉네임으로 보존해 임포트 매칭에 쓰인다.
@@ -156,7 +156,7 @@ model GameParticipant {
   // 이 회원이 이 경기를 뛴 라이엇 계정. 상세 화면이 ReplayPlayerStat.puuid로 이 행을 찾아
   // 회원명과 그 판의 MMR 변화를 붙인다. 읽는 시점의 RiotAccount를 보지 않는 이유는 나중에
   // 계정 주인을 바꿔도 과거 경기의 표시가 변하지 않아야 해서다. 손으로 입력한 경기는 null.
-  replayPuuid  String?
+  replayPuuid String?
 
   // 흡수로 이 행을 넘겨받기 전의 원래 주인. releaseMember가 정확히 되돌리는 근거다.
   // 값은 비어 있을 때만 채운다 — 이미 이관된 행이 다시 이관돼도 최초 주인이 남아야 한다.
@@ -259,11 +259,11 @@ model RatingReset {
 // MMR 계산식의 조정 가능한 부분. 행은 하나뿐이고 id는 SINGLETON_ID로 고정된다 —
 // 설정에 이력이 필요 없고, 여러 행이 생기면 "어느 것이 진짜인지" 문제가 생긴다.
 model MmrSetting {
-  id        String   @id
-  k         Int      @default(40)
-  winPoint  Int      @default(3)
-  lossPoint Int      @default(1)
-  updatedAt DateTime @updatedAt
+  id          String   @id
+  k           Int      @default(40)
+  winPoint    Int      @default(3)
+  lossPoint   Int      @default(1)
+  updatedAt   DateTime @updatedAt
   // 마지막으로 바꾼 운영진. Admin.createdById와 같은 이유로 외래키를 걸지 않는다.
   updatedById String?
 }
@@ -317,9 +317,9 @@ model ChampionMastery {
   riotAccountId String
   riotAccount   RiotAccount @relation(fields: [riotAccountId], references: [id], onDelete: Cascade)
   // Data Dragon champion.json의 숫자 "key".
-  championId Int
-  level      Int
-  points     Int
+  championId    Int
+  level         Int
+  points        Int
 
   @@id([riotAccountId, championId])
 }
@@ -327,21 +327,21 @@ model ChampionMastery {
 // 사이트 전체에 적용되는 스킨 등 운영 설정. 한 행(id = "default")만 쓴다 — MmrSetting과
 // 같은 싱글턴 패턴. 스킨은 관리자가 /admins에서 고르고 모든 방문자에게 같은 것이 보인다.
 model SiteSetting {
-  id          String   @id
-  theme       String   @default("clean")
+  id                 String    @id
+  theme              String    @default("clean")
   // 로고·이름. 전부 null 허용 — null이면 기본값(게임패드 아이콘, "롤파민",
   // "함께라서 더 즐거운 게임")을 쓴다. lib/queries/branding.ts가 이 기본값 적용을 맡는다.
   // 홈 배너는 여러 장이라 HomeBanner 테이블에 따로 있다.
-  logoSvg               String?
-  siteName              String?
-  siteTagline           String?
+  logoSvg            String?
+  siteName           String?
+  siteTagline        String?
   // PUUID로 Riot ID를 되읽은 마지막 시각. 그 배치를 하루 한 번으로 묶는 근거다 —
   // 브라우저가 아니라 여기 있어야 관리자가 여럿이어도 같은 한도를 본다.
-  riotIdRefreshedAt DateTime?
+  riotIdRefreshedAt  DateTime?
   // 챔피언 숙련도를 마지막으로 받아 온 시각. riotIdRefreshedAt과 같은 이유로 DB에 둔다.
   masteryRefreshedAt DateTime?
-  updatedAt   DateTime @updatedAt
-  updatedById String?
+  updatedAt          DateTime  @updatedAt
+  updatedById        String?
 }
 
 enum BannerVariant {
@@ -363,18 +363,23 @@ model HomeBanner {
   @@id([variant, slot])
 }
 
-// 이벤트 게시판 글. revealedAt이 null이면 추후 공개(HIDDEN) 사진은 관리자에게만 보인다.
-// 공개/숨기기는 글 단위로 한 번에 적용된다.
+// 이벤트 게시판 글. revealedAt은 "이 시각부터 공개"다 — null이면 추후 공개(HIDDEN) 사진은
+// 관리자에게만 보이고, 미래 시각이면 예약 공개(그때까지 방문자에게 카운트다운과 revealLabel),
+// 지난 시각이면 공개. 공개/숨기기는 글 단위로 한 번에 적용된다.
 model EventPost {
-  id          String       @id @default(cuid())
-  title       String
-  body        String       @default("")
-  revealedAt  DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  createdById String?
-  updatedById String?
-  images      EventImage[]
+  id               String       @id @default(cuid())
+  title            String
+  body             String       @default("")
+  revealedAt       DateTime?
+  revealLabel      String?
+  // 목록 썸네일로 쓸 사진. null이면 자동 규칙(pickEventThumbnailId).
+  thumbnailImageId String?      @unique
+  thumbnailImage   EventImage?  @relation("EventPostThumbnail", fields: [thumbnailImageId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  createdById      String?
+  updatedById      String?
+  images           EventImage[] @relation("EventPostImages")
 }
 
 enum EventImageKind {
@@ -385,14 +390,15 @@ enum EventImageKind {
 // 이벤트 글의 사진. 행은 고치지 않는다 — 교체는 삭제 + 추가라 id(= URL)가 곧 버전이다.
 // position은 같은 글·같은 kind 안의 순서이며 빈 번호가 있어도 된다.
 model EventImage {
-  id        String         @id @default(cuid())
-  postId    String
-  post      EventPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  kind      EventImageKind
-  position  Int
-  bytes     Bytes
-  type      String
-  createdAt DateTime       @default(now())
+  id          String         @id @default(cuid())
+  postId      String
+  post        EventPost      @relation("EventPostImages", fields: [postId], references: [id], onDelete: Cascade)
+  thumbnailOf EventPost?     @relation("EventPostThumbnail")
+  kind        EventImageKind
+  position    Int
+  bytes       Bytes
+  type        String
+  createdAt   DateTime       @default(now())
 
   @@index([postId])
 }
