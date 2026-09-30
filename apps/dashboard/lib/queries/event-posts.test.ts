@@ -1,8 +1,21 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaClient } from "@lolpamin/db";
 import { resetDatabase } from "@lolpamin/db/src/test-utils";
-import { addEventImage, createEventPost, deleteEventImage, setEventPostRevealed } from "../mutations/event-posts";
-import { eventImageSrc, getEventImageForViewer, getEventPost, listEventPosts } from "./event-posts";
+import {
+  addEventImage,
+  createEventPost,
+  deleteEventImage,
+  setEventPostRevealAt,
+  setEventPostRevealed,
+  setEventThumbnail,
+} from "../mutations/event-posts";
+import {
+  EVENT_REVEAL_LABEL_DEFAULT,
+  eventImageSrc,
+  getEventImageForViewer,
+  getEventPost,
+  listEventPosts,
+} from "./event-posts";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -106,5 +119,58 @@ describe("getEventImageForViewer", () => {
 
   it("returns null for a missing id", async () => {
     expect(await getEventImageForViewer(prisma, "missing", true)).toBeNull();
+  });
+});
+
+describe("scheduled reveal", () => {
+  const at = new Date("2026-10-03T12:00:00Z");
+  const before = new Date(at.getTime() - 60_000);
+  const after = new Date(at.getTime() + 60_000);
+
+  it("keeps hidden images from a visitor until the time, with a countdown meanwhile", async () => {
+    const { id, hidden } = await postWithImages();
+    await setEventPostRevealAt(prisma, id, at, null, null);
+
+    const waiting = await getEventPost(prisma, id, false, before);
+    expect(waiting?.hiddenImages).toEqual([]);
+    expect(waiting?.revealed).toBe(false);
+    expect(waiting?.countdown).toEqual({ at, label: EVENT_REVEAL_LABEL_DEFAULT });
+    expect(await getEventImageForViewer(prisma, hidden, false, before)).toBeNull();
+
+    const open = await getEventPost(prisma, id, false, after);
+    expect(open?.hiddenImages.map((i) => i.id)).toEqual([hidden]);
+    expect(open?.countdown).toBeNull();
+    expect(await getEventImageForViewer(prisma, hidden, false, after)).not.toBeNull();
+  });
+
+  it("uses the admin's label and shows no countdown without a schedule or hidden images", async () => {
+    const { id } = await postWithImages();
+    expect((await getEventPost(prisma, id, false, before))?.countdown).toBeNull();
+
+    await setEventPostRevealAt(prisma, id, at, "이벤트 결과 공개까지", null);
+    expect((await getEventPost(prisma, id, false, before))?.countdown?.label).toBe("이벤트 결과 공개까지");
+
+    const bare = await createEventPost(prisma, { title: "사진 없음", body: "" }, null);
+    await setEventPostRevealAt(prisma, bare.id, at, null, null);
+    expect((await getEventPost(prisma, bare.id, false, before))?.countdown).toBeNull();
+  });
+
+  it("keeps the thumbnail on main images until the time", async () => {
+    const { id, main, hidden } = await postWithImages();
+    await setEventPostRevealAt(prisma, id, at, null, null);
+
+    expect((await listEventPosts(prisma, before))[0].thumbnailSrc).toBe(eventImageSrc(main));
+    expect((await listEventPosts(prisma, after))[0].thumbnailSrc).toBe(eventImageSrc(hidden));
+  });
+});
+
+describe("chosen thumbnail", () => {
+  it("lists the chosen image and reports it on the detail", async () => {
+    const { id } = await postWithImages();
+    const second = await addEventImage(prisma, id, "MAIN", png);
+    await setEventThumbnail(prisma, id, second.id);
+
+    expect((await listEventPosts(prisma))[0].thumbnailSrc).toBe(eventImageSrc(second.id));
+    expect((await getEventPost(prisma, id, true))?.thumbnailImageId).toBe(second.id);
   });
 });

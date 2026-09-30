@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { formatEventDateTime } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
 import { EventImageManager } from "@/components/events/EventImageManager";
 import { EventPostForm } from "@/components/events/EventPostForm";
@@ -33,13 +34,21 @@ export default async function EditEventPostPage({ params }: { params: { id: stri
           label="일반 사진"
           hint="바로 보입니다 · 장당 5MB"
           images={post.mainImages}
+          thumbnailImageId={post.thumbnailImageId}
         />
         <EventImageManager
           postId={post.id}
           kind="HIDDEN"
           label="추후 공개 사진"
-          hint={post.revealed ? "공개됨 · 글 맨 위에 보입니다" : "공개 버튼을 누르기 전까지 운영자만 봅니다"}
+          hint={
+            post.revealed
+              ? "공개됨 · 글 맨 위에 보입니다"
+              : post.revealedAt
+                ? `${formatEventDateTime(post.revealedAt)} 공개 예정 · 그때까지 운영자만 봅니다`
+                : "공개하거나 예약하기 전까지 운영자만 봅니다 · 대표로 골라도 공개 전엔 목록에 안 나옵니다"
+          }
           images={post.hiddenImages}
+          thumbnailImageId={post.thumbnailImageId}
         />
       </div>
     </AppShell>

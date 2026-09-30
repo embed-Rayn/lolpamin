@@ -3,7 +3,12 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { EventImageKind } from "@lolpamin/db";
-import { addEventImageAction, deleteEventImageAction, moveEventImageAction } from "@/app/events/actions";
+import {
+  addEventImageAction,
+  deleteEventImageAction,
+  moveEventImageAction,
+  setEventThumbnailAction,
+} from "@/app/events/actions";
 import type { EventImageRef } from "@/lib/queries/event-posts";
 
 // One section (일반 사진 or 추후 공개 사진) of the edit page. Each change applies
@@ -14,12 +19,14 @@ export function EventImageManager({
   label,
   hint,
   images,
+  thumbnailImageId,
 }: {
   postId: string;
   kind: EventImageKind;
   label: string;
   hint: string;
   images: EventImageRef[];
+  thumbnailImageId: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +72,13 @@ export function EventImageManager({
     run("옮기는 중…", async () => (await moveEventImageAction(imageId, direction)).error);
   }
 
+  // Pressing it on the current thumbnail clears the choice and returns to the automatic pick.
+  function toggleThumbnail(imageId: string) {
+    run("바꾸는 중…", async () =>
+      (await setEventThumbnailAction(postId, thumbnailImageId === imageId ? null : imageId)).error,
+    );
+  }
+
   const disabled = busy !== null;
   const buttonClass =
     "rounded-md bg-surface/90 px-2 py-0.5 text-[11.5px] font-bold text-fg-2 shadow-sm hover:bg-surface disabled:opacity-40";
@@ -103,10 +117,22 @@ export function EventImageManager({
         <div className="grid grid-cols-4 gap-3">
           {images.map((image, index) => (
             <div key={image.id} className="relative aspect-[3/4] overflow-hidden rounded-lg border border-ink/[.06] bg-inset">
-              <img src={image.src} alt="" className="h-full w-full object-cover" />
+              <img src={image.src} alt="" className="h-full w-full object-contain" />
               <span className="absolute left-1.5 top-1.5 rounded-md bg-surface/90 px-1.5 text-[11.5px] font-bold text-fg-2">
                 {index + 1}
               </span>
+              <button
+                type="button"
+                onClick={() => toggleThumbnail(image.id)}
+                disabled={disabled}
+                className={
+                  thumbnailImageId === image.id
+                    ? "absolute right-1.5 top-1.5 rounded-md bg-accent px-2 py-0.5 text-[11.5px] font-bold text-white shadow-sm disabled:opacity-40"
+                    : `absolute right-1.5 top-1.5 ${buttonClass}`
+                }
+              >
+                {thumbnailImageId === image.id ? "대표 ✓" : "대표로"}
+              </button>
               <div className="absolute bottom-1.5 right-1.5 flex gap-1">
                 <button
                   type="button"

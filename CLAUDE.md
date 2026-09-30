@@ -144,9 +144,14 @@ member's old score. Right after a reset nothing is cancellable, which is correct
 
 `/events` (공지사항, the one item of the 이벤트 sidebar group) is a poster board: admins write, everyone reads. A post is
 a title, a plain-text body and two ordered image lists — `MAIN` (shown at once) and
-`HIDDEN` (추후 공개). `EventPost.revealedAt` gates every `HIDDEN` image of the post at
-once: while null, visitors get neither the image nor its id (`getEventPost` drops it)
-and `/api/events/images/[id]` answers 404 — not 403, which would admit it exists.
+`HIDDEN` (추후 공개). `EventPost.revealedAt` means "visible from this moment" and gates
+every `HIDDEN` image of the post at once (`isEventRevealed`): null is hidden, a past time
+is revealed, a future time is a **scheduled reveal** that needs no job — every read
+compares it with now, so the first request after the time shows the images. Until then
+visitors get neither the image nor its id (`getEventPost` drops it) and
+`/api/events/images/[id]` answers 404 — not 403, which would admit it exists. A
+scheduled post (with hidden images) deliberately shows everyone a countdown captioned
+by `revealLabel` (default 추후 공개까지); the client timer refreshes the page at zero.
 Revealing puts them at the top of the post and is undoable (숨기기), which is why a
 `HIDDEN` response is always `private, no-store` while `MAIN` is immutable: image rows
 are never edited, a replacement is a new id. Deleting the last `HIDDEN` image clears
@@ -154,7 +159,9 @@ are never edited, a replacement is a new id. Deleting the last `HIDDEN` image cl
 `HomeBanner` (5MB, png/jpg/webp/gif, 20 per kind) and are uploaded one per server
 action so the 20mb body limit never bites. The rule is `canViewEventImage` in
 `packages/core`; the list thumbnail (`pickEventThumbnailId`) shows what a visitor
-would see, admins included.
+would see, admins included — an admin-chosen `thumbnailImageId` (FK, `SET NULL` on
+image delete) wins unless it is a not-yet-revealed hidden image. Thumbnails are
+`object-contain`: a poster is shown whole, never cropped.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a

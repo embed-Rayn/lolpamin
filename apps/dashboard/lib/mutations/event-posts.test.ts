@@ -10,7 +10,9 @@ import {
   EVENT_IMAGES_PER_KIND,
   EventPostValidationError,
   moveEventImage,
+  setEventPostRevealAt,
   setEventPostRevealed,
+  setEventThumbnail,
   updateEventPost,
 } from "./event-posts";
 
@@ -204,5 +206,67 @@ describe("moveEventImage", () => {
     expect(await moveEventImage(prisma, "missing", "up")).toBeNull();
     // @ts-expect-error — the server action receives this from the browser unchecked
     await expect(moveEventImage(prisma, "missing", "left")).rejects.toThrow(EventPostValidationError);
+  });
+});
+
+describe("setEventPostRevealAt", () => {
+  it("stores a scheduled time and a trimmed label, and clears both", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "" }, null);
+    const at = new Date("2026-10-03T12:00:00Z");
+
+    await setEventPostRevealAt(prisma, id, at, "  이벤트 결과 공개까지 ", null);
+    let row = await prisma.eventPost.findUniqueOrThrow({ where: { id } });
+    expect(row.revealedAt).toEqual(at);
+    expect(row.revealLabel).toBe("이벤트 결과 공개까지");
+
+    await setEventPostRevealAt(prisma, id, at, "   ", null);
+    row = await prisma.eventPost.findUniqueOrThrow({ where: { id } });
+    expect(row.revealLabel).toBeNull();
+
+    await setEventPostRevealAt(prisma, id, null, null, null);
+    expect((await prisma.eventPost.findUniqueOrThrow({ where: { id } })).revealedAt).toBeNull();
+  });
+
+  it("rejects an invalid time, a long label and a missing post", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "" }, null);
+    await expect(setEventPostRevealAt(prisma, id, new Date("nope"), null, null)).rejects.toThrow(
+      "공개 시각이 올바르지 않습니다.",
+    );
+    await expect(setEventPostRevealAt(prisma, id, new Date(), "가".repeat(41), null)).rejects.toThrow(
+      EventPostValidationError,
+    );
+    await expect(setEventPostRevealAt(prisma, "missing", new Date(), null, null)).rejects.toThrow(
+      "글을 찾을 수 없습니다.",
+    );
+  });
+});
+
+describe("setEventThumbnail", () => {
+  it("chooses and clears the thumbnail", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "" }, null);
+    const a = await addEventImage(prisma, id, "MAIN", png);
+
+    await setEventThumbnail(prisma, id, a.id);
+    expect((await prisma.eventPost.findUniqueOrThrow({ where: { id } })).thumbnailImageId).toBe(a.id);
+
+    await setEventThumbnail(prisma, id, null);
+    expect((await prisma.eventPost.findUniqueOrThrow({ where: { id } })).thumbnailImageId).toBeNull();
+  });
+
+  it("refuses another post's image", async () => {
+    const one = await createEventPost(prisma, { title: "하나", body: "" }, null);
+    const two = await createEventPost(prisma, { title: "둘", body: "" }, null);
+    const b = await addEventImage(prisma, two.id, "MAIN", png);
+
+    await expect(setEventThumbnail(prisma, one.id, b.id)).rejects.toThrow("이 글의 사진이 아닙니다.");
+  });
+
+  it("drops the choice when the chosen image is deleted", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "" }, null);
+    const a = await addEventImage(prisma, id, "MAIN", png);
+    await setEventThumbnail(prisma, id, a.id);
+
+    await deleteEventImage(prisma, a.id);
+    expect((await prisma.eventPost.findUniqueOrThrow({ where: { id } })).thumbnailImageId).toBeNull();
   });
 });

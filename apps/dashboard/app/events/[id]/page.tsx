@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatEventDate } from "@lolpamin/core";
+import { formatEventDate, formatEventDateTime } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
 import { EventAdminBar } from "@/components/events/EventAdminBar";
+import { EventCountdown } from "@/components/events/EventCountdown";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
 import { getEventPost } from "@/lib/queries/event-posts";
@@ -14,6 +15,7 @@ export default async function EventPostPage({ params }: { params: { id: string }
   const isAdmin = currentAdmin !== null;
   const post = await getEventPost(prisma, params.id, isAdmin);
   if (!post) notFound();
+  const scheduledLabel = post.countdown ? formatEventDateTime(post.countdown.at) : null;
 
   return (
     <AppShell activeNav="events" pageTitle="공지사항" pageDesc={post.title}>
@@ -27,7 +29,17 @@ export default async function EventPostPage({ params }: { params: { id: string }
         </header>
 
         {isAdmin && (
-          <EventAdminBar postId={post.id} revealed={post.revealed} hiddenCount={post.hiddenImages.length} />
+          <EventAdminBar
+            postId={post.id}
+            revealed={post.revealed}
+            scheduledLabel={scheduledLabel}
+            revealLabel={post.revealLabel}
+            hiddenCount={post.hiddenImages.length}
+          />
+        )}
+
+        {post.countdown && (
+          <EventCountdown atIso={post.countdown.at.toISOString()} atLabel={scheduledLabel!} label={post.countdown.label} />
         )}
 
         {post.hiddenImages.map((image) => (
@@ -35,7 +47,7 @@ export default async function EventPostPage({ params }: { params: { id: string }
             {/* Only admins receive unrevealed hidden images (getEventPost), so the badge is theirs alone. */}
             {!post.revealed && (
               <span className="absolute left-2 top-2 rounded-md bg-surface/90 px-2 py-0.5 text-[11.5px] font-bold text-danger-soft shadow-sm">
-                공개 전
+                {scheduledLabel ? `${scheduledLabel} 공개 예정` : "공개 전"}
               </span>
             )}
             <img src={image.src} alt="" className="w-full rounded-xl border border-ink/[.06]" />
