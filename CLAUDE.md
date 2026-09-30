@@ -227,8 +227,12 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 리플레이 행은 배치가 처음 돌 때 `withApiPuuid`(`lib/mutations/api-puuid.ts`)가 저장된
 `gameName`/`tagLine`으로 받아 쓴다. 저장된 값이 400(`invalid_id`)을 받을 때도 한 번 다시 받는다
 (다른 앱의 키로 등록한 계정). 이름#태그로 등록한 행의 `puuid`도 API PUUID라, 같은 계정의 리플레이
-행과 절대 일치하지 않는다 — 두 행이 한 계정을 들고 있을 수 있고, 숙련도 배치는 같은 `apiPuuid`의
-두 번째 행 숙련도를 비워 합산이 두 번 되지 않게 한다(`duplicates`).
+행과 절대 일치하지 않는다. 그래서 두 등록 경로는 `puuid` 말고도 서로를 찾는다 — 리플레이
+저장은 같은 회원의 이름#태그 행(`puuid = apiPuuid`)을 Riot ID(대소문자 무시)로 찾아 그 행의
+`puuid`를 리플레이 UUID로 바꾸고, 이름#태그 등록은 같은 `apiPuuid`의 행, 없으면 같은 회원의
+`apiPuuid`가 빈 행을 Riot ID로 찾아 채운다. 회원이 다르면 Riot ID가 같아도 잇지 않는다. 그 전에
+갈라진 행이 남아 있을 수 있어서, 숙련도 배치는 같은 `apiPuuid`의 두 번째 행 숙련도를 비워 합산이
+두 번 되지 않게 한다(`duplicates`).
 
 모든 Riot 호출은 `riotGet` 앞의 프로세스 단위 제한기(`lib/riot-api/rate-limit.ts`, 개발 키 한도
 1초 20회·2분 100회)를 거친다 — 배치는 429로 끊기지 않고 느려진다.
