@@ -6,17 +6,19 @@ import { useRouter } from "next/navigation";
 const TITLE_MAX = 100;
 const BODY_MAX = 5000;
 
-// Shared by /events/new (create redirects on success) and the edit page (stays put).
+// Shared by /events/new (opens the new post's editor on success) and the edit page (stays put).
 export function EventPostForm({
   initialTitle = "",
   initialBody = "",
   submitLabel,
   onSubmit,
+  openEditorAfterCreate = false,
 }: {
   initialTitle?: string;
   initialBody?: string;
   submitLabel: string;
-  onSubmit: (formData: FormData) => Promise<{ error: string | null }>;
+  onSubmit: (formData: FormData) => Promise<{ error: string | null; id?: string }>;
+  openEditorAfterCreate?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,10 @@ export function EventPostForm({
       const result = await onSubmit(formData);
       if (result.error) {
         setError(result.error);
+        return;
+      }
+      if (openEditorAfterCreate && result.id) {
+        router.push(`/events/${result.id}/edit`);
         return;
       }
       setSaved(true);

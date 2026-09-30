@@ -15,7 +15,7 @@ export default async function NewEventPostPage() {
         <p className="m-0 text-[13px] text-faint">
           제목과 내용을 먼저 저장하면 사진(일반 · 추후 공개)을 올리는 화면으로 넘어갑니다.
         </p>
-        <EventPostForm submitLabel="저장하고 사진 올리기" onSubmit={createEventPostAction} />
+        <EventPostForm submitLabel="저장하고 사진 올리기" onSubmit={createEventPostAction} openEditorAfterCreate />
       </div>
     </AppShell>
   );

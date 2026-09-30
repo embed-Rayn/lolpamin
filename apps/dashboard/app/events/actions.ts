@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { EventImageKind } from "@lolpamin/db";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +35,9 @@ function readInput(formData: FormData) {
   return { title: String(formData.get("title") ?? ""), body: String(formData.get("body") ?? "") };
 }
 
-export async function createEventPostAction(formData: FormData): Promise<EventActionResult> {
+// Returns the new id instead of calling redirect(): a redirecting action resolves the
+// client's promise with undefined, which the form would then read as a result.
+export async function createEventPostAction(formData: FormData): Promise<EventActionResult & { id?: string }> {
   const acting = await requireAdmin();
   let id: string;
   try {
@@ -45,8 +46,7 @@ export async function createEventPostAction(formData: FormData): Promise<EventAc
     return { error: toMessage(error, "글을 저장하지 못했습니다.") };
   }
   revalidatePath("/events");
-  // Outside try: redirect() works by throwing.
-  redirect(`/events/${id}/edit`);
+  return { error: null, id };
 }
 
 export async function updateEventPostAction(id: string, formData: FormData): Promise<EventActionResult> {

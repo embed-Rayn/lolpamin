@@ -149,7 +149,8 @@ once: while null, visitors get neither the image nor its id (`getEventPost` drop
 and `/api/events/images/[id]` answers 404 — not 403, which would admit it exists.
 Revealing puts them at the top of the post and is undoable (숨기기), which is why a
 `HIDDEN` response is always `private, no-store` while `MAIN` is immutable: image rows
-are never edited, a replacement is a new id. Images live in Postgres `Bytes` like
+are never edited, a replacement is a new id. Deleting the last `HIDDEN` image clears
+`revealedAt`, so the next surprise uploaded to the same post starts hidden. Images live in Postgres `Bytes` like
 `HomeBanner` (5MB, png/jpg/webp/gif, 20 per kind) and are uploaded one per server
 action so the 20mb body limit never bites. The rule is `canViewEventImage` in
 `packages/core`; the list thumbnail (`pickEventThumbnailId`) shows what a visitor

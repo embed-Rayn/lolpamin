@@ -156,6 +156,22 @@ describe("deleteEventImage", () => {
     expect(await deleteEventImage(prisma, a.id)).toBe(id);
     expect(await deleteEventImage(prisma, a.id)).toBeNull();
   });
+
+  it("re-hides the post when its last hidden image goes, so the next round starts hidden", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "" }, null);
+    const h1 = await addEventImage(prisma, id, "HIDDEN", png);
+    const h2 = await addEventImage(prisma, id, "HIDDEN", png);
+    const m = await addEventImage(prisma, id, "MAIN", png);
+    await setEventPostRevealed(prisma, id, true, null);
+    const revealedAt = async () => (await prisma.eventPost.findUniqueOrThrow({ where: { id } })).revealedAt;
+
+    await deleteEventImage(prisma, m.id);
+    await deleteEventImage(prisma, h1.id);
+    expect(await revealedAt()).toBeInstanceOf(Date);
+
+    await deleteEventImage(prisma, h2.id);
+    expect(await revealedAt()).toBeNull();
+  });
 });
 
 describe("moveEventImage", () => {

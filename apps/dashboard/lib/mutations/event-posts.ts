@@ -113,11 +113,19 @@ export async function addEventImage(
 }
 
 // Returns the owning post id so the caller can revalidate its page; null if already gone.
+// Removing the last hidden image also clears revealedAt: otherwise hidden images uploaded
+// later for a second surprise would go public the moment they land, on a post whose
+// reveal button is not even drawn (it needs at least one hidden image).
 export async function deleteEventImage(prisma: PrismaClient, imageId: string): Promise<string | null> {
-  const image = await prisma.eventImage.findUnique({ where: { id: imageId }, select: { postId: true } });
-  if (!image) return null;
-  await prisma.eventImage.deleteMany({ where: { id: imageId } });
-  return image.postId;
+  return prisma.$transaction(async (tx) => {
+    const image = await tx.eventImage.findUnique({ where: { id: imageId }, select: { postId: true, kind: true } });
+    if (!image) return null;
+    await tx.eventImage.deleteMany({ where: { id: imageId } });
+    if (image.kind === "HIDDEN" && (await tx.eventImage.count({ where: { postId: image.postId, kind: "HIDDEN" } })) === 0) {
+      await tx.eventPost.update({ where: { id: image.postId }, data: { revealedAt: null } });
+    }
+    return image.postId;
+  });
 }
 
 // Swaps positions with the nearest image of the same post and kind; at either end
