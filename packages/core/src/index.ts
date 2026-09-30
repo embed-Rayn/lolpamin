@@ -21,3 +21,4 @@ export * from "./mastery";
 export * from "./birth-year";
 export * from "./player-stats";
 export * from "./event-post";
+export * from "./participant-names";

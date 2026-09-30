@@ -86,6 +86,7 @@ export function DraftBoard({
         selectedIds={participantIds}
         guests={guests}
         onToggle={toggleParticipant}
+        onSelectMany={(ids) => setParticipantIds((prev) => [...prev, ...ids.filter((id) => !prev.includes(id))])}
         onAddGuest={(name) => setGuests([...guests, { name, mmr: GUEST_DEFAULT_MMR, mainLane: null, subLane: null }])}
         onRemoveGuest={removeGuest}
       />

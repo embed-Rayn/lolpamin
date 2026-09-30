@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DrawCandidate } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 import { nextManualId, normalizeManualName, validateNumberRange } from "@/lib/draw/candidates";
+import { MULTI_NAME_PLACEHOLDER, MultiNameMatchBar, useMultiNameSearch } from "@/components/MultiNameSearch";
 
 // "teams" picks from the same member list as "members"; the difference is what
 // the screen does with the draw, not who is in it.
@@ -45,14 +46,14 @@ export function CandidateSetup({
   onRangeChange,
   locked,
 }: CandidateSetupProps) {
-  const [query, setQuery] = useState("");
+  const search = useMultiNameSearch(pool);
   const [manualName, setManualName] = useState("");
   const [manualError, setManualError] = useState<string | null>(null);
 
   // The pool arrives MMR-desc (shared with the ranking screens); a picker is
   // scanned by name, so reorder it here rather than in the query.
   const visible = pool
-    .filter((m) => !query || m.name.toLowerCase().includes(query.toLowerCase()))
+    .filter(search.matches)
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
   const rangeError = validateNumberRange(range.min, range.max);
 
@@ -109,10 +110,11 @@ export function CandidateSetup({
           <div className="flex items-center gap-2">
             <input
               className={`${FIELD} flex-1`}
-              placeholder="이름 검색"
-              value={query}
+              placeholder={MULTI_NAME_PLACEHOLDER}
+              value={search.query}
               disabled={locked}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => search.onQueryChange(e.target.value)}
+              onPaste={search.onPaste}
             />
             <button
               type="button"
@@ -131,6 +133,12 @@ export function CandidateSetup({
               전체 해제
             </button>
           </div>
+
+          <MultiNameMatchBar
+            search={search}
+            disabled={locked}
+            onSelectMatched={(ids) => onSelectedIdsChange(new Set([...selectedIds, ...ids]))}
+          />
 
           {pool.length === 0 ? (
             <div className="rounded-lg bg-surface-3 px-3 py-6 text-center text-[13px] text-muted">

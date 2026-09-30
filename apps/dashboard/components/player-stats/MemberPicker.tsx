@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { MULTI_NAME_PLACEHOLDER, MultiNameMatchBar, useMultiNameSearch } from "@/components/MultiNameSearch";
 
 export interface PickerMember {
   id: string;
@@ -22,9 +22,8 @@ export function MemberPicker({
   selectedIds: Set<string>;
   onChange: (ids: Set<string>) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const visible = q ? members.filter((m) => m.name.toLowerCase().includes(q)) : members;
+  const search = useMultiNameSearch(members);
+  const visible = members.filter(search.matches);
 
   function toggle(id: string) {
     const next = new Set(selectedIds);
@@ -38,9 +37,10 @@ export function MemberPicker({
       <div className="flex flex-wrap items-center gap-2">
         <input
           className={`${FIELD} min-w-0 flex-1`}
-          placeholder="이름 검색"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          placeholder={MULTI_NAME_PLACEHOLDER}
+          value={search.query}
+          onChange={(e) => search.onQueryChange(e.target.value)}
+          onPaste={search.onPaste}
         />
         <button type="button" className={`${FIELD} font-semibold`} onClick={() => onChange(new Set(members.map((m) => m.id)))}>
           전체 선택
@@ -50,6 +50,7 @@ export function MemberPicker({
         </button>
         <span className="text-[12px] text-faint">{selectedIds.size}명 선택</span>
       </div>
+      <MultiNameMatchBar search={search} onSelectMatched={(ids) => onChange(new Set([...selectedIds, ...ids]))} />
       <div className="grid max-h-[220px] grid-cols-3 gap-1.5 overflow-y-auto md:grid-cols-8">
         {visible.map((m) => (
           <label
