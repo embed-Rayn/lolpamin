@@ -51,6 +51,7 @@ export default async function AramPage({
             activity={activity}
             query={query}
             basePath="/aram"
+            mode="ARAM"
           />
         </section>
       </div>

@@ -1,14 +1,25 @@
 import Link from "next/link";
 import type { MemberActivityFilter, MemberFilter, MemberRow, MemberSort, SortDirection } from "@/lib/queries/members";
-import { DeleteMemberButton } from "@/components/DeleteMemberButton";
 import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 import { MemberTierCell } from "@/components/MemberTierCell";
+import { MemberLaneCell } from "@/components/MemberLaneCell";
+import { MasteryChampions } from "@/components/MasteryChampions";
+import { MasteryChampionStrip } from "@/components/MasteryChampionStrip";
 import { MemberCard, PodiumFrame, RankBadge, podiumOf } from "@/components/MemberCard";
 
-// 순위, 실명, 디코, 티어, MMR, 판, 승, 패, 승률, 마지막 활동, 관리. 카톡 닉네임 컬럼은
-// 뺐다(디코 닉네임이 유일한 식별용 컬럼으로 남는다) — Riot ID도 이 표에서 뺐다, 편집은
-// /team-builder에 남아 있다.
-const GRID = "grid-cols-[64px_0.6fr_1fr_112px_88px_46px_44px_44px_60px_120px_80px]";
+// 랭킹 화면이라 보기만 한다 — 회원 삭제(관리)와 티어 편집은 /member-admin에 있다. 두 모드가
+// 칸 구성이 다르다.
+// 협곡: 순위, 실명, 모스트(5), 주라인, 부라인, 최고티어, MMR, 판, 승, 패, 승률, 마지막 활동.
+//   라인은 운영진만 그 자리에서 고친다(MemberLaneCell — /member-admin과 같은 셀). 티어는
+//   산정티어가 아닌 최고티어를 읽기 전용으로 둔다.
+// 칼바람: 순위, 실명, MMR, 판, 승, 패, 승률, 마지막 활동, 모스트(10 + 숙련도). 칼바람은 챔피언이
+//   무작위라 티어가 뜻이 없고, 대신 폭넓은 챔피언 풀을 보인다.
+const GRID = {
+  // 실명은 석 자 안팎이라 남는 폭을 혼자 갖지 않게 한다 — 여분은 실명·모스트·마지막 활동이
+  // 0.7 : 1.3 : 0.8로 나눠 가진다.
+  RIFT: "grid-cols-[64px_minmax(80px,0.7fr)_minmax(232px,1.3fr)_72px_72px_88px_88px_46px_44px_44px_60px_minmax(100px,0.8fr)]",
+  ARAM: "grid-cols-[64px_minmax(96px,0.6fr)_88px_46px_44px_44px_60px_96px_minmax(0,2.4fr)]",
+} as const;
 
 function winRateLabel(wins: number, played: number): string {
   if (played === 0) return "-";
@@ -31,13 +42,6 @@ function RankCell({ rank }: { rank: number | null }) {
   );
 }
 
-function displayLabel(m: MemberRow): string {
-  for (const candidate of [m.realName, m.kakaoNickname, m.discordName]) {
-    if (candidate !== "-") return candidate;
-  }
-  return "이름 미확인";
-}
-
 export function MemberTable({
   rows,
   isAdmin,
@@ -47,6 +51,7 @@ export function MemberTable({
   activity,
   query,
   basePath,
+  mode,
 }: {
   rows: MemberRow[];
   isAdmin: boolean;
@@ -57,7 +62,10 @@ export function MemberTable({
   query: string;
   // 정렬 링크가 돌아올 페이지 — MemberFilters의 basePath와 같은 이유다.
   basePath: string;
+  mode: "RIFT" | "ARAM";
 }) {
+  const grid = GRID[mode];
+  const isRift = mode === "RIFT";
   function sortHref(key: MemberSort): string {
     // 같은 기준을 다시 누르면 방향을 뒤집고, 다른 기준으로 바꾸면 내림차순부터 시작한다.
     const nextDir = sort === key && dir === "desc" ? "asc" : "desc";
@@ -79,7 +87,7 @@ export function MemberTable({
           툴바라 여기 포함하지 않고 edge-to-edge로 둔다. */}
       <div className="hidden md:block p-3">
         <div
-          className={`grid ${GRID} gap-4 rounded-t-lg border-b border-ink/[.06] bg-surface-2 px-5 py-3 text-[12.5px] font-bold tracking-wide text-faint`}
+          className={`grid ${grid} gap-4 rounded-t-lg border-b border-ink/[.06] bg-surface-2 px-5 py-3 text-[12.5px] font-bold tracking-wide text-faint`}
         >
           <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             순위
@@ -87,10 +95,16 @@ export function MemberTable({
           <Link href={sortHref("realName")} className="text-center hover:text-fg-2">
             실명{sortMark("realName")}
           </Link>
-          <div>디코 닉네임</div>
-          <Link href={sortHref("tier")} className="text-center hover:text-fg-2">
-            티어{sortMark("tier")}
-          </Link>
+          {isRift && (
+            <>
+              <div className="text-center">모스트</div>
+              <div className="text-center">주라인</div>
+              <div className="text-center">부라인</div>
+              <Link href={sortHref("peakTier")} className="text-center hover:text-fg-2">
+                최고티어{sortMark("peakTier")}
+              </Link>
+            </>
+          )}
           <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             MMR{sortMark("mmr")}
           </Link>
@@ -99,7 +113,7 @@ export function MemberTable({
           <div className="text-center">패</div>
           <div className="text-center">승률</div>
           <div className="text-center">마지막 활동</div>
-          <div className="text-center">관리</div>
+          {!isRift && <div className="text-center">모스트 챔피언 · 숙련도</div>}
         </div>
         {rows.map((m) => {
           const podium = podiumOf(m.rank);
@@ -107,10 +121,14 @@ export function MemberTable({
             <>
               <RankCell rank={m.rank} />
               <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
-              <div className={`truncate font-mono text-[13.5px] ${m.discordName === "-" ? "text-ghost" : "text-accent-soft"}`}>
-                {m.discordName}
-              </div>
-              <MemberTierCell memberId={m.id} tier={m.tier} isAdmin={isAdmin} />
+              {isRift && (
+                <>
+                  <MasteryChampions masteries={m.masteries.slice(0, 5)} />
+                  <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin={isAdmin} />
+                  <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin={isAdmin} />
+                  <MemberTierCell memberId={m.id} tier={m.peakTier} field="peakTier" isAdmin={false} />
+                </>
+              )}
               <div
                 className={`text-center font-mono text-[15.5px] font-bold ${
                   m.mmr === 0 ? "text-ghost" : m.mmr >= 1600 ? "text-gold" : "text-fg"
@@ -137,25 +155,13 @@ export function MemberTable({
               >
                 {m.lastActiveLabel}
               </div>
-              {isAdmin ? (
-                <div className="flex justify-center">
-                  <DeleteMemberButton
-                    memberId={m.id}
-                    label={displayLabel(m)}
-                    mentionCount={m.mentionCount}
-                    gameCount={m.gameCount}
-                    aliasCount={m.aliasCount}
-                  />
-                </div>
-              ) : (
-                <div />
-              )}
+              {!isRift && <MasteryChampionStrip masteries={m.masteries} />}
             </>
           );
           if (podium) {
             return (
               <PodiumFrame key={m.id} rank={m.rank as 1 | 2 | 3}>
-                <div className={`grid ${GRID} relative items-center gap-4 px-5 py-3.5 text-[15px] ${podium.row}`}>
+                <div className={`grid ${grid} relative items-center gap-4 px-5 py-3.5 text-[15px] ${podium.row}`}>
                   {cells}
                 </div>
               </PodiumFrame>
@@ -164,7 +170,7 @@ export function MemberTable({
           return (
             <div
               key={m.id}
-              className={`grid ${GRID} relative items-center gap-4 border-b border-ink/[.04] px-5 py-3.5 text-[15px] hover:bg-hover`}
+              className={`grid ${grid} relative items-center gap-4 border-b border-ink/[.04] px-5 py-3.5 text-[15px] hover:bg-hover`}
             >
               {cells}
             </div>
@@ -173,7 +179,7 @@ export function MemberTable({
       </div>
       <div className="md:hidden p-3">
         {rows.map((m) => (
-          <MemberCard key={m.id} row={m} />
+          <MemberCard key={m.id} row={m} showTier={isRift} />
         ))}
       </div>
     </>

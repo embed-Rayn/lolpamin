@@ -68,7 +68,11 @@ the shown value diverges from the column, the MMR sort happens in JS after the
 query (`sortByDisplayedMmr`), not in `orderBy`. The board's only filters are
 전체 / 유저만 (counted games > 0) / 언랭만 (0); link state and inactivity live on
 their own pages. The Discord bot still shows stored ratings. `/members` is a
-permanent redirect to `/rift`. `/member-info` shows the same displayed rating
+permanent redirect to `/rift`. The two boards are read-only and lay out differently (`MemberTable`'s
+`mode`): `/rift` shows 모스트 (top 5), 주라인·부라인 (editable in place by admins through `MemberLaneCell`) and 최고티어 (`peakTier`, sortable), `/aram` drops
+tier altogether and shows the top 10 champions with their summed mastery points
+(`MasteryChampionStrip`, `formatMasteryPoints`). Neither shows the Discord name or
+deletes members — 관리 (`DeleteMemberButton`) lives on `/member-admin`. `/member-info` shows the same displayed rating
 per mode beside each 판 column, and its 평균 MMR cards average the **stored**
 rating over members with counted games in that mode (`getMemberInfoSummary`),
 so an untouched 1000 neither drags the mean nor shows up as 0 in it.
@@ -164,8 +168,9 @@ image delete) wins unless it is a not-yet-revealed hidden image. Thumbnails are
 `object-contain`: a poster is shown whole, never cropped.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
-`UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a
-second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
+`UNRANKED`, shown as 산정티어) that an admin sets by hand — an operator value, shown and
+edited on `/member-admin` only; `/member-info` shows just 최고티어 and cannot sort by it.
+`Member.peakTier` (최고티어) is a second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
 moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both

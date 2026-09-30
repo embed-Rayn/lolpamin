@@ -11,11 +11,12 @@ import { MemberInfoCard } from "@/components/MemberInfoCard";
 import { MasteryChampions } from "@/components/MasteryChampions";
 import { LaneFilterMenu } from "@/components/LaneFilterMenu";
 
-// 이름은 실명이라 석 자 안팎, 나이는 두 자리다 — 둘 다 고정폭으로 두고 남는 폭은 라이엇
-// 계정이 가져간다. 협곡·칼바람 10칸은 한 덩어리(600px)로 묶고 안에서 균등하게 나눈다 —
-// METRICS_GRID 참고. 주라인·부라인은 두 글자라 좁다. 모스트는 아이콘 세 개와 레벨이 들어간다.
-// 이 화면은 보기 전용이라 편집 칸이 없다 — 편집은 /member-admin.
-const GRID = "grid-cols-[80px_56px_600px_80px_80px_56px_56px_1.2fr_132px]";
+// 이름은 실명이라 석 자 안팎, 나이는 두 자리, 티어 라벨은 네 자 이하다 — 전부 내용에 맞춘
+// 고정폭으로 두고 남는 폭은 전부 라이엇 계정이 가져간다(부계정 여러 개가 한 줄에 들어가게).
+// 협곡·칼바람 10칸은 한 덩어리(520px)로 묶고 안에서 균등하게 나눈다 — METRICS_GRID 참고.
+// 주라인·부라인은 두 글자라 좁다. 모스트는 아이콘 세 개와 레벨이 들어간다. 산정티어는
+// 팀빌더 점수용 운영 값이라 이 화면에 두지 않는다 — 편집·확인은 /member-admin.
+const GRID = "grid-cols-[72px_48px_520px_64px_56px_56px_minmax(0,1fr)_132px]";
 
 // 협곡 5칸 + 칼바람 5칸, 전부 같은 폭. 두 절반이 정확히 5칸씩이라 METRICS_BG의 50%가
 // 곧 협곡·칼바람 경계다.
@@ -48,7 +49,7 @@ function winRateLabel(record: ModeRecord): string {
 }
 
 // 점수 0(아이언·언랭)은 "점수를 매기지 않는 구간"이라 흐리게 둔다 — MemberTierCell의 보기 모드와 같다.
-function TierText({ tier }: { tier: MemberInfoRow["tier"] }) {
+function TierText({ tier }: { tier: MemberInfoRow["peakTier"] }) {
   return (
     <div className={`truncate text-center ${tierScore(tier) === 0 ? "text-ghost" : "text-fg-2"}`}>{tierLabel(tier)}</div>
   );
@@ -134,7 +135,6 @@ export function MemberInfoTable({
             <SortLink sortKey="aramWinRate" label="승률" align="center" />
           </div>
           <SortLink sortKey="peakTier" label="최고티어" align="center" />
-          <SortLink sortKey="tier" label="산정티어" align="center" />
           {/* 이 둘만 정렬 대신 체크박스 메뉴를 연다 — 헤더 하나가 두 제스처를 다 가질 수
               없고, 걸러 볼 값이 있는 칸은 이 둘이다. */}
           <LaneFilterMenu param="lane" label="주라인" selected={laneTokens} />
@@ -191,7 +191,6 @@ export function MemberInfoTable({
             </div>
 
             <TierText tier={m.peakTier} />
-            <TierText tier={m.tier} />
             <div className={`text-center ${m.mainLane ? "text-fg-2" : "text-ghost"}`}>{laneLabel(m.mainLane)}</div>
             <div className={`text-center ${m.subLane ? "text-fg-2" : "text-ghost"}`}>{laneLabel(m.subLane)}</div>
             <div className="flex flex-wrap justify-center gap-1">

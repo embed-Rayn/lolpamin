@@ -7,7 +7,7 @@ import { NavIcon } from "@/components/nav-icons";
 
 const SORT_OPTIONS: Array<{ value: string; label: string; sort: MemberInfoSort; dir: SortDirection }> = [
   { value: "realName:asc", label: "이름순", sort: "realName", dir: "asc" },
-  { value: "tier:desc", label: "티어 높은 순", sort: "tier", dir: "desc" },
+  { value: "peakTier:desc", label: "최고티어 높은 순", sort: "peakTier", dir: "desc" },
   { value: "riftMmr:desc", label: "협곡 MMR 높은 순", sort: "riftMmr", dir: "desc" },
   { value: "riftGames:desc", label: "협곡 판수 많은 순", sort: "riftGames", dir: "desc" },
   { value: "riftWinRate:desc", label: "협곡 승률 높은 순", sort: "riftWinRate", dir: "desc" },

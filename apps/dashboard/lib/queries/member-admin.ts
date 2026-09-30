@@ -34,6 +34,11 @@ export interface MemberAdminRow {
   lastActiveDate: string;
   daysSinceActive: number;
   note: string | null;
+  // For the delete confirm: deleteMember also removes the tombstones this member absorbed
+  // and their records, so all three include the tombstones' share (same as /rift had).
+  mentionCount: number;
+  gameCount: number;
+  aliasCount: number;
 }
 
 type SortableRow = MemberAdminRow & { activeAt: number };
@@ -88,7 +93,11 @@ export async function getMemberAdminRows(
     where: { mergedIntoId: null },
     include: {
       // 최신순 — 흡수해도 카톡 닉네임은 묘비에 남으므로 출생연도를 거기서 읽는다.
-      absorbed: { select: { kakaoNickname: true }, orderBy: { createdAt: "desc" } },
+      absorbed: {
+        select: { kakaoNickname: true, _count: { select: { mentionLogs: true, participants: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      _count: { select: { mentionLogs: true, participants: true } },
       riotAccounts: {
         select: {
           id: true,
@@ -119,6 +128,9 @@ export async function getMemberAdminRows(
       lastActiveDate: toLocalDate(activeAt),
       daysSinceActive: Math.floor((now.getTime() - activeAt.getTime()) / DAY_MS),
       note: m.note,
+      mentionCount: m.absorbed.reduce((sum, t) => sum + t._count.mentionLogs, m._count.mentionLogs),
+      gameCount: m.absorbed.reduce((sum, t) => sum + t._count.participants, m._count.participants),
+      aliasCount: m.absorbed.length,
       activeAt: activeAt.getTime(),
     };
   });
