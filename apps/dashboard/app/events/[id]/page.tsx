@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatEventDate } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
+import { EventAdminBar } from "@/components/events/EventAdminBar";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
 import { getEventPost } from "@/lib/queries/event-posts";
@@ -25,7 +26,9 @@ export default async function EventPostPage({ params }: { params: { id: string }
           <div className="text-[12.5px] text-faint">{formatEventDate(post.createdAt)}</div>
         </header>
 
-        {/* Task 5: admin bar goes here */}
+        {isAdmin && (
+          <EventAdminBar postId={post.id} revealed={post.revealed} hiddenCount={post.hiddenImages.length} />
+        )}
 
         {post.hiddenImages.map((image) => (
           <figure key={image.id} className="relative m-0">
