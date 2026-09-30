@@ -31,7 +31,8 @@ export type NavIconName =
   | "snowflake"
   | "menu"
   | "x"
-  | "home";
+  | "home"
+  | "megaphone";
 
 const PATHS: Record<NavIconName, string> = {
   users:
@@ -84,6 +85,7 @@ const PATHS: Record<NavIconName, string> = {
   snowflake:
     '<line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
   home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  megaphone: '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
 };
 
 export function NavIcon({ name, size = 18, className }: { name: NavIconName; size?: number; className?: string }) {

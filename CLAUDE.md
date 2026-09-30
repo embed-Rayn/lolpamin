@@ -142,6 +142,20 @@ A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
 member's old score. Right after a reset nothing is cancellable, which is correct.
 
+`/events` (공지사항, the one item of the 이벤트 sidebar group) is a poster board: admins write, everyone reads. A post is
+a title, a plain-text body and two ordered image lists — `MAIN` (shown at once) and
+`HIDDEN` (추후 공개). `EventPost.revealedAt` gates every `HIDDEN` image of the post at
+once: while null, visitors get neither the image nor its id (`getEventPost` drops it)
+and `/api/events/images/[id]` answers 404 — not 403, which would admit it exists.
+Revealing puts them at the top of the post and is undoable (숨기기), which is why a
+`HIDDEN` response is always `private, no-store` while `MAIN` is immutable: image rows
+are never edited, a replacement is a new id. Deleting the last `HIDDEN` image clears
+`revealedAt`, so the next surprise uploaded to the same post starts hidden. Images live in Postgres `Bytes` like
+`HomeBanner` (5MB, png/jpg/webp/gif, 20 per kind) and are uploaded one per server
+action so the 20mb body limit never bites. The rule is `canViewEventImage` in
+`packages/core`; the list thumbnail (`pickEventThumbnailId`) shows what a visitor
+would see, admins included.
+
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a
 second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
@@ -306,10 +320,11 @@ server → client boundary.
 
 ## Mobile
 
-Six read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`, `/player-stats`) work down to a 375px phone; the nine operator
-screens (`matches`, `replay-import`, `team-builder`, `kakao-import`,
-`link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`) show a "PC에서
+Nine read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/inactive`, `/player-stats`, `/events`, `/events/[id]`) work down to a
+375px phone; the eleven operator screens (`matches`, `replay-import`, `team-builder`,
+`kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
+`events/new`, `events/[id]/edit`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
 content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
 mode still reaches it.

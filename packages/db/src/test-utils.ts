@@ -13,4 +13,6 @@ export async function resetDatabase(client: PrismaClient): Promise<void> {
   await client.mmrSetting.deleteMany();
   await client.siteSetting.deleteMany();
   await client.homeBanner.deleteMany();
+  await client.eventImage.deleteMany();
+  await client.eventPost.deleteMany();
 }
