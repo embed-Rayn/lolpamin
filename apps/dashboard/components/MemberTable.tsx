@@ -9,15 +9,15 @@ import { MemberCard, PodiumFrame, RankBadge, podiumOf } from "@/components/Membe
 
 // 랭킹 화면이라 보기만 한다 — 회원 삭제(관리)와 티어 편집은 /member-admin에 있다. 두 모드가
 // 칸 구성이 다르다.
-// 협곡: 순위, 실명, 모스트(5), 주라인, 부라인, 최고티어, MMR, 판, 승, 패, 승률, 마지막 활동.
+// 협곡: 순위, 실명, MMR, 판, 승, 패, 승률, 주라인, 부라인, 최고티어, 마지막 활동, 모스트(5, x레벨).
 //   라인은 운영진만 그 자리에서 고친다(MemberLaneCell — /member-admin과 같은 셀). 티어는
 //   산정티어가 아닌 최고티어를 읽기 전용으로 둔다.
 // 칼바람: 순위, 실명, MMR, 판, 승, 패, 승률, 마지막 활동, 모스트(10 + 숙련도). 칼바람은 챔피언이
 //   무작위라 티어가 뜻이 없고, 대신 폭넓은 챔피언 풀을 보인다.
 const GRID = {
-  // 실명은 석 자 안팎이라 남는 폭을 혼자 갖지 않게 한다 — 여분은 실명·모스트·마지막 활동이
-  // 0.7 : 1.3 : 0.8로 나눠 가진다.
-  RIFT: "grid-cols-[64px_minmax(80px,0.7fr)_minmax(232px,1.3fr)_72px_72px_88px_88px_46px_44px_44px_60px_minmax(100px,0.8fr)]",
+  // 실명은 석 자 안팎이라 남는 폭을 혼자 갖지 않게 한다 — 여분은 실명·마지막 활동·모스트가
+  // 0.7 : 0.8 : 1.3으로 나눠 가진다.
+  RIFT: "grid-cols-[64px_minmax(80px,0.7fr)_88px_46px_44px_44px_60px_72px_72px_88px_minmax(100px,0.8fr)_minmax(232px,1.3fr)]",
   ARAM: "grid-cols-[64px_minmax(96px,0.6fr)_88px_46px_44px_44px_60px_96px_minmax(0,2.4fr)]",
 } as const;
 
@@ -95,16 +95,6 @@ export function MemberTable({
           <Link href={sortHref("realName")} className="text-center hover:text-fg-2">
             실명{sortMark("realName")}
           </Link>
-          {isRift && (
-            <>
-              <div className="text-center">모스트</div>
-              <div className="text-center">주라인</div>
-              <div className="text-center">부라인</div>
-              <Link href={sortHref("peakTier")} className="text-center hover:text-fg-2">
-                최고티어{sortMark("peakTier")}
-              </Link>
-            </>
-          )}
           <Link href={sortHref("mmr")} className="text-center hover:text-fg-2">
             MMR{sortMark("mmr")}
           </Link>
@@ -112,8 +102,17 @@ export function MemberTable({
           <div className="text-center">승</div>
           <div className="text-center">패</div>
           <div className="text-center">승률</div>
+          {isRift && (
+            <>
+              <div className="text-center">주라인</div>
+              <div className="text-center">부라인</div>
+              <Link href={sortHref("peakTier")} className="text-center hover:text-fg-2">
+                최고티어{sortMark("peakTier")}
+              </Link>
+            </>
+          )}
           <div className="text-center">마지막 활동</div>
-          {!isRift && <div className="text-center">모스트 챔피언 · 숙련도</div>}
+          <div className="text-center">{isRift ? "모스트 · 레벨" : "모스트 챔피언 · 숙련도"}</div>
         </div>
         {rows.map((m) => {
           const podium = podiumOf(m.rank);
@@ -121,14 +120,6 @@ export function MemberTable({
             <>
               <RankCell rank={m.rank} />
               <MemberRealNameCell memberId={m.id} realName={m.realName} isAdmin={isAdmin} />
-              {isRift && (
-                <>
-                  <MasteryChampions masteries={m.masteries.slice(0, 5)} />
-                  <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin={isAdmin} />
-                  <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin={isAdmin} />
-                  <MemberTierCell memberId={m.id} tier={m.peakTier} field="peakTier" isAdmin={false} />
-                </>
-              )}
               <div
                 className={`text-center font-mono text-[15.5px] font-bold ${
                   m.mmr === 0 ? "text-ghost" : m.mmr >= 1600 ? "text-gold" : "text-fg"
@@ -144,6 +135,13 @@ export function MemberTable({
                 {m.losses}
               </div>
               <div className="text-center font-mono text-[13.5px] text-muted">{winRateLabel(m.wins, m.playedCount)}</div>
+              {isRift && (
+                <>
+                  <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin={isAdmin} />
+                  <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin={isAdmin} />
+                  <MemberTierCell memberId={m.id} tier={m.peakTier} field="peakTier" isAdmin={false} />
+                </>
+              )}
               <div
                 className={`text-center font-mono text-[13.5px] ${
                   m.daysSinceActive !== null && m.daysSinceActive >= 30
@@ -155,7 +153,11 @@ export function MemberTable({
               >
                 {m.lastActiveLabel}
               </div>
-              {!isRift && <MasteryChampionStrip masteries={m.masteries} />}
+              {isRift ? (
+                <MasteryChampions masteries={m.masteries.slice(0, 5)} />
+              ) : (
+                <MasteryChampionStrip masteries={m.masteries} />
+              )}
             </>
           );
           if (podium) {
