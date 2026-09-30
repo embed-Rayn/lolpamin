@@ -138,6 +138,10 @@ only — a hand-entered game has no position or KDA, so its count can be lower t
 `?period=all` drops it. The math is `aggregatePlayerStats` in `packages/core`; member
 selection and block folding are browser memory only.
 
+A consequence: `cancelGameResult` refuses a game entered at or before the newest
+`resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
+member's old score. Right after a reset nothing is cancellable, which is correct.
+
 `/events` (이벤트, under 추첨) is a poster board: admins write, everyone reads. A post is
 a title, a plain-text body and two ordered image lists — `MAIN` (shown at once) and
 `HIDDEN` (추후 공개). `EventPost.revealedAt` gates every `HIDDEN` image of the post at
@@ -150,10 +154,6 @@ are never edited, a replacement is a new id. Images live in Postgres `Bytes` lik
 action so the 20mb body limit never bites. The rule is `canViewEventImage` in
 `packages/core`; the list thumbnail (`pickEventThumbnailId`) shows what a visitor
 would see, admins included.
-
-A consequence: `cancelGameResult` refuses a game entered at or before the newest
-`resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
-member's old score. Right after a reset nothing is cancellable, which is correct.
 
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`, shown as 산정티어) that an admin sets by hand. `Member.peakTier` (최고티어) is a
