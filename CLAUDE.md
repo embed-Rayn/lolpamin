@@ -123,6 +123,13 @@ the turn back, and cross-team moves are refused until the draft completes. Guest
 only in the browser (name, hand-typed MMR and lanes) and count in the team averages.
 Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
 
+Every participant picker (`/matches`, `/draw/*`, `/player-stats`) shares one search box
+(`useMultiNameSearch` + `MultiNameMatchBar`): typing filters by substring, but pasting a
+multi-line / `@` / comma list — the chatroom's recruit post as is — filters to the people
+it names (`parseParticipantNames`: the part before the first `/` of each mention, list
+numbers and `(memo)` dropped; `matchParticipantNames` ignores spaces and case). Unfound
+names and 동명이인 are listed, and 「찾은 사람 모두 선택」 adds the matches in one call.
+
 Candidates show combined champion mastery: `ChampionMastery` caches Riot
 Champion-Mastery-V4 per `RiotAccount` (cascade on delete), refreshed by
 `refreshChampionMasteries` at most once an hour (`SiteSetting.masteryRefreshedAt`, same

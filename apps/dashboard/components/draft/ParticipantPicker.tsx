@@ -3,12 +3,14 @@
 import { useState } from "react";
 import type { DraftPoolMember } from "@/lib/queries/draft-pool";
 import { guestNameError, normalizeGuestName, type Guest } from "@/lib/draft/candidates";
+import { MULTI_NAME_PLACEHOLDER, MultiNameMatchBar, useMultiNameSearch } from "@/components/MultiNameSearch";
 
 export function ParticipantPicker({
   pool,
   selectedIds,
   guests,
   onToggle,
+  onSelectMany,
   onAddGuest,
   onRemoveGuest,
 }: {
@@ -16,17 +18,20 @@ export function ParticipantPicker({
   selectedIds: string[];
   guests: Guest[];
   onToggle: (id: string) => void;
+  // One call for a pasted list — calling onToggle per id would each read the same stale
+  // selection and only the last one would stick.
+  onSelectMany: (ids: string[]) => void;
   onAddGuest: (name: string) => void;
   onRemoveGuest: (name: string) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const search = useMultiNameSearch(pool);
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState<string | null>(null);
 
   const selected = new Set(selectedIds);
   const visible = [...pool]
     .sort((a, b) => a.name.localeCompare(b.name, "ko"))
-    .filter((m) => query === "" || m.name.toLowerCase().includes(query.toLowerCase()));
+    .filter(search.matches);
 
   function addGuest() {
     const name = normalizeGuestName(guestInput);
@@ -46,10 +51,15 @@ export function ParticipantPicker({
         </span>
       </div>
       <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="이름 검색"
+        value={search.query}
+        onChange={(e) => search.onQueryChange(e.target.value)}
+        onPaste={search.onPaste}
+        placeholder={MULTI_NAME_PLACEHOLDER}
         className="rounded-lg border border-ink/[.09] bg-inset px-2.5 py-1.5 text-[13px] text-fg outline-none focus:border-accent"
+      />
+      <MultiNameMatchBar
+        search={search}
+        onSelectMatched={onSelectMany}
       />
       <div className="grid grid-cols-4 gap-1.5 lg:grid-cols-6 xl:grid-cols-8">
         {visible.map((m) => (
