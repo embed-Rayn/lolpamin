@@ -96,8 +96,13 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       items: [
         { key: "draw-cannon", href: "/draw/cannon", label: "대포 뽑기", icon: "cube" },
         { key: "draw-plinko", href: "/draw/plinko", label: "핀볼 뽑기", icon: "dice" },
-        { key: "events", href: "/events", label: "이벤트", icon: "megaphone" },
       ],
+    },
+    {
+      key: "event-board",
+      label: "이벤트",
+      icon: "megaphone",
+      items: [{ key: "events", href: "/events", label: "공지사항", icon: "file-text" }],
     },
   ];
   if (currentAdmin) {

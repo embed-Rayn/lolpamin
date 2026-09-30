@@ -13,7 +13,7 @@ export default async function EventsPage() {
   const [posts, currentAdmin] = await Promise.all([listEventPosts(prisma), getCurrentAdmin()]);
 
   return (
-    <AppShell activeNav="events" pageTitle="이벤트" pageDesc="내전 이벤트 소식">
+    <AppShell activeNav="events" pageTitle="공지사항" pageDesc="이벤트 · 공지">
       <div className="flex flex-col gap-4 px-4 pb-10 pt-5 md:px-7 md:pt-6">
         {currentAdmin && (
           <div className="flex justify-end">
@@ -27,7 +27,7 @@ export default async function EventsPage() {
         )}
         {posts.length === 0 ? (
           <div className="rounded-xl border border-ink/[.06] bg-surface px-4 py-16 text-center text-[13.5px] text-faint">
-            아직 등록된 이벤트가 없습니다.
+            아직 등록된 글이 없습니다.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

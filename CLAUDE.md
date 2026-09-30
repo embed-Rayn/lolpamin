@@ -142,7 +142,7 @@ A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
 member's old score. Right after a reset nothing is cancellable, which is correct.
 
-`/events` (이벤트, under 추첨) is a poster board: admins write, everyone reads. A post is
+`/events` (공지사항, the one item of the 이벤트 sidebar group) is a poster board: admins write, everyone reads. A post is
 a title, a plain-text body and two ordered image lists — `MAIN` (shown at once) and
 `HIDDEN` (추후 공개). `EventPost.revealedAt` gates every `HIDDEN` image of the post at
 once: while null, visitors get neither the image nor its id (`getEventPost` drops it)

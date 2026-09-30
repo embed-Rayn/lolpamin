@@ -16,10 +16,10 @@ export default async function EventPostPage({ params }: { params: { id: string }
   if (!post) notFound();
 
   return (
-    <AppShell activeNav="events" pageTitle="이벤트" pageDesc={post.title}>
+    <AppShell activeNav="events" pageTitle="공지사항" pageDesc={post.title}>
       <article className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-10 pt-5 md:px-7 md:pt-6">
         <Link href="/events" className="text-[13px] text-faint hover:text-fg-2">
-          ← 목록
+          ← 공지사항
         </Link>
         <header className="flex flex-col gap-1">
           <h2 className="m-0 text-[20px] font-extrabold tracking-tight text-fg md:text-[24px]">{post.title}</h2>

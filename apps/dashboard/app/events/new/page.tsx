@@ -10,7 +10,7 @@ export default async function NewEventPostPage() {
   if (!(await getCurrentAdmin())) redirect("/login");
 
   return (
-    <AppShell activeNav="events" pageTitle="이벤트 글쓰기" pageDesc="새 이벤트 글" desktopOnly>
+    <AppShell activeNav="events" pageTitle="공지사항 글쓰기" pageDesc="새 글" desktopOnly>
       <div className="flex max-w-3xl flex-col gap-3 px-7 pb-10 pt-6">
         <p className="m-0 text-[13px] text-faint">
           제목과 내용을 먼저 저장하면 사진(일반 · 추후 공개)을 올리는 화면으로 넘어갑니다.

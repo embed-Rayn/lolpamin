@@ -16,7 +16,7 @@ export default async function EditEventPostPage({ params }: { params: { id: stri
   if (!post) notFound();
 
   return (
-    <AppShell activeNav="events" pageTitle="이벤트 수정" pageDesc={post.title} desktopOnly>
+    <AppShell activeNav="events" pageTitle="공지사항 수정" pageDesc={post.title} desktopOnly>
       <div className="flex max-w-4xl flex-col gap-4 px-7 pb-10 pt-6">
         <Link href={`/events/${post.id}`} className="text-[13px] text-faint hover:text-fg-2">
           ← 글 보기

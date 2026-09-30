@@ -72,7 +72,8 @@ model EventImage {
 
 ## 페이지
 
-사이드바 추첨 그룹, 핀볼 뽑기 아래에 `이벤트`(`key: "events"`, 새 아이콘 `megaphone`).
+사이드바 새 그룹 `이벤트`(`key: "event-board"`, 새 아이콘 `megaphone`, 추첨 다음) 안의 유일한 항목
+`공지사항`(`key: "events"`, 아이콘 `file-text`). 화면 제목도 `공지사항`.
 모두에게 보인다. `AppShell`의 `activeNav` 유니언에 `"events"` 추가.
 
 | 경로 | 권한 | 모바일 | 내용 |
