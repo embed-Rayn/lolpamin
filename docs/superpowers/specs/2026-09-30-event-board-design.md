@@ -107,13 +107,14 @@ model EventImage {
 
 ## 코드 배치
 
-- `packages/core/src/event-image-visibility.ts` (+ test) — `canViewEventImage`
+- `packages/core/src/event-post.ts` (+ test) — `canViewEventImage`, `pickEventThumbnailId`(목록 썸네일),
+  `formatEventDate`(서울 시각 `YYYY.MM.DD`)
 - `apps/dashboard/lib/mutations/event-posts.ts` (+ test) — 모두 `prisma`를 첫 인자로 받는다:
   `createEventPost`, `updateEventPost`, `deleteEventPost`, `addEventImage`, `deleteEventImage`,
   `moveEventImage`(인접 행과 position 교환, 트랜잭션), `setEventPostRevealed`.
   검증 실패는 `EventPostValidationError`(한국어 메시지).
-- `apps/dashboard/lib/queries/event-posts.ts` (+ test) — `listEventPosts(prisma, isAdmin)`,
-  `getEventPost(prisma, id, isAdmin)`. **`bytes`는 select하지 않는다.** 비관리자 쿼리는 공개 전
+- `apps/dashboard/lib/queries/event-posts.ts` (+ test) — `listEventPosts(prisma)`(썸네일 규칙이 누구에게나 같아 isAdmin 불필요),
+  `getEventPost(prisma, id, isAdmin)`, `getEventImageForViewer(prisma, id, isAdmin)`(라우트용). **`bytes`는 select하지 않는다.** 비관리자 쿼리는 공개 전
   `HIDDEN` 행을 아예 제외해 사진 id가 HTML에 실리지 않게 한다.
 - `apps/dashboard/app/events/actions.ts` — 서버 액션. 모두 첫 줄 `requireAdmin()`, 끝에서
   `/events`와 해당 글 경로 `revalidatePath`.
