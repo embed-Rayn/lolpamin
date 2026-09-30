@@ -27,7 +27,8 @@ export interface AppShellProps {
     | "member-admin"
     | "admins"
     | "draw-cannon"
-    | "draw-plinko";
+    | "draw-plinko"
+    | "events";
   pageTitle: string;
   pageDesc: string;
   // 이 화면은 폭이 넓어야 쓸 수 있다(경기 입력, 리플레이, 팀짜기, 카톡 불러오기, 계정
@@ -95,6 +96,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       items: [
         { key: "draw-cannon", href: "/draw/cannon", label: "대포 뽑기", icon: "cube" },
         { key: "draw-plinko", href: "/draw/plinko", label: "핀볼 뽑기", icon: "dice" },
+        { key: "events", href: "/events", label: "이벤트", icon: "megaphone" },
       ],
     },
   ];
