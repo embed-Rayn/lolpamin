@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { AccountMappingPanel } from "@/components/AccountMappingPanel";
 import { getPendingDiscordAccounts } from "@/lib/queries/pending-accounts";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function LinkAccountsPage() {
   const currentAdmin = await getCurrentAdmin();
   if (!currentAdmin) {
-    redirect("/login");
+    redirect(loginPathFor("/link-accounts"));
   }
 
   const [discordAccounts, kakaoAccounts, membersWithAliases] = await Promise.all([

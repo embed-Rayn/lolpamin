@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth/current-admin";
+import { safeNextPath } from "@/lib/auth/next-path";
 
 export interface LoginFormState {
   error: string | null;
@@ -43,7 +44,8 @@ export async function loginAction(
   const { token, expiresAt } = await createSession(prisma, admin.id);
   cookies().set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
 
-  redirect("/rift");
+  // Back to the page the admin was on before logging in (the form carries ?next=).
+  redirect(safeNextPath(formData.get("next")));
 }
 
 export async function logoutAction(): Promise<void> {
@@ -52,5 +54,6 @@ export async function logoutAction(): Promise<void> {
     await destroySession(prisma, token);
   }
   cookies().delete(SESSION_COOKIE_NAME);
-  redirect("/rift");
+  // Home, not the page they were on: it may be an operator screen that now bounces to /login.
+  redirect("/");
 }

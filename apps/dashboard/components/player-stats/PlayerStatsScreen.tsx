@@ -6,7 +6,7 @@ import type { PlayerStatsMember, PlayerStatsPeriod } from "@/lib/queries/player-
 import { MemberPicker } from "./MemberPicker";
 import { PlayerStatBlock } from "./PlayerStatBlock";
 
-// 올해 → 이번 시즌 → 전체, 좁은 것부터가 아니라 운영진이 자주 보는 순서. 기본은 이번 시즌.
+// 올해 → 이번 시즌 → 전체. 기본은 올해 — 리셋 직후엔 이번 시즌이 비어 있다.
 function periods(year: number): Array<{ value: PlayerStatsPeriod; label: string }> {
   return [
     { value: "year", label: `${year}년` },
@@ -46,7 +46,7 @@ export function PlayerStatsScreen({
           {periods(year).map((p) => (
             <Link
               key={p.value}
-              href={p.value === "season" ? "/player-stats" : `/player-stats?period=${p.value}`}
+              href={p.value === "year" ? "/player-stats" : `/player-stats?period=${p.value}`}
               className={`rounded-md px-3 py-1.5 ${
                 period === p.value ? "bg-surface font-semibold text-fg shadow-sm" : "text-muted"
               }`}

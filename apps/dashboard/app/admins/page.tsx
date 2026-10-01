@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { AdminPanel, type AdminRow } from "@/components/AdminPanel";
 import { MmrConfigPanel } from "@/components/MmrConfigPanel";
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminsPage() {
   const currentAdmin = await getCurrentAdmin();
   if (!currentAdmin) {
-    redirect("/login");
+    redirect(loginPathFor("/admins"));
   }
 
   const [admins, mmrConfig, theme, themeRow, branding, banners] = await Promise.all([

@@ -3,33 +3,11 @@
 import { useEffect, useState } from "react";
 import type { Lane } from "@lolpamin/db";
 import { isCaptain, LANE_OPTIONS, laneLabel, seatOf, type DraftSide, type DraftState } from "@lolpamin/core";
-import { championIcon, championIdByKey, championName } from "@/lib/ddragon/assets";
 import type { Candidate, Guest } from "@/lib/draft/candidates";
 import { setDragPayload } from "./dnd";
+import { MasteryChampionStrip } from "@/components/MasteryChampionStrip";
 
-const GRID = "grid grid-cols-[28px_120px_1.2fr_150px_40px_40px_56px_56px_56px_64px_150px] items-center gap-2";
-
-function MasteryIcons({ candidate }: { candidate: Candidate }) {
-  if (candidate.masteries.length === 0) return <span className="text-ghost">—</span>;
-  return (
-    <div className="flex gap-1.5">
-      {candidate.masteries.map((m) => {
-        const id = championIdByKey(m.championId);
-        const icon = id ? championIcon(id) : null;
-        return (
-          <div key={m.championId} className="flex items-center gap-0.5" title={id ? championName(id) : undefined}>
-            {icon ? (
-              <img src={icon} alt="" width={24} height={24} className="rounded" />
-            ) : (
-              <span className="inline-block h-6 w-6 rounded bg-ink/[.08]" />
-            )}
-            <span className="font-mono text-[11px] text-muted">x{m.level}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+const GRID = "grid grid-cols-[28px_120px_1.2fr_336px_40px_40px_56px_56px_56px_64px_150px] items-center gap-2";
 
 // 게스트 MMR 입력칸은 자기 텍스트를 따로 들고 있다가 blur/Enter에만 onCommit을 부른다.
 // 매 타이핑마다 커밋하면 정렬이 바뀌어 행이 튀고 포커스를 잃는다.
@@ -106,7 +84,7 @@ export function CandidateTable({
         <span>#</span>
         <span>이름</span>
         <span>Riot ID</span>
-        <span>숙련 챔피언</span>
+        <span className="text-center">모스트 챔피언 · 숙련도</span>
         <span className="text-right">승</span>
         <span className="text-right">패</span>
         <span className="text-right">MMR</span>
@@ -136,7 +114,7 @@ export function CandidateTable({
               {c.riotId ?? "—"}
               {c.extraAccounts > 0 && <span className="text-faint"> +{c.extraAccounts}</span>}
             </span>
-            <MasteryIcons candidate={c} />
+            <MasteryChampionStrip masteries={c.masteries} />
             <span className="text-right font-mono text-success-soft">{c.wins ?? "—"}</span>
             <span className="text-right font-mono text-danger-soft">{c.losses ?? "—"}</span>
             {c.isGuest ? (

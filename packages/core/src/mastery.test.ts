@@ -50,14 +50,20 @@ describe("topMasteries", () => {
 });
 
 describe("formatMasteryPoints", () => {
-  it("keeps small numbers whole with separators", () => {
+  it("keeps numbers under a thousand whole", () => {
     expect(formatMasteryPoints(0)).toBe("0");
-    expect(formatMasteryPoints(9876)).toBe("9,876");
+    expect(formatMasteryPoints(999)).toBe("999");
   });
 
-  it("shortens to 만 with one decimal, dropping a trailing .0", () => {
-    expect(formatMasteryPoints(10000)).toBe("1만");
-    expect(formatMasteryPoints(123456)).toBe("12.3만");
-    expect(formatMasteryPoints(1_234_567)).toBe("123.5만");
+  it("rounds to whole thousands as k", () => {
+    expect(formatMasteryPoints(1000)).toBe("1k");
+    expect(formatMasteryPoints(73_400)).toBe("73k");
+    expect(formatMasteryPoints(73_500)).toBe("74k");
+    expect(formatMasteryPoints(999_400)).toBe("999k");
+  });
+
+  it("switches to M with one decimal once k would reach a thousand", () => {
+    expect(formatMasteryPoints(999_500)).toBe("1M");
+    expect(formatMasteryPoints(1_234_567)).toBe("1.2M");
   });
 });

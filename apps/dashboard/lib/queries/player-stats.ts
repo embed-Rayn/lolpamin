@@ -8,7 +8,8 @@ import { getCountedGameFilter, type CountedGameFilter } from "./counted-games";
 export type PlayerStatsPeriod = "year" | "season" | "all";
 
 export function parsePlayerStatsPeriod(value: string | undefined): PlayerStatsPeriod {
-  return value === "all" || value === "year" ? value : "season";
+  // This year is the default: right after a reset the season is empty.
+  return value === "all" || value === "season" ? value : "year";
 }
 
 export interface PlayerStatsMember {

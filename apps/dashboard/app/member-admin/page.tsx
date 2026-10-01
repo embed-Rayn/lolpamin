@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { RiotRefreshButton } from "@/components/RiotRefreshButton";
 import { MemberAdminTable } from "@/components/MemberAdminTable";
@@ -16,7 +17,7 @@ export default async function MemberAdminPage({
 }) {
   const currentAdmin = await getCurrentAdmin();
   if (!currentAdmin) {
-    redirect("/login");
+    redirect(loginPathFor("/member-admin"));
   }
 
   const sort = parseMemberAdminSort(searchParams.sort);

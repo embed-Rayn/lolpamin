@@ -57,6 +57,15 @@ describe("getDraftPool", () => {
     });
   });
 
+  it("keeps the top seven champions for the candidate table", async () => {
+    const m = await prisma.member.create({ data: { realName: "가" } });
+    await accountWith(m.id, "p-1", "본캐", [1, 2, 3, 4, 5, 6, 7, 8].map((id) => [id, 5, id * 100] as [number, number, number]));
+
+    const [row] = await getDraftPool(prisma);
+
+    expect(row.masteries.map((x) => x.championId)).toEqual([8, 7, 6, 5, 4, 3, 2]);
+  });
+
   it("falls back to the hand-written riot id and no masteries for a member without an account", async () => {
     await prisma.member.create({
       data: { discordUserId: "d-1", kakaoNickname: "가/94/닉", riotId: "손으로#적음" },
