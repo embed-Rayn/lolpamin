@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { GameMode } from "@lolpamin/db";
-import { ROFL_PARSE_ERRORS, type ReplayPlayer } from "@lolpamin/core";
+import { parseSeoulDateTimeInput, ROFL_PARSE_ERRORS, type ReplayPlayer } from "@lolpamin/core";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import {
@@ -51,7 +51,7 @@ export interface SaveReplayImportActionInput {
   replayKey: string;
   /** 미리보기가 받은 경기 정보를 그대로 돌려보낸다. 서버가 replayKey로 대조한다. */
   replay: { gameLengthMs: number; players: ReplayPlayer[] };
-  /** "2026-09-05" 형식. Date를 그대로 넘기지 않고 화면이 고른 날짜 문자열을 받는다. */
+  /** "2026-09-05T22:30", 서울 시각. Date를 그대로 넘기지 않고 화면이 고른 문자열을 받는다. */
   playedAt: string;
   winner: "BLUE" | "RED";
   assignments: ReplayAssignment[];
@@ -62,13 +62,15 @@ export async function saveReplayImportAction(
   input: SaveReplayImportActionInput,
 ): Promise<ActionResult<Awaited<ReturnType<typeof saveReplayImport>>>> {
   const admin = await requireAdmin();
+  const playedAt = parseSeoulDateTimeInput(input.playedAt);
+  if (!playedAt) return { ok: false, error: "경기 시각이 올바르지 않습니다." };
   let result: Awaited<ReturnType<typeof saveReplayImport>>;
   try {
     // createdById는 세션에서만 온다. 클라이언트가 보낸 값을 쓰면 아무나 남의 이름으로
     // 입력 기록을 남길 수 있다 — 경기 결과를 직접 입력할 때와 같은 규칙이다.
     result = await saveReplayImport(prisma, {
       ...input,
-      playedAt: new Date(input.playedAt),
+      playedAt,
       createdById: admin.id,
     });
   } catch (error) {

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { GameMode } from "@lolpamin/db";
+import { toSeoulDateTimeInput } from "@lolpamin/core";
 import { prepareReplayImportAction, saveReplayImportAction } from "@/app/replay-import/actions";
 import { isMemberOfferable } from "@/lib/replay-import/offerable";
 import type { ImportSlot, PreparedReplayImport } from "@/lib/replay-import/prepare-import";
@@ -50,12 +51,6 @@ function formatDuration(ms: number): string {
   return `${Math.floor(total / 60)}분 ${String(total % 60).padStart(2, "0")}초`;
 }
 
-/** <input type="date">가 읽는 형식. 파일의 lastModified가 기본값이다 — 파일에 벽시계 시각이 없다. */
-function toDateInput(value: Date): string {
-  const offset = value.getTimezoneOffset() * 60000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 10);
-}
-
 function initialState(slots: ImportSlot[]): Record<string, SlotState> {
   return Object.fromEntries(
     slots.map((s) => [s.puuid, { memberId: s.memberId, resolution: s.status as Resolution }]),
@@ -66,7 +61,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [prepared, setPrepared] = useState<PreparedReplayImport | null>(null);
   const [state, setState] = useState<Record<string, SlotState>>({});
-  const [playedAt, setPlayedAt] = useState<string>(toDateInput(new Date()));
+  const [playedAt, setPlayedAt] = useState<string>(toSeoulDateTimeInput(new Date()));
   const [mode, setMode] = useState<GameMode>("RIFT");
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +116,8 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
     }
     setError(null);
     setFile(picked);
-    setPlayedAt(toDateInput(new Date(picked.lastModified)));
+    // 파일에 벽시계 시각이 없다. 리플레이는 게임이 끝날 때 저장되므로 수정 시각이 종료 시각에 가깝다.
+    setPlayedAt(toSeoulDateTimeInput(new Date(picked.lastModified)));
 
     setIsBusy(true);
     try {
@@ -396,10 +392,11 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
           </div>
 
           <label className="flex w-fit items-center gap-2 text-[12.5px] text-muted">
-            경기 날짜
-            {/* 리플레이에 벽시계 시각이 없다. 파일의 lastModified를 기본값으로 두고 고치게 한다. */}
+            경기 시각
+            {/* 리플레이에 벽시계 시각이 없다. 파일의 lastModified를 기본값으로 두고 고치게 한다.
+                날짜만 보내면 UTC 자정으로 저장돼 한국 시간 09:00으로 보였다 — 시각까지 보낸다. */}
             <input
-              type="date"
+              type="datetime-local"
               value={playedAt}
               onChange={(e) => setPlayedAt(e.target.value)}
               className="rounded-md border border-ink/[.12] bg-inset px-2 py-1 text-[12.5px] text-fg"
