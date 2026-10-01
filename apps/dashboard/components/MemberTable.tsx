@@ -3,13 +3,12 @@ import type { MemberActivityFilter, MemberFilter, MemberRow, MemberSort, SortDir
 import { MemberRealNameCell } from "@/components/MemberRealNameCell";
 import { MemberTierCell } from "@/components/MemberTierCell";
 import { MemberLaneCell } from "@/components/MemberLaneCell";
-import { MasteryChampions } from "@/components/MasteryChampions";
 import { MasteryChampionStrip } from "@/components/MasteryChampionStrip";
 import { MemberCard, PodiumFrame, RankBadge, podiumOf } from "@/components/MemberCard";
 
 // 랭킹 화면이라 보기만 한다 — 회원 삭제(관리)와 티어 편집은 /member-admin에 있다. 두 모드가
 // 칸 구성이 다르다.
-// 협곡: 순위, 실명, MMR, 판, 승, 패, 승률, 주라인, 부라인, 최고티어, 마지막 활동, 모스트(5, x레벨).
+// 협곡: 순위, 실명, MMR, 판, 승, 패, 승률, 주라인, 부라인, 최고티어, 마지막 활동, 모스트(5 + 숙련도).
 //   라인은 운영진만 그 자리에서 고친다(MemberLaneCell — /member-admin과 같은 셀). 티어는
 //   산정티어가 아닌 최고티어를 읽기 전용으로 둔다.
 // 칼바람: 순위, 실명, MMR, 판, 승, 패, 승률, 마지막 활동, 모스트(10 + 숙련도). 칼바람은 챔피언이
@@ -112,7 +111,7 @@ export function MemberTable({
             </>
           )}
           <div className="text-center">마지막 활동</div>
-          <div className="text-center">{isRift ? "모스트 · 레벨" : "모스트 챔피언 · 숙련도"}</div>
+          <div className="text-center">모스트 챔피언 · 숙련도</div>
         </div>
         {rows.map((m) => {
           const podium = podiumOf(m.rank);
@@ -153,11 +152,7 @@ export function MemberTable({
               >
                 {m.lastActiveLabel}
               </div>
-              {isRift ? (
-                <MasteryChampions masteries={m.masteries.slice(0, 5)} />
-              ) : (
-                <MasteryChampionStrip masteries={m.masteries} />
-              )}
+              <MasteryChampionStrip masteries={isRift ? m.masteries.slice(0, 5) : m.masteries} />
             </>
           );
           if (podium) {

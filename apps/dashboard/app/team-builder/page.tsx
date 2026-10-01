@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { TeamBuilder } from "@/components/TeamBuilder";
 import { getLinkedMembers } from "@/lib/queries/linked-members";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function TeamBuilderPage() {
   const currentAdmin = await getCurrentAdmin();
   if (!currentAdmin) {
-    redirect("/login");
+    redirect(loginPathFor("/team-builder"));
   }
 
   const pool = await getLinkedMembers();

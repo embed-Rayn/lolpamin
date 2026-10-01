@@ -97,9 +97,10 @@ async function game(
 }
 
 describe("parsePlayerStatsPeriod", () => {
-  it("defaults to season", () => {
-    expect(parsePlayerStatsPeriod(undefined)).toBe("season");
-    expect(parsePlayerStatsPeriod("bogus")).toBe("season");
+  it("defaults to this year", () => {
+    expect(parsePlayerStatsPeriod(undefined)).toBe("year");
+    expect(parsePlayerStatsPeriod("bogus")).toBe("year");
+    expect(parsePlayerStatsPeriod("season")).toBe("season");
     expect(parsePlayerStatsPeriod("all")).toBe("all");
     expect(parsePlayerStatsPeriod("year")).toBe("year");
   });

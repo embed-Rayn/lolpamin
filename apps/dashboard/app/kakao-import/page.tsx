@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { KakaoImportForm } from "@/components/KakaoImportForm";
 import { KakaoImportGuide } from "@/components/KakaoImportGuide";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function KakaoImportPage() {
   const currentAdmin = await getCurrentAdmin();
   if (!currentAdmin) {
-    redirect("/login");
+    redirect(loginPathFor("/kakao-import"));
   }
 
   return (

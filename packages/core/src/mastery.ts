@@ -20,9 +20,11 @@ export function topMasteries(entries: readonly MasteryEntry[], n = 3): MasteryEn
   return [...byChampion.values()].sort((a, b) => b.points - a.points || a.championId - b.championId).slice(0, n);
 }
 
-// Champion mastery points under an icon: "9,876" below ten thousand, else "12.3만" — a
-// 10-champion strip has no room for "1,234,567".
+// Champion mastery points under an icon: "999", "73k" (rounded thousands), "1.2M" — a
+// strip of champions has no room for "1,234,567".
 export function formatMasteryPoints(points: number): string {
-  if (points < 10_000) return points.toLocaleString("ko-KR");
-  return `${Number((points / 10_000).toFixed(1))}만`;
+  if (points < 1000) return String(points);
+  const thousands = Math.round(points / 1000);
+  if (thousands < 1000) return `${thousands}k`;
+  return `${Number((points / 1_000_000).toFixed(1))}M`;
 }

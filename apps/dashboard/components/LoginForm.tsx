@@ -20,11 +20,12 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next: string }) {
   const [state, formAction] = useFormState(loginAction, initialState);
 
   return (
     <form action={formAction} className="flex w-full max-w-[320px] flex-col gap-3 rounded-xl border border-ink/[.06] bg-surface p-5">
+      <input type="hidden" name="next" value={next} />
       <div className="text-[13.5px] font-bold">관리자 로그인</div>
       <input
         name="username"

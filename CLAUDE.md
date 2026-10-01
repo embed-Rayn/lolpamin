@@ -8,7 +8,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public. Logging in returns to the page that sent you (`?next=`, accepted only as an on-site path by `safeNextPath`; operator pages redirect with `loginPathFor`); logging out lands on home.
 - `apps/discord-bot` — discord.js read-only slash commands: `/mmr` (본인 MMR·칼바람 MMR과 각 순위), `/랭킹` (MMR TOP 10), `/ranking-aram` (칼바람 MMR TOP 10), `/전적` (지정한 디스코드 유저의 MMR과 내전 횟수), `/사이트` (사이트 주소 안내, 유일하게 DB를 보지 않는 명령어). A new command must be added in three places — its own file under `src/commands/`, the `commands` collection in `src/index.ts`, and `commandPayloads` in `src/deploy-commands.ts` — and only takes effect after `npm run deploy-commands --workspace=discord-bot`.
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
 - `packages/core` — pure domain functions (MMR, inactivity, display name, nickname parsing and normalisation, account-match scoring). No I/O, fully unit-tested.
@@ -69,8 +69,8 @@ query (`sortByDisplayedMmr`), not in `orderBy`. The board's only filters are
 전체 / 유저만 (counted games > 0) / 언랭만 (0); link state and inactivity live on
 their own pages. The Discord bot still shows stored ratings. `/members` is a
 permanent redirect to `/rift`. The two boards are read-only and lay out differently (`MemberTable`'s
-`mode`): `/rift` shows 모스트 (top 5), 주라인·부라인 (editable in place by admins through `MemberLaneCell`) and 최고티어 (`peakTier`, sortable), `/aram` drops
-tier altogether and shows the top 10 champions with their summed mastery points
+`mode`): `/rift` shows 주라인·부라인 (editable in place by admins through `MemberLaneCell`) and 최고티어 (`peakTier`, sortable), `/aram` drops
+tier altogether and shows the top 10 champions with their summed mastery points (`/rift` the top 5, `/matches` candidates the top 7, all through the same strip; points read 999 / 73k / 1.2M)
 (`MasteryChampionStrip`, `formatMasteryPoints`). Neither shows the Discord name or
 deletes members — 관리 (`DeleteMemberButton`) lives on `/member-admin`. `/member-info` shows the same displayed rating
 per mode beside each 판 column, and its 평균 MMR cards average the **stored**
@@ -148,8 +148,8 @@ was sent sit at UTC midnight and show their date alone instead of a fake 09:00.
 
 `/player-stats` aggregates rift results per member per lane from `ReplayPlayerStat`
 only — a hand-entered game has no position or KDA, so its count can be lower than
-`/rift`'s. `?period=season` (default) uses the same reset baseline as `counted-games`;
-`?period=all` drops it, and `?period=year` (the first button, labelled with the Seoul year) keeps games *played* (`playedAt`) this Seoul calendar year, across resets. The math is `aggregatePlayerStats` in `packages/core`; member
+`/rift`'s. `?period=season` uses the same reset baseline as `counted-games`;
+`?period=all` drops it, and `?period=year` (the default and first button, labelled with the Seoul year) keeps games *played* (`playedAt`) this Seoul calendar year, across resets. The math is `aggregatePlayerStats` in `packages/core`; member
 selection and block folding are browser memory only.
 
 A consequence: `cancelGameResult` refuses a game entered at or before the newest

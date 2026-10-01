@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { formatEventDateTime } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
 import { EventImageManager } from "@/components/events/EventImageManager";
@@ -12,7 +13,7 @@ import { updateEventPostAction } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function EditEventPostPage({ params }: { params: { id: string } }) {
-  if (!(await getCurrentAdmin())) redirect("/login");
+  if (!(await getCurrentAdmin())) redirect(loginPathFor(`/events/${params.id}/edit`));
   const post = await getEventPost(prisma, params.id, true);
   if (!post) notFound();
 

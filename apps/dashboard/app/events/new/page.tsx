@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPathFor } from "@/lib/auth/next-path";
 import { AppShell } from "@/components/AppShell";
 import { EventPostForm } from "@/components/events/EventPostForm";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
@@ -7,7 +8,7 @@ import { createEventPostAction } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPostPage() {
-  if (!(await getCurrentAdmin())) redirect("/login");
+  if (!(await getCurrentAdmin())) redirect(loginPathFor("/events/new"));
 
   return (
     <AppShell activeNav="events" pageTitle="공지사항 글쓰기" pageDesc="새 글" desktopOnly>

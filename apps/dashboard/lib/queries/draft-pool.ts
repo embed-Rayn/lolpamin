@@ -69,7 +69,8 @@ export async function getDraftPool(prisma: PrismaClient): Promise<DraftPoolMembe
       subLane: detail.subLane,
       riotId: representative ? `${representative.gameName}#${representative.tagLine}` : detail.riotId,
       extraAccounts: Math.max(0, accounts.length - 1),
-      masteries: topMasteries(accounts.flatMap((account) => account.masteries)),
+      // 후보 표는 챔피언 7개와 숙련도를 보인다.
+      masteries: topMasteries(accounts.flatMap((account) => account.masteries), 7),
     };
   });
 }
