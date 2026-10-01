@@ -4,12 +4,7 @@ import { useState, useTransition } from "react";
 import type { GameHistoryPlayer, GameHistoryRow } from "@/lib/queries/game-history";
 import { cancelGameResultAction } from "@/app/match-history/actions";
 import { GameDetailBoard } from "@/components/GameDetailBoard";
-
-function formatPlayedAt(playedAt: Date): string {
-  const d = new Date(playedAt);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+import { formatPlayedAt } from "@lolpamin/core";
 
 function PlayerLine({ player, up }: { player: GameHistoryPlayer; up: boolean }) {
   return (
@@ -86,7 +81,7 @@ export function GameHistoryList({
           }`}
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <span className="font-mono text-[13px] text-muted">{formatPlayedAt(row.playedAt)}</span>
+            <span className="font-mono text-[13px] text-muted">{formatPlayedAt(new Date(row.playedAt))}</span>
             {showMode && (
               <span
                 className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${

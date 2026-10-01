@@ -141,12 +141,15 @@ champion (`topMasteries`). The API names champions by numeric key, mapped throug
 20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
 page). `canCancel` is decided **per mode** across the whole table, not the
 current page or filter, because `cancelGameResult` accepts the newest live game
-of the game's own mode — so 협곡 and 칼바람 each have one cancellable row.
+of the game's own mode — so 협곡 and 칼바람 each have one cancellable row. `playedAt` is entered as a Seoul
+date-time (`/replay-import` defaults it to the `.rofl` file's lastModified — replays carry
+no wall clock) and shown in Seoul time (`formatPlayedAt`); games imported while only a date
+was sent sit at UTC midnight and show their date alone instead of a fake 09:00.
 
 `/player-stats` aggregates rift results per member per lane from `ReplayPlayerStat`
 only — a hand-entered game has no position or KDA, so its count can be lower than
 `/rift`'s. `?period=season` (default) uses the same reset baseline as `counted-games`;
-`?period=all` drops it. The math is `aggregatePlayerStats` in `packages/core`; member
+`?period=all` drops it, and `?period=year` (the first button, labelled with the Seoul year) keeps games *played* (`playedAt`) this Seoul calendar year, across resets. The math is `aggregatePlayerStats` in `packages/core`; member
 selection and block folding are browser memory only.
 
 A consequence: `cancelGameResult` refuses a game entered at or before the newest

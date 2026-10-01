@@ -1,12 +1,14 @@
 import type { PrismaClient } from "@lolpamin/db";
-import { aggregatePlayerStats, getDisplayName, type PlayerGameRow, type PlayerStats } from "@lolpamin/core";
+import { aggregatePlayerStats, getDisplayName, type PlayerGameRow, type PlayerStats, seoulYearRange } from "@lolpamin/core";
+import type { Prisma } from "@lolpamin/db";
 import { getCountedGameFilter, type CountedGameFilter } from "./counted-games";
 
-// season = since the latest rating reset (same baseline as /rift); all = every live game.
-export type PlayerStatsPeriod = "season" | "all";
+// year = games played this Seoul calendar year (by playedAt, across resets); season = since
+// the latest rating reset (same baseline as /rift); all = every live game.
+export type PlayerStatsPeriod = "year" | "season" | "all";
 
 export function parsePlayerStatsPeriod(value: string | undefined): PlayerStatsPeriod {
-  return value === "all" ? "all" : "season";
+  return value === "all" || value === "year" ? value : "season";
 }
 
 export interface PlayerStatsMember {
@@ -24,9 +26,14 @@ export interface PlayerStatsMember {
 export async function getPlayerStats(
   prisma: PrismaClient,
   period: PlayerStatsPeriod,
+  now: Date = new Date(),
 ): Promise<PlayerStatsMember[]> {
-  const gameFilter: CountedGameFilter =
-    period === "season" ? await getCountedGameFilter(prisma) : { cancelledAt: null };
+  const gameFilter: CountedGameFilter | Prisma.GameResultWhereInput =
+    period === "season"
+      ? await getCountedGameFilter(prisma)
+      : period === "year"
+        ? (({ start, end }) => ({ cancelledAt: null, playedAt: { gte: start, lt: end } }))(seoulYearRange(now))
+        : { cancelledAt: null };
 
   const [members, participations] = await Promise.all([
     prisma.member.findMany({

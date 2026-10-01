@@ -51,7 +51,9 @@ export function DrawScreen({
   variant: "cannon" | "plinko";
 }) {
   const [source, setSource] = useState<CandidateSource>("members");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(pool.map((m) => m.id)));
+  // Nobody is ticked at first: a draw is for the people present today, picked by hand or by
+  // pasting the recruit post into the search box — not the whole roster.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState<DrawCandidate[]>([]);
   const [range, setRange] = useState({ min: 1, max: 10 });
   // null means "not started yet" — the pool is still derived live from the setup

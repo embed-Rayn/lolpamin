@@ -37,13 +37,13 @@ interface Seat {
 // Writes the rows directly: the MMR path is not what these tests are about.
 async function game(
   seats: Seat[],
-  opts: { winner?: "BLUE" | "RED"; mode?: "RIFT" | "ARAM"; cancelled?: boolean; createdAt?: Date } = {},
+  opts: { winner?: "BLUE" | "RED"; mode?: "RIFT" | "ARAM"; cancelled?: boolean; createdAt?: Date; playedAt?: Date } = {},
 ) {
   seq += 1;
   const withPuuid = seats.map((s) => ({ ...s, puuid: s.puuid === undefined ? `p-${seq}-${s.memberId}` : s.puuid }));
   return prisma.gameResult.create({
     data: {
-      playedAt: new Date("2026-09-01T12:00:00Z"),
+      playedAt: opts.playedAt ?? new Date("2026-09-01T12:00:00Z"),
       winner: opts.winner ?? "BLUE",
       mode: opts.mode ?? "RIFT",
       createdAt: opts.createdAt,
@@ -101,6 +101,7 @@ describe("parsePlayerStatsPeriod", () => {
     expect(parsePlayerStatsPeriod(undefined)).toBe("season");
     expect(parsePlayerStatsPeriod("bogus")).toBe("season");
     expect(parsePlayerStatsPeriod("all")).toBe("all");
+    expect(parsePlayerStatsPeriod("year")).toBe("year");
   });
 });
 
@@ -168,5 +169,17 @@ describe("getPlayerStats", () => {
 
     expect((await getPlayerStats(prisma, "season"))[0].stats.total?.games).toBe(1);
     expect((await getPlayerStats(prisma, "all"))[0].stats.total?.games).toBe(2);
+  });
+
+  it("counts games played this Seoul year for year, across a reset", async () => {
+    const m = await member("가가");
+    await game([{ memberId: m.id }], { playedAt: new Date("2025-12-31T14:00:00Z"), createdAt: new Date("2025-12-31T14:00:00Z") }); // 2025-12-31 23:00 KST
+    await game([{ memberId: m.id }], { playedAt: new Date("2025-12-31T15:30:00Z"), createdAt: new Date("2025-12-31T15:30:00Z") }); // 2026-01-01 00:30 KST
+    await game([{ memberId: m.id }], { playedAt: new Date("2026-09-28T13:00:00Z"), createdAt: new Date("2026-09-28T13:00:00Z") });
+    await prisma.ratingReset.create({ data: { kind: "SOFT", resetAt: new Date("2026-09-30T15:18:00Z"), memberCount: 1 } });
+
+    const now = new Date("2026-10-01T03:00:00Z");
+    expect((await getPlayerStats(prisma, "year", now))[0].stats.total?.games).toBe(2);
+    expect((await getPlayerStats(prisma, "season", now))[0].stats.total).toBeNull();
   });
 });

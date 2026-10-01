@@ -6,14 +6,27 @@ import type { PlayerStatsMember, PlayerStatsPeriod } from "@/lib/queries/player-
 import { MemberPicker } from "./MemberPicker";
 import { PlayerStatBlock } from "./PlayerStatBlock";
 
-const PERIODS: Array<{ value: PlayerStatsPeriod; label: string }> = [
-  { value: "season", label: "이번 시즌" },
-  { value: "all", label: "전체" },
-];
+// 올해 → 이번 시즌 → 전체, 좁은 것부터가 아니라 운영진이 자주 보는 순서. 기본은 이번 시즌.
+function periods(year: number): Array<{ value: PlayerStatsPeriod; label: string }> {
+  return [
+    { value: "year", label: `${year}년` },
+    { value: "season", label: "이번 시즌" },
+    { value: "all", label: "전체" },
+  ];
+}
 
 // Selection and fold state are browser memory only: a reload starts from
 // everyone selected and everything expanded.
-export function PlayerStatsScreen({ members, period }: { members: PlayerStatsMember[]; period: PlayerStatsPeriod }) {
+export function PlayerStatsScreen({
+  members,
+  period,
+  year,
+}: {
+  members: PlayerStatsMember[];
+  period: PlayerStatsPeriod;
+  // Seoul's current year, decided on the server so the label and the query agree.
+  year: number;
+}) {
   const [selectedIds, setSelectedIds] = useState(() => new Set(members.map((m) => m.id)));
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
 
@@ -30,7 +43,7 @@ export function PlayerStatsScreen({ members, period }: { members: PlayerStatsMem
     <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:px-7 md:pb-10 md:pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg bg-ink/[.05] p-0.5 text-[13px]">
-          {PERIODS.map((p) => (
+          {periods(year).map((p) => (
             <Link
               key={p.value}
               href={p.value === "season" ? "/player-stats" : `/player-stats?period=${p.value}`}
