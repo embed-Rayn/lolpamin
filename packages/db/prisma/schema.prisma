@@ -402,3 +402,38 @@ model EventImage {
 
   @@index([postId])
 }
+
+// 운영진 회의록. 읽기까지 관리자 전용.
+// version은 저장 충돌 검사의 기준이다 — 수정 폼이 연 시점의 값을 보내고, 다르면 거부한다.
+// updatedAt이 아닌 이유: 밀리초 단위라 같은 밀리초 안의 두 저장을 구별하지 못한다.
+model MeetingNote {
+  id          String             @id @default(cuid())
+  title       String
+  // 회의한 날(UTC 자정으로 저장한 달력 날짜). 정리해서 나중에 올리는 일이 많아 작성일과 따로 둔다.
+  meetingDate DateTime
+  body        String             @default("")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  version     Int                @default(0)
+  // Admin.id. FK가 아니다 — 관리자가 삭제돼도 글은 남고 "삭제된 관리자"로 표시한다.
+  createdById String?
+  updatedById String?
+  images      MeetingNoteImage[]
+
+  @@index([meetingDate])
+}
+
+// 회의록 본문에 들어간 이미지. noteId가 null이면 아직 저장하지 않은 글에 올린 이미지다 —
+// 글 저장 시 본문이 참조하면 붙고, 24시간 넘게 아무 글에도 붙지 않으면 지운다.
+// 행은 고치지 않는다: 교체는 삭제 + 추가다.
+model MeetingNoteImage {
+  id          String       @id @default(cuid())
+  noteId      String?
+  note        MeetingNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  bytes       Bytes
+  type        String
+  createdAt   DateTime     @default(now())
+  createdById String?
+
+  @@index([noteId])
+}
