@@ -18,14 +18,19 @@ export function MeetingNoteDeleteButton({ noteId }: { noteId: string }) {
     }
     setError(null);
     startTransition(async () => {
-      const result = await deleteMeetingNoteAction(noteId);
-      if (result.error) {
-        setError(result.error);
+      try {
+        const result = await deleteMeetingNoteAction(noteId);
+        if (result.error) {
+          setError(result.error);
+          setArmed(false);
+          return;
+        }
+        router.push("/meeting-notes");
+        router.refresh();
+      } catch {
+        setError("회의록을 삭제하지 못했습니다. 로그인 상태를 확인해 주세요.");
         setArmed(false);
-        return;
       }
-      router.push("/meeting-notes");
-      router.refresh();
     });
   }
 

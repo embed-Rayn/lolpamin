@@ -82,6 +82,25 @@ export function MeetingNoteEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  // beforeunload does not see in-app navigation, so a plain click on a same-site link
+  // (sidebar, 「← 보기로 돌아가기」) asks first. Saving navigates while isPending, so it is exempt.
+  useEffect(() => {
+    if (!dirty || isPending) return;
+    const guard = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor || (anchor.target && anchor.target !== "_self")) return;
+      if (anchor.origin !== window.location.origin) return;
+      if (!window.confirm("저장하지 않은 내용이 있습니다. 나가시겠습니까?")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    document.addEventListener("click", guard, true);
+    return () => document.removeEventListener("click", guard, true);
+  }, [dirty, isPending]);
+
   // Puts `text` on its own line(s) at the cursor (or over the selection); the caret ends
   // just after the inserted text.
   function insertAtCursor(text: string) {
@@ -263,10 +282,11 @@ export function MeetingNoteEditor({
           }}
           onDrop={(e) => {
             const files = Array.from(e.dataTransfer.files);
-            if (files.length > 0) {
-              e.preventDefault();
-              uploadFiles(files);
-            }
+            if (files.length === 0) return;
+            // Always claim a file drop, or the browser navigates to the dropped file.
+            e.preventDefault();
+            if (files.some((file) => file.type.startsWith("image/"))) uploadFiles(files);
+            else setError("지원하지 않는 이미지 형식입니다(png, jpg, webp, gif만 가능합니다).");
           }}
           maxLength={BODY_MAX}
           rows={22}

@@ -114,6 +114,14 @@ describe("updateMeetingNote", () => {
     expect(await imageNoteId(added.id)).toBe(id);
     expect(await prisma.meetingNoteImage.findUnique({ where: { id: dropped.id } })).toBeNull();
   });
+
+  it("deletes every image when the body drops them all", async () => {
+    const image = await addMeetingNoteImage(prisma, png, null);
+    const { id } = await createMeetingNote(prisma, input(`![](${image.id})`), null);
+    await updateMeetingNote(prisma, id, input(""), 0, null);
+    expect(await prisma.meetingNoteImage.count({ where: { noteId: id } })).toBe(0);
+    expect(await prisma.meetingNoteImage.findUnique({ where: { id: image.id } })).toBeNull();
+  });
 });
 
 describe("deleteMeetingNote", () => {
