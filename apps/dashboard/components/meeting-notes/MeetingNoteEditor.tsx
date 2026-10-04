@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   addMeetingNoteImageAction,
@@ -58,6 +58,18 @@ export function MeetingNoteEditor({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Writing a new `value` to a controlled textarea sends the caret to the end, so a
+  // programmatic body change records where the caret should land and the layout effect
+  // below puts it back. Ordinary typing never sets it.
+  const pendingCaret = useRef<{ start: number; end: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    pendingCaret.current = null;
+    const el = textareaRef.current;
+    if (caret && el && document.activeElement === el) el.setSelectionRange(caret.start, caret.end);
+  }, [body]);
+
   const dirty = title !== initialTitle || meetingDate !== initialMeetingDate || body !== initialBody;
 
   useEffect(() => {
@@ -70,7 +82,8 @@ export function MeetingNoteEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  // Puts `text` on its own line(s) at the cursor (or over the selection).
+  // Puts `text` on its own line(s) at the cursor (or over the selection); the caret ends
+  // just after the inserted text.
   function insertAtCursor(text: string) {
     const el = textareaRef.current;
     setBody((current) => {
@@ -80,7 +93,26 @@ export function MeetingNoteEditor({
       const after = current.slice(end);
       const lead = before === "" || before.endsWith("\n") ? "" : "\n";
       const trail = after.startsWith("\n") ? "" : "\n";
+      const caret = before.length + lead.length + text.length + trail.length;
+      pendingCaret.current = { start: caret, end: caret };
       return `${before}${lead}${text}${trail}${after}`;
+    });
+  }
+
+  // replaceLine on the body, keeping the caret on the same text: a line that starts before
+  // it moves the caret by however much the body grew or shrank.
+  function replaceBodyLine(line: string, next: string | null) {
+    const el = textareaRef.current;
+    setBody((current) => {
+      const updated = replaceLine(current, line, next);
+      if (updated === current || !el) return updated;
+      const index = current.split("\n").indexOf(line);
+      const lineStart = current.split("\n").slice(0, index).reduce((sum, l) => sum + l.length + 1, 0);
+      const delta = updated.length - current.length;
+      const shift = (pos: number) =>
+        lineStart < pos ? Math.min(Math.max(pos + delta, lineStart), updated.length) : pos;
+      pendingCaret.current = { start: shift(el.selectionStart), end: shift(el.selectionEnd) };
+      return updated;
     });
   }
 
@@ -92,14 +124,14 @@ export function MeetingNoteEditor({
       if (result.id) {
         const id = result.id;
         setImageIds((ids) => [...ids, id]);
-        setBody((current) => replaceLine(current, placeholder, `![](${id})`));
+        replaceBodyLine(placeholder, `![](${id})`);
       } else {
         setError(result.error ?? "이미지를 올리지 못했습니다.");
-        setBody((current) => replaceLine(current, placeholder, null));
+        replaceBodyLine(placeholder, null);
       }
     } catch {
       setError("이미지를 올리지 못했습니다.");
-      setBody((current) => replaceLine(current, placeholder, null));
+      replaceBodyLine(placeholder, null);
     } finally {
       setUploading((n) => n - 1);
     }
@@ -220,7 +252,8 @@ export function MeetingNoteEditor({
           onChange={(e) => setBody(e.target.value)}
           onPaste={(e) => {
             const files = Array.from(e.clipboardData.files);
-            if (files.some((file) => file.type.startsWith("image/"))) {
+            // Excel/Word put text and a picture of it on the clipboard; text wins.
+            if (e.clipboardData.getData("text/plain") === "" && files.some((file) => file.type.startsWith("image/"))) {
               e.preventDefault();
               uploadFiles(files);
             }
