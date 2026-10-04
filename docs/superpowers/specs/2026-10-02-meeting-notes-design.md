@@ -13,7 +13,7 @@
 
 | 항목 | 결정 |
 |---|---|
-| 방식 | 사이트 안 게시판, 저장 시 `updatedAt` 비교로 충돌 거부 (실시간 편집 없음) |
+| 방식 | 사이트 안 게시판, 저장 시 `version` 비교로 충돌 거부 (실시간 편집 없음) |
 | 권한 | 읽기·쓰기 모두 관리자. 어느 운영진이든 모든 글 수정·삭제 가능 |
 | 위치 | 사이드바 「운영 관리」 그룹, 「회원 관리」 바로 아래 「회의록」 |
 | 기기 | PC 전용 (`desktopOnly`) |
@@ -26,7 +26,8 @@
 
 ```prisma
 // 운영진 회의록. 읽기까지 관리자 전용.
-// updatedAt은 저장 충돌 검사의 기준이다 — 수정 폼이 연 시점의 값을 보내고, 다르면 거부한다.
+// version은 저장 충돌 검사의 기준이다 — 수정 폼이 연 시점의 값을 보내고, 다르면 거부한다.
+// updatedAt이 아닌 이유: 밀리초 단위라 같은 밀리초 안의 두 저장을 구별하지 못한다.
 model MeetingNote {
   id          String             @id @default(cuid())
   title       String
@@ -35,6 +36,7 @@ model MeetingNote {
   body        String             @default("")
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+  version     Int                @default(0)
   // Admin.id. FK가 아니다 — 관리자가 삭제돼도 글은 남고 "삭제된 관리자"로 표시한다.
   createdById String?
   updatedById String?
@@ -68,7 +70,7 @@ model MeetingNoteImage {
 | `/meeting-notes` | 목록 표: 회의일 · 제목(보기 링크) · 작성자 · 작성일 · 최종 수정(수정자 · 시각). 회의일 내림차순, 같으면 `createdAt` 내림차순. 20개씩 `?page=N`, 범위 밖은 마지막 페이지로 보정. 「새 회의록」 버튼. 글이 없으면 빈 안내 |
 | `/meeting-notes/new` | 작성 폼: 제목, 회의일, 본문 편집기. 저장하면 보기 화면으로 이동 |
 | `/meeting-notes/[id]` | 보기: 제목, 회의일, 작성/수정 정보, 렌더링된 본문. 「수정」, 「삭제」(2단계 확인 후 목록으로). 없는 id는 `notFound()` |
-| `/meeting-notes/[id]/edit` | 수정 폼: 작성과 같은 폼 + 숨은 `expectedUpdatedAt`. 저장하면 보기 화면으로 |
+| `/meeting-notes/[id]/edit` | 수정 폼: 작성과 같은 폼 + 숨은 `version`. 저장하면 보기 화면으로 |
 | `/api/meeting-notes/images/[id]` | 이미지 바이트. 관리자 세션이 없거나 행이 없으면 **404** (403은 존재를 알린다). `Cache-Control: private, no-store` |
 
 날짜 표시는 서울 시간. 작성자·수정자 이름은 `Admin.username`, 조회 실패 시 "삭제된 관리자".
@@ -117,15 +119,15 @@ model MeetingNoteImage {
 - `MeetingNoteConflictError` — `updatedAt`, `updatedByName`을 담는다.
 - 입력 검증: 제목은 앞뒤 공백 제거 후 1–100자, 본문 50,000자 이하, 회의일은 `YYYY-MM-DD`
   형식의 유효한 날짜(UTC 자정으로 저장).
-- `createMeetingNote(prisma, adminId, input)` — 트랜잭션: 글 생성 → 본문이 참조하는 이미지 중
+- `createMeetingNote(prisma, input, adminId)` — 트랜잭션: 글 생성 → 본문이 참조하는 이미지 중
   `noteId = null`인 것만 이 글로 붙인다.
-- `updateMeetingNote(prisma, adminId, id, input, expectedUpdatedAt)` — 트랜잭션:
-  `updateMany({ where: { id, updatedAt: expectedUpdatedAt } })` → 0행이면 글이 있는지 확인해
+- `updateMeetingNote(prisma, id, input, expectedVersion, adminId)` — 트랜잭션:
+  `updateMany({ where: { id, version: expectedVersion }, data: { …, version: { increment: 1 } } })` → 0행이면 글이 있는지 확인해
   없으면 `MeetingNoteValidationError("회의록을 찾을 수 없습니다.")`, 있으면
   `MeetingNoteConflictError` → 본문이 참조하는 미첨부 이미지를 붙임 → 이 글의 이미지 중 본문이
   참조하지 않는 것을 삭제.
 - `deleteMeetingNote(prisma, id)` — 이미지는 cascade.
-- `addMeetingNoteImage(prisma, adminId, { bytes, type })` — 5MB 이하, png/jpeg/webp/gif.
+- `addMeetingNoteImage(prisma, { bytes, type }, adminId, now)` — 5MB 이하, png/jpeg/webp/gif.
   `noteId = null`로 생성하고 id를 돌려준다. 같은 호출에서 `noteId = null`이고 24시간 넘은
   이미지를 삭제한다.
 
@@ -166,7 +168,7 @@ model MeetingNoteImage {
 
 ## 문서
 
-CLAUDE.md에 회의록 단락 추가: 읽기 공개 규칙의 첫 예외라는 점, 이미지 404 규칙, `updatedAt`
+CLAUDE.md에 회의록 단락 추가: 읽기 공개 규칙의 첫 예외라는 점, 이미지 404 규칙, `version`
 충돌 규칙, 미첨부 이미지 수명. Mobile 단락의 운영 화면 목록에 회의록 화면 셋을 더한다.
 
 ## 범위 밖
