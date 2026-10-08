@@ -100,3 +100,36 @@ export interface TierOption {
 export const TIER_OPTIONS: readonly TierOption[] = (Object.keys(TIER_SCORES) as MemberTier[]).map(
   (value) => ({ value, label: TIER_LABELS[value], score: TIER_SCORES[value] }),
 );
+
+const TIER_ORDER: readonly MemberTier[] = Object.keys(TIER_SCORES) as MemberTier[];
+
+/**
+ * 사다리에서 a가 b보다 위인가. 점수가 아니라 선언 순서로 본다 — 아이언과 언랭은 점수가 둘 다
+ * 0이라 점수로는 아이언이 언랭보다 높다는 걸 알 수 없다.
+ */
+export function isHigherTier(a: MemberTier, b: MemberTier): boolean {
+  return TIER_ORDER.indexOf(a) < TIER_ORDER.indexOf(b);
+}
+
+const DIVISIONS: Record<string, 1 | 2 | 3 | 4> = { I: 1, II: 2, III: 3, IV: 4 };
+const DIVIDED_TIERS = new Set(["DIAMOND", "EMERALD", "PLATINUM", "GOLD", "SILVER", "BRONZE"]);
+const APEX_TIERS = new Set(["MASTER", "GRANDMASTER", "CHALLENGER"]);
+
+/**
+ * Riot League-V4 항목(tier, rank, leaguePoints)을 MemberTier로. 그랜드마스터·챌린저의 LP는
+ * 마스터 0부터 이어서 세므로 마스터와 같은 LP 구간에 넣는다. 모르는 값이면 null.
+ */
+export function memberTierFromRank(tier: string, division: string, leaguePoints: number): MemberTier | null {
+  if (APEX_TIERS.has(tier)) {
+    if (leaguePoints >= 1000) return "MASTER_1000_PLUS";
+    if (leaguePoints >= 800) return "MASTER_800_1000";
+    if (leaguePoints >= 600) return "MASTER_600_800";
+    if (leaguePoints >= 400) return "MASTER_400_600";
+    if (leaguePoints >= 200) return "MASTER_200_400";
+    return "MASTER_0_200";
+  }
+  if (tier === "IRON") return "IRON";
+  const n = DIVISIONS[division];
+  if (!DIVIDED_TIERS.has(tier) || n === undefined) return null;
+  return `${tier}_${n}` as MemberTier;
+}

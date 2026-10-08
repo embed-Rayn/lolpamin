@@ -14,9 +14,9 @@ const COPY: Record<Kind, { label: string; title: string; confirm: (n: number) =>
     empty: "갱신할 라이엇 계정이 없습니다.",
   },
   masteries: {
-    label: "모스트 챔피언 갱신",
-    title: "회원 계정의 챔피언 숙련도를 다시 받아옵니다 (1시간에 한 번)",
-    confirm: (n) => `계정 ${n}개의 챔피언 숙련도를 다시 받아옵니다. 요청 한도 때문에 1~2분 걸릴 수 있고, 1시간에 한 번만 할 수 있습니다. 계속할까요?`,
+    label: "모스트·티어 갱신",
+    title: "회원 계정의 챔피언 숙련도와 현재 솔로랭크를 다시 받아옵니다. 솔로랭크가 최고티어보다 높으면 최고티어를 올립니다 (1시간에 한 번)",
+    confirm: (n) => `계정 ${n}개의 챔피언 숙련도와 솔로랭크를 다시 받아옵니다. 현재 솔로랭크가 최고티어보다 높은 회원은 최고티어가 올라갑니다. 요청 한도 때문에 2~3분 걸릴 수 있고, 1시간에 한 번만 할 수 있습니다. 계속할까요?`,
     empty: "숙련도를 받을 라이엇 계정이 없습니다.",
   },
 };
@@ -47,7 +47,7 @@ export function RiotRefreshButton({ kind }: { kind: Kind }) {
     }
     const { result, error } = await refreshMasteriesAction();
     if (error || !result) return error ?? "갱신하지 못했습니다.";
-    const summary = `갱신 ${result.refreshed} · 못 찾음 ${result.notFound} · 실패 ${result.failed} · 중복 ${result.duplicates}`;
+    const summary = `갱신 ${result.refreshed} · 못 찾음 ${result.notFound} · 실패 ${result.failed} · 중복 ${result.duplicates} · 최고티어 상승 ${result.peakRaised}`;
     return result.unauthorized ? `${KEY_EXPIRED} 중단 전까지 ${summary}` : summary;
   }
 
