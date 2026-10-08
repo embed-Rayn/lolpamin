@@ -21,6 +21,7 @@ export interface AppShellProps {
     | "team-builder"
     | "match-history"
     | "player-stats"
+    | "champion-stats"
     | "inactive"
     | "kakao-import"
     | "link-accounts"
@@ -78,7 +79,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
     { key: "match-history", href: "/match-history", label: "내전 기록", icon: "file-search" },
     { key: "matches", href: "/matches", label: "내전 팀 빌더", icon: "crown" },
     { key: "player-stats", href: "/player-stats", label: "플레이어 통계", icon: "bar-chart" },
-    { key: "champion-stats", label: "챔피언 통계", icon: "trophy", disabled: true },
+    { key: "champion-stats", href: "/champion-stats", label: "챔피언 통계", icon: "trophy" },
   ];
   if (currentAdmin) {
     matchItems.push(

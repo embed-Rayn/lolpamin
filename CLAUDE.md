@@ -123,7 +123,7 @@ the turn back, and cross-team moves are refused until the draft completes. Guest
 only in the browser (name, hand-typed MMR and lanes) and count in the team averages.
 Nothing is saved: state lives in `sessionStorage` (`lolpamin.draft.v1`).
 
-Every participant picker (`/matches`, `/draw/*`, `/player-stats`) shares one search box
+Every participant picker (`/matches`, `/draw/*`, `/player-stats`, `/champion-stats`) shares one search box
 (`useMultiNameSearch` + `MultiNameMatchBar`): typing filters by substring, but pasting a
 multi-line / `@` / comma list — the chatroom's recruit post as is — filters to the people
 it names (`parseParticipantNames`: the part before the first `/` of each mention, list
@@ -151,6 +151,17 @@ only — a hand-entered game has no position or KDA, so its count can be lower t
 `/rift`'s. `?period=season` uses the same reset baseline as `counted-games`;
 `?period=all` drops it, and `?period=year` (the default and first button, labelled with the Seoul year) keeps games *played* (`playedAt`) this Seoul calendar year, across resets. The math is `aggregatePlayerStats` in `packages/core`; member
 selection and block folding are browser memory only.
+
+`/champion-stats` (챔피언 통계) folds the same replay rows per champion, members only
+(an outsider has no `GameParticipant`), with 협곡/칼바람 tabs (`?mode=ARAM`, never mixed)
+and the `/player-stats` periods (`playerStatsGameFilter`, shared). The server sends
+per-(member, champion) **sums** (`getChampionStats`) and the browser folds the selected
+members with `aggregateChampionStats` in `packages/core` — sums, because averages cannot be
+added across members. Member selection, sort (판수 / KDA 높은·낮은 순, Perfect counts as
+highest) and expansion are browser state; sort stays out of the URL because a URL change
+remounts the screen and drops the selection. Champion ids are folded through
+`canonicalChampionId` (Riot sends `FiddleSticks`). Each member row shows that member's most
+played lane on the champion (rift only).
 
 A consequence: `cancelGameResult` refuses a game entered at or before the newest
 `resetAt`. Its `mmrBefore` is a pre-reset rating, so undoing it would revive one
@@ -366,8 +377,8 @@ server → client boundary.
 
 ## Mobile
 
-Nine read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`, `/player-stats`, `/events`, `/events/[id]`) work down to a
+Ten read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`) work down to a
 375px phone; the fifteen operator screens (`matches`, `replay-import`, `team-builder`,
 `kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
 `events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/new`, `meeting-notes/[id]`,
