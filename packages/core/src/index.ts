@@ -20,6 +20,7 @@ export * from "./draft";
 export * from "./mastery";
 export * from "./birth-year";
 export * from "./player-stats";
+export * from "./champion-stats";
 export * from "./event-post";
 export * from "./participant-names";
 export * from "./played-at";
