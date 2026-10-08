@@ -80,7 +80,7 @@ so an untouched 1000 neither drags the mean nor shows up as 0 in it.
 `/member-info` is read-only for everyone, admins included. Every member edit lives on
 `/member-admin` (operator, desktop-only; `/members` stays the `/rift` redirect because
 browsers cache a 308): 이름, 나이, 최고/산정티어, 주/부라인, 라이엇 계정, 최근 활동 날짜,
-비고, plus the two once-an-hour Riot batches (PUUID → Riot ID, champion masteries) as
+비고, plus the three once-an-hour Riot batches (PUUID → Riot ID, champion masteries, peak tier) as
 `RiotRefreshButton`, which `/link-accounts` also uses for the Riot ID one. 나이 is
 `Member.age` (the two-digit birth year imports read from the nickname) when set, else the
 nickname's (`fullBirthYear`) — both pages use that rule. 모스트 is `topMasteries` over every
@@ -196,10 +196,12 @@ Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, defa
 `UNRANKED`, shown as 산정티어) that an admin sets by hand — an operator value, shown and
 edited on `/member-admin` only; `/member-info` shows just 최고티어 and cannot sort by it.
 `Member.peakTier` (최고티어) is a second hand-entered tier, a reference that feeds no score.
-The mastery batch also raises it: per account it reads the current solo-queue rank from
-League-V4 (`lookupSoloRank`; the API has no past seasons, so history accrues only from
-here on), takes each member's highest, and writes it only when above the stored value —
-never lowers it. Compare tiers with `isHigherTier` (ladder order), not the score: 아이언 and
+The 최고티어 갱신 button on `/member-admin` (`refreshPeakTiers`, own once-an-hour
+`SiteSetting.tierRefreshedAt`) also raises it: per account it reads the current solo-queue
+rank from League-V4 (`lookupSoloRank`; the API has no past seasons, so history accrues only
+from here on), takes each member's highest, and writes it only when above the stored value —
+never lowers it. It is separate from the mastery batch so 모스트 refreshes don't pay for a
+second call per account. Compare tiers with `isHigherTier` (ladder order), not the score: 아이언 and
 언랭 both score 0. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table

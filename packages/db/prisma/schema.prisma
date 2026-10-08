@@ -340,6 +340,8 @@ model SiteSetting {
   riotIdRefreshedAt  DateTime?
   // 챔피언 숙련도를 마지막으로 받아 온 시각. riotIdRefreshedAt과 같은 이유로 DB에 둔다.
   masteryRefreshedAt DateTime?
+  // 현재 솔로랭크로 최고티어를 마지막으로 올려 본 시각. 같은 이유로 DB에 둔다.
+  tierRefreshedAt    DateTime?
   updatedAt          DateTime  @updatedAt
   updatedById        String?
 }
