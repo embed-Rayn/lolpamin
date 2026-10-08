@@ -30,6 +30,7 @@ export default async function MemberAdminPage({
         <div className="flex flex-wrap items-center gap-3">
           <RiotRefreshButton kind="riotIds" />
           <RiotRefreshButton kind="masteries" />
+          <RiotRefreshButton kind="peakTiers" />
         </div>
         <section className="overflow-hidden rounded-xl border border-ink/[.06] bg-surface">
           <MemberAdminTable rows={rows} sort={sort} dir={dir} />

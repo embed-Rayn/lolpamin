@@ -16,8 +16,14 @@ import {
   type MasteryRefreshResult,
 } from "@/lib/mutations/refresh-champion-masteries";
 import { lookupRiotAccount } from "@/lib/riot-api/account";
-import { lookupSoloRank } from "@/lib/riot-api/league";
 import { lookupChampionMasteries } from "@/lib/riot-api/mastery";
+import { lookupSoloRank } from "@/lib/riot-api/league";
+import {
+  getPeakTierRefreshAvailability,
+  refreshPeakTiers,
+  REFRESH_PEAK_TIERS_ERRORS,
+  type PeakTierRefreshResult,
+} from "@/lib/mutations/refresh-peak-tiers";
 import {
   isOwnedByOtherError,
   registerRiotAccount,
@@ -183,11 +189,10 @@ export async function refreshMasteriesAction(): Promise<{ result: MasteryRefresh
   await requireAdmin();
 
   try {
-    const result = await refreshChampionMasteries(prisma, lookupRiotAccount, lookupChampionMasteries, lookupSoloRank);
+    const result = await refreshChampionMasteries(prisma, lookupRiotAccount, lookupChampionMasteries);
     revalidatePath("/member-admin");
     revalidatePath("/member-info");
     revalidatePath("/matches");
-    revalidatePath("/rift");
     return { result, error: null };
   } catch (error) {
     // 하루 제한은 일부러 던진 안내다 — 그대로 보여 준다.
@@ -196,5 +201,31 @@ export async function refreshMasteriesAction(): Promise<{ result: MasteryRefresh
     }
     console.error(error);
     return { result: null, error: "숙련도 갱신 중 오류가 났습니다." };
+  }
+}
+
+/** 최고티어 버튼을 누르기 전에 보여 줄 상태. 모양은 숙련도 쪽과 같다. */
+export async function peakTierRefreshStatusAction(): Promise<MasteryRefreshStatus> {
+  await requireAdmin();
+  const { allowed, lastRefreshedAt, accountCount } = await getPeakTierRefreshAvailability(prisma);
+  return { allowed, lastRefreshedAt: lastRefreshedAt?.toISOString() ?? null, accountCount };
+}
+
+export async function refreshPeakTiersAction(): Promise<{ result: PeakTierRefreshResult | null; error: string | null }> {
+  await requireAdmin();
+
+  try {
+    const result = await refreshPeakTiers(prisma, lookupRiotAccount, lookupSoloRank);
+    revalidatePath("/member-admin");
+    revalidatePath("/member-info");
+    revalidatePath("/rift");
+    return { result, error: null };
+  } catch (error) {
+    // 1시간 제한은 일부러 던진 안내다 — 그대로 보여 준다.
+    if (error instanceof Error && error.message === REFRESH_PEAK_TIERS_ERRORS.tooSoon) {
+      return { result: null, error: error.message };
+    }
+    console.error(error);
+    return { result: null, error: "최고티어 갱신 중 오류가 났습니다." };
   }
 }
