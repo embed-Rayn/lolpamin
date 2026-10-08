@@ -1,6 +1,6 @@
 import type { MemberTier } from "@lolpamin/db";
 import { describe, expect, it } from "vitest";
-import { TIER_OPTIONS, TIER_SCORES, tierLabel, tierScore } from "./tier";
+import { isHigherTier, memberTierFromRank, TIER_OPTIONS, TIER_SCORES, tierLabel, tierScore } from "./tier";
 
 // 다1(24)부터 브4(1)까지 24칸이 1점 간격이어야 한다. 표를 옮겨 적다 한 칸을 빠뜨리거나
 // 두 칸에 같은 점수를 주면 여기서 잡힌다.
@@ -67,5 +67,52 @@ describe("TIER_OPTIONS", () => {
       expect(option.label.length).toBeGreaterThan(0);
       expect(option.score).toBe(tierScore(option.value));
     }
+  });
+});
+
+describe("memberTierFromRank", () => {
+  it("keeps the division below master", () => {
+    expect(memberTierFromRank("DIAMOND", "I", 75)).toBe("DIAMOND_1");
+    expect(memberTierFromRank("EMERALD", "IV", 0)).toBe("EMERALD_4");
+    expect(memberTierFromRank("GOLD", "II", 50)).toBe("GOLD_2");
+    expect(memberTierFromRank("BRONZE", "III", 10)).toBe("BRONZE_3");
+  });
+
+  it("folds every iron division into IRON", () => {
+    expect(memberTierFromRank("IRON", "I", 99)).toBe("IRON");
+    expect(memberTierFromRank("IRON", "IV", 0)).toBe("IRON");
+  });
+
+  it("bands master by LP, lower bound inclusive", () => {
+    expect(memberTierFromRank("MASTER", "I", 0)).toBe("MASTER_0_200");
+    expect(memberTierFromRank("MASTER", "I", 199)).toBe("MASTER_0_200");
+    expect(memberTierFromRank("MASTER", "I", 200)).toBe("MASTER_200_400");
+    expect(memberTierFromRank("MASTER", "I", 400)).toBe("MASTER_400_600");
+    expect(memberTierFromRank("MASTER", "I", 600)).toBe("MASTER_600_800");
+    expect(memberTierFromRank("MASTER", "I", 999)).toBe("MASTER_800_1000");
+    expect(memberTierFromRank("MASTER", "I", 1000)).toBe("MASTER_1000_PLUS");
+  });
+
+  // Grandmaster and challenger LP keep counting from master 0, so the same bands apply.
+  it("bands grandmaster and challenger on the same LP table", () => {
+    expect(memberTierFromRank("GRANDMASTER", "I", 450)).toBe("MASTER_400_600");
+    expect(memberTierFromRank("CHALLENGER", "I", 1500)).toBe("MASTER_1000_PLUS");
+  });
+
+  it("returns null for anything it does not know", () => {
+    expect(memberTierFromRank("UNRANKED", "", 0)).toBeNull();
+    expect(memberTierFromRank("GOLD", "V", 0)).toBeNull();
+  });
+});
+
+describe("isHigherTier", () => {
+  it("compares by ladder position, not score", () => {
+    expect(isHigherTier("GOLD_1", "GOLD_2")).toBe(true);
+    expect(isHigherTier("GOLD_2", "GOLD_1")).toBe(false);
+    expect(isHigherTier("GOLD_1", "GOLD_1")).toBe(false);
+    expect(isHigherTier("MASTER_200_400", "MASTER_0_200")).toBe(true);
+    // Both score 0 — the score alone could not tell them apart.
+    expect(isHigherTier("IRON", "UNRANKED")).toBe(true);
+    expect(isHigherTier("UNRANKED", "IRON")).toBe(false);
   });
 });

@@ -195,7 +195,12 @@ midnight, separate from `createdAt`.
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`, shown as 산정티어) that an admin sets by hand — an operator value, shown and
 edited on `/member-admin` only; `/member-info` shows just 최고티어 and cannot sort by it.
-`Member.peakTier` (최고티어) is a second hand-entered tier, a reference that feeds no score. Its score comes from a reference table in
+`Member.peakTier` (최고티어) is a second hand-entered tier, a reference that feeds no score.
+The mastery batch also raises it: per account it reads the current solo-queue rank from
+League-V4 (`lookupSoloRank`; the API has no past seasons, so history accrues only from
+here on), takes each member's highest, and writes it only when above the stored value —
+never lowers it. Compare tiers with `isHigherTier` (ladder order), not the score: 아이언 and
+언랭 both score 0. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
 moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
