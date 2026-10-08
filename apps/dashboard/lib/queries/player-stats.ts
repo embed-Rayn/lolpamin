@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@lolpamin/db";
 import { aggregatePlayerStats, getDisplayName, type PlayerGameRow, type PlayerStats, seoulYearRange } from "@lolpamin/core";
 import type { Prisma } from "@lolpamin/db";
-import { getCountedGameFilter, type CountedGameFilter } from "./counted-games";
+import { getCountedGameFilter } from "./counted-games";
 
 // year = games played this Seoul calendar year (by playedAt, across resets); season = since
 // the latest rating reset (same baseline as /rift); all = every live game.
@@ -18,6 +18,20 @@ export interface PlayerStatsMember {
   stats: PlayerStats;
 }
 
+// Period → GameResult filter, shared with /champion-stats so the two screens count the same games.
+export async function playerStatsGameFilter(
+  prisma: PrismaClient,
+  period: PlayerStatsPeriod,
+  now: Date,
+): Promise<Prisma.GameResultWhereInput> {
+  if (period === "season") return getCountedGameFilter(prisma);
+  if (period === "year") {
+    const { start, end } = seoulYearRange(now);
+    return { cancelledAt: null, playedAt: { gte: start, lt: end } };
+  }
+  return { cancelledAt: null };
+}
+
 /**
  * Per-member rift stats built from replay rows only. A hand-entered game has no
  * position or KDA, so it is left out and the game count can be lower than /rift's.
@@ -29,12 +43,7 @@ export async function getPlayerStats(
   period: PlayerStatsPeriod,
   now: Date = new Date(),
 ): Promise<PlayerStatsMember[]> {
-  const gameFilter: CountedGameFilter | Prisma.GameResultWhereInput =
-    period === "season"
-      ? await getCountedGameFilter(prisma)
-      : period === "year"
-        ? (({ start, end }) => ({ cancelledAt: null, playedAt: { gte: start, lt: end } }))(seoulYearRange(now))
-        : { cancelledAt: null };
+  const gameFilter = await playerStatsGameFilter(prisma, period, now);
 
   const [members, participations] = await Promise.all([
     prisma.member.findMany({

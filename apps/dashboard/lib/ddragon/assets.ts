@@ -15,6 +15,12 @@ function canonicalChampion(id: string): string | undefined {
   return championIdByLower.get(id.toLowerCase());
 }
 
+// The id stats group by: the canonical Data Dragon id, or the replay's own string when the
+// committed patch does not know the champion yet.
+export function canonicalChampionId(id: string): string {
+  return canonicalChampion(id) ?? id;
+}
+
 export function championIcon(id: string): string | null {
   const canonical = canonicalChampion(id);
   return canonical ? `${BASE}/champion/${canonical}.png` : null;
