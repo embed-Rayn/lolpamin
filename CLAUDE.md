@@ -177,6 +177,21 @@ would see, admins included — an admin-chosen `thumbnailImageId` (FK, `SET NULL
 image delete) wins unless it is a not-yet-revealed hidden image. Thumbnails are
 `object-contain`: a poster is shown whole, never cropped.
 
+`/meeting-notes` (회의록, under 운영 관리 right after 회원 관리) is the one screen where
+**reading** is admin-only too — notes can carry member evaluations, so the pages redirect to
+login and `/api/meeting-notes/images/[id]` answers 404 (never 403, never cached) to anyone
+without a session. There is no live co-editing: the editor sends the `MeetingNote.version`
+it was opened at and `updateMeetingNote` refuses the save if it moved
+(`MeetingNoteConflictError`, naming who saved first; the typed text stays on screen).
+`version`, not `updatedAt`, because two saves can land in one millisecond. The body is a
+markdown subset rendered by our own parser (`parseMeetingNoteBody` in `packages/core`:
+`#`–`###`, `-`, `1.`, `- [ ]`/`- [x]`, whole-line `![](imageId)`, `**bold**`) — no HTML path
+at all. Images upload one per server action into `MeetingNoteImage` with `noteId = null`
+before the note exists; a save attaches the unowned ones its body references (never one
+owned by another note) and deletes the note's images the body dropped. Unowned images older
+than 24h are swept on the next upload. `meetingDate` (회의일) is a calendar day stored as UTC
+midnight, separate from `createdAt`.
+
 Separately from MMR, each member carries a solo-queue `tier` (`MemberTier`, default
 `UNRANKED`, shown as 산정티어) that an admin sets by hand — an operator value, shown and
 edited on `/member-admin` only; `/member-info` shows just 최고티어 and cannot sort by it.
@@ -348,9 +363,10 @@ server → client boundary.
 
 Nine read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
 `/match-history`, `/inactive`, `/player-stats`, `/events`, `/events/[id]`) work down to a
-375px phone; the eleven operator screens (`matches`, `replay-import`, `team-builder`,
+375px phone; the fifteen operator screens (`matches`, `replay-import`, `team-builder`,
 `kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
-`events/new`, `events/[id]/edit`) show a "PC에서
+`events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/new`, `meeting-notes/[id]`,
+`meeting-notes/[id]/edit`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
 content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
 mode still reaches it.
