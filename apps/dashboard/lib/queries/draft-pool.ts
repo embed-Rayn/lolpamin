@@ -1,4 +1,4 @@
-import type { Lane, PrismaClient } from "@lolpamin/db";
+import type { Lane, MemberTier, PrismaClient } from "@lolpamin/db";
 import { topMasteries, type MasteryEntry } from "@lolpamin/core";
 import { getLinkedMembers } from "./linked-members";
 
@@ -6,6 +6,8 @@ export interface DraftPoolMember {
   id: string;
   name: string;
   mmr: number;
+  // 산정티어. 수동 팀짜기가 점수 합을 낸다(tierScore).
+  tier: MemberTier;
   wins: number;
   losses: number;
   mainLane: Lane | null;
@@ -63,6 +65,7 @@ export async function getDraftPool(prisma: PrismaClient): Promise<DraftPoolMembe
       id: m.id,
       name: m.name,
       mmr: m.mmr,
+      tier: m.tier,
       wins: m.wins,
       losses: m.losses,
       mainLane: detail.mainLane,

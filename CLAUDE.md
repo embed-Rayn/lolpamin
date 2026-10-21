@@ -216,9 +216,13 @@ second call per account. Compare tiers with `isHigherTier` (ladder order), not t
 언랭 both score 0. Its score comes from a reference table in
 `packages/core/src/tier.ts` — 다1 24 down to 브4 1, master split into LP bands above
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
-moves every score at once. It feeds `/team-builder` (2.3), where an admin seats both
-teams by hand and watches the two totals; that arrangement is browser state and is
-never saved. `packages/core` imports the `MemberTier` type from `@lolpamin/db` — the
+moves every score at once. It feeds `/team-builder` (2.3, admin-only), where an admin
+picks participants with the `/matches` picker (same `getDraftPool`, guests get a
+hand-picked tier) and drags them into a mirrored BLUE/RED lineup; the footer shows the
+tier-score **sum** gap and the **average** MMR gap (`lineupSideStats`). Seating has none
+of the draft's rules — `lineupReducer` in `packages/core` swaps two seated players and
+bumps an occupant back to the bench. Nothing is saved: state lives in `sessionStorage`
+(`lolpamin.team-builder.v1`, apart from the draft's key). `packages/core` imports the `MemberTier` type from `@lolpamin/db` — the
 one place it depends on another workspace, and a type-only import.
 
 The rating was called ELO until the rename; the DB columns are `Member.mmr` and `GameParticipant.mmrBefore/mmrAfter`.
