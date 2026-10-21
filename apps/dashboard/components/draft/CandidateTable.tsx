@@ -11,7 +11,7 @@ const GRID = "grid grid-cols-[28px_120px_1.2fr_336px_40px_40px_56px_56px_56px_64
 
 // 게스트 MMR 입력칸은 자기 텍스트를 따로 들고 있다가 blur/Enter에만 onCommit을 부른다.
 // 매 타이핑마다 커밋하면 정렬이 바뀌어 행이 튀고 포커스를 잃는다.
-function GuestMmrInput({ mmr, onCommit }: { mmr: number; onCommit: (value: number) => void }) {
+export function GuestMmrInput({ mmr, onCommit }: { mmr: number; onCommit: (value: number) => void }) {
   const [text, setText] = useState(String(mmr));
 
   useEffect(() => {
@@ -43,7 +43,7 @@ function GuestMmrInput({ mmr, onCommit }: { mmr: number; onCommit: (value: numbe
   );
 }
 
-function LaneSelect({ value, onChange }: { value: Lane | null; onChange: (lane: Lane | null) => void }) {
+export function LaneSelect({ value, onChange }: { value: Lane | null; onChange: (lane: Lane | null) => void }) {
   return (
     <select
       value={value ?? ""}

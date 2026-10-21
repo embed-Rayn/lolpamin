@@ -4,7 +4,7 @@ import type { DraftPoolMember } from "@/lib/queries/draft-pool";
 import { buildCandidates, guestKey, guestNameError, memberKey, normalizeGuestName, teamAverage } from "./candidates";
 
 const member = (id: string, name: string, mmr: number): DraftPoolMember => ({
-  id, name, mmr, wins: 1, losses: 2, mainLane: "TOP", subLane: null,
+  id, name, mmr, tier: "GOLD_1", wins: 1, losses: 2, mainLane: "TOP", subLane: null,
   riotId: `${name}#KR1`, extraAccounts: 0, masteries: [],
 });
 

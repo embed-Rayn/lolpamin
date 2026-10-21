@@ -26,3 +26,4 @@ export * from "./participant-names";
 export * from "./played-at";
 export * from "./meeting-note-body";
 export * from "./meeting-note-date";
+export * from "./lineup";
