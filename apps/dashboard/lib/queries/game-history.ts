@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { GameMode } from "@lolpamin/db";
+import { seoulDayRange } from "@lolpamin/core";
 import type { GameDetail } from "@/lib/game-detail/types";
 
 export interface GameHistoryPlayer {
@@ -46,6 +47,8 @@ export function parseGameHistoryPage(value: string | undefined): number {
 export interface GameHistoryPage {
   rows: GameHistoryRow[];
   mode: GameHistoryMode;
+  // 서울 날짜 "YYYY-MM-DD" 하나로 좁힌 경우. null은 모든 날짜.
+  date: string | null;
   // 요청한 쪽이 범위를 벗어나면 마지막 쪽으로 당긴 값. 링크를 만들 때 이 값을 써야 한다.
   page: number;
   pageCount: number;
@@ -69,10 +72,17 @@ function playerName(m: {
 }
 
 export async function getGameHistory(
-  options: { mode?: GameHistoryMode; page?: number } = {},
+  options: { mode?: GameHistoryMode; page?: number; date?: string | null } = {},
 ): Promise<GameHistoryPage> {
   const mode = options.mode ?? "all";
-  const where = mode === "all" ? {} : { mode };
+  const date = options.date ?? null;
+  // 날짜는 경기한 날(playedAt)의 서울 날짜다 — /match-calendar가 칸을 나누는 기준과 같아야
+  // 칸을 눌러 온 사람이 같은 판들을 본다.
+  const day = date === null ? null : seoulDayRange(date);
+  const where = {
+    ...(mode === "all" ? {} : { mode }),
+    ...(day === null ? {} : { playedAt: { gte: day.start, lt: day.end } }),
+  };
 
   const [totalCount, liveCount, latestLive] = await Promise.all([
     prisma.gameResult.count({ where }),
@@ -194,5 +204,5 @@ export async function getGameHistory(
     };
   });
 
-  return { rows, mode, page, pageCount, totalCount, liveCount };
+  return { rows, mode, date, page, pageCount, totalCount, liveCount };
 }

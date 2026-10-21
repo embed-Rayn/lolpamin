@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { GameHistoryList } from "@/components/GameHistoryList";
-import { GameHistoryModeFilter, GameHistoryPagination } from "@/components/GameHistoryControls";
+import { GameHistoryDateFilter, GameHistoryModeFilter, GameHistoryPagination } from "@/components/GameHistoryControls";
+import { parseDateKey } from "@lolpamin/core";
 import { getGameHistory, parseGameHistoryMode, parseGameHistoryPage } from "@/lib/queries/game-history";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 
@@ -11,12 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function MatchHistoryPage({
   searchParams,
 }: {
-  searchParams: { mode?: string; page?: string };
+  searchParams: { mode?: string; page?: string; date?: string };
 }) {
   const [history, currentAdmin] = await Promise.all([
     getGameHistory({
       mode: parseGameHistoryMode(searchParams.mode),
       page: parseGameHistoryPage(searchParams.page),
+      date: parseDateKey(searchParams.date),
     }),
     getCurrentAdmin(),
   ]);
@@ -29,14 +31,17 @@ export default async function MatchHistoryPage({
     >
       <div className="flex flex-col gap-4 px-4 pb-8 pt-4 md:px-7 md:pb-10 md:pt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <GameHistoryModeFilter mode={history.mode} />
+          <div className="flex flex-wrap items-center gap-2">
+            <GameHistoryModeFilter mode={history.mode} date={history.date} />
+            <GameHistoryDateFilter mode={history.mode} date={history.date} />
+          </div>
           <div className="font-mono text-[13px] text-muted">
             살아 있는 경기 {history.liveCount} / 전체 {history.totalCount}
             {history.pageCount > 1 && ` · ${history.page}/${history.pageCount}쪽`}
           </div>
         </div>
         <GameHistoryList rows={history.rows} isAdmin={currentAdmin !== null} showMode={history.mode === "all"} />
-        <GameHistoryPagination mode={history.mode} page={history.page} pageCount={history.pageCount} />
+        <GameHistoryPagination mode={history.mode} date={history.date} page={history.page} pageCount={history.pageCount} />
       </div>
     </AppShell>
   );
