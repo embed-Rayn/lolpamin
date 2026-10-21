@@ -73,7 +73,9 @@ function SeatCells({ side, lane, c }: { side: DraftSide; lane: Lane; c: LineupCa
       <span className="max-w-full truncate text-[11px] text-faint">{c.riotId ?? " "}</span>
     </span>,
   ];
-  return <>{side === "blue" ? cells : [...cells].reverse()}</>;
+  // 레드는 블루의 거울상이되 주라인·부라인만은 읽는 순서(주 → 부)를 지킨다 — 시안의 열 순서.
+  const [scoreCell, tierCell, mmrCell, mainCell, subCell, nameCell] = cells;
+  return <>{side === "blue" ? cells : [nameCell, mainCell, subCell, mmrCell, tierCell, scoreCell]}</>;
 }
 
 function Seat({
