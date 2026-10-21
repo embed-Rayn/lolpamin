@@ -12,7 +12,7 @@ import {
 } from "./lineup";
 
 const member = (id: string, name: string, mmr: number, tier: DraftPoolMember["tier"]): DraftPoolMember => ({
-  id, name, mmr, tier, wins: 0, losses: 0, mainLane: null, subLane: null,
+  id, name, mmr, tier, peakTier: "MASTER_0_200", wins: 0, losses: 0, mainLane: null, subLane: null,
   riotId: null, extraAccounts: 0, masteries: [],
 });
 
@@ -45,6 +45,10 @@ describe("buildLineupCandidates", () => {
     const rows = buildLineupCandidates(pool, ["a", "b"], sample().guests);
     const tiers = Object.fromEntries(rows.map((r) => [r.key, r.tier]));
     expect(tiers).toEqual({ [memberKey("a")]: "DIAMOND_1", [memberKey("b")]: "GOLD_1", [guestKey("손님")]: "SILVER_2" });
+    const peaks = Object.fromEntries(rows.map((r) => [r.key, r.peakTier]));
+    expect(peaks).toEqual({ [memberKey("a")]: "MASTER_0_200", [memberKey("b")]: "MASTER_0_200", [guestKey("손님")]: null });
+    const ids = Object.fromEntries(rows.map((r) => [r.key, r.memberId]));
+    expect(ids).toEqual({ [memberKey("a")]: "a", [memberKey("b")]: "b", [guestKey("손님")]: null });
   });
 });
 

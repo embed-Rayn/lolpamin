@@ -80,19 +80,27 @@ function Seat({
   at,
   candidate,
   over,
+  picking,
+  isPicked,
   onOver,
   onDrop,
+  onClick,
 }: {
   at: SlotRef;
   candidate: LineupCandidate | undefined;
   over: boolean;
+  // 누군가를 클릭해 고른 상태 — 빈 자리가 「앉힐 수 있음」을 보여 준다.
+  picking: boolean;
+  isPicked: boolean;
   onOver: (id: string | null) => void;
   onDrop: (payload: DragPayload, to: SlotRef) => void;
+  onClick: (at: SlotRef) => void;
 }) {
   const tone = TONE[at.side];
   const filled = candidate !== undefined;
   return (
     <div
+      onClick={() => onClick(at)}
       onDragOver={acceptDrag}
       onDragEnter={() => onOver(slotId(at))}
       onDragLeave={(e) => {
@@ -106,20 +114,24 @@ function Seat({
       }}
       draggable={filled}
       onDragStart={(e) => setDragPayload(e, { kind: "slot", from: at })}
-      className={`grid min-h-[58px] items-center gap-2 rounded-xl border px-3.5 py-2 transition-all duration-150 ${
+      className={`grid min-h-[52px] cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 transition-all duration-150 ${
         at.side === "blue" ? BLUE_COLS : RED_COLS
       } ${
         over
           ? `${tone.ring} scale-[1.01] shadow-sm`
-          : filled
-            ? `border-transparent ${tone.wash} cursor-grab hover:border-ink/[.08] active:cursor-grabbing`
-            : "border-dashed border-ink/[.12]"
+          : isPicked
+            ? `${tone.ring} ring-2 ring-accent/40`
+            : filled
+              ? `border-transparent ${tone.wash} cursor-grab hover:border-ink/[.12] active:cursor-grabbing`
+              : picking
+                ? "border-dashed border-accent/50 bg-accent/[.03] hover:bg-accent/[.08]"
+                : "border-dashed border-ink/[.12]"
       }`}
     >
       {candidate ? (
         <SeatCells side={at.side} lane={at.lane} c={candidate} />
       ) : (
-        <span className="col-span-full text-center text-[12px] text-ghost">{over ? "여기에 놓기" : "비어 있음"}</span>
+        <span className="col-span-full text-center text-[12px] text-ghost">{over ? "여기에 놓기" : picking ? "여기에 앉히기" : "비어 있음"}</span>
       )}
     </div>
   );
@@ -137,7 +149,7 @@ function SideBanner({ side, stats }: { side: DraftSide; stats: LineupSideStats }
       <div className={`text-[34px] font-black leading-none tracking-[.18em] ${tone.text}`}>{tone.label}</div>
       <div className={`flex gap-5 ${blue ? "" : "flex-row-reverse"}`}>
         <BannerStat label="인원" value={`${stats.count}/5`} />
-        <BannerStat label="티어 합" value={String(stats.tierTotal)} />
+        <BannerStat label="산정티어 합" value={String(stats.tierTotal)} />
         <BannerStat label="평균 MMR" value={stats.mmrAverage === null ? "—" : String(stats.mmrAverage)} />
       </div>
     </div>
@@ -198,11 +210,15 @@ export function LineupBoard({
   stats,
   onDrop,
   onReset,
+  picked,
+  onSeatClick,
 }: {
   slots: LineupSlots;
   byKey: Map<string, LineupCandidate>;
   stats: Record<DraftSide, LineupSideStats>;
   onDrop: (payload: DragPayload, to: SlotRef) => void;
+  picked: string | null;
+  onSeatClick: (at: SlotRef) => void;
   onReset: () => void;
 }) {
   const [over, setOver] = useState<string | null>(null);
@@ -240,7 +256,7 @@ export function LineupBoard({
       <div className={`${ROW} px-0 pt-1 text-[11px] font-bold tracking-wide text-faint`}>
         <div className={`grid gap-2 px-3.5 ${BLUE_COLS}`}>
           <span>점수</span>
-          <span className="text-center">티어</span>
+          <span className="text-center">산정티어</span>
           <span className="text-center">MMR</span>
           <span className="text-center">주라인</span>
           <span className="text-center">부라인</span>
@@ -252,7 +268,7 @@ export function LineupBoard({
           <span className="text-center">주라인</span>
           <span className="text-center">부라인</span>
           <span className="text-center">MMR</span>
-          <span className="text-center">티어</span>
+          <span className="text-center">산정티어</span>
           <span className="text-right">점수</span>
         </div>
       </div>
@@ -260,19 +276,37 @@ export function LineupBoard({
       <div className="flex flex-col gap-2">
         {DRAFT_LANES.map((lane) => (
           <div key={lane} className={ROW}>
-            <Seat at={{ side: "blue", lane }} candidate={seat("blue", lane)} over={over === `blue:${lane}`} onOver={setOver} onDrop={onDrop} />
+            <Seat
+              at={{ side: "blue", lane }}
+              candidate={seat("blue", lane)}
+              over={over === `blue:${lane}`}
+              picking={picked !== null}
+              isPicked={picked !== null && slots.blue[lane] === picked}
+              onOver={setOver}
+              onDrop={onDrop}
+              onClick={onSeatClick}
+            />
             <div className="flex items-center justify-center">
               <span className="w-full rounded-lg bg-inset py-2 text-center text-[13px] font-extrabold text-fg-2">
                 {laneLabel(lane)}
               </span>
             </div>
-            <Seat at={{ side: "red", lane }} candidate={seat("red", lane)} over={over === `red:${lane}`} onOver={setOver} onDrop={onDrop} />
+            <Seat
+              at={{ side: "red", lane }}
+              candidate={seat("red", lane)}
+              over={over === `red:${lane}`}
+              picking={picked !== null}
+              isPicked={picked !== null && slots.red[lane] === picked}
+              onOver={setOver}
+              onDrop={onDrop}
+              onClick={onSeatClick}
+            />
           </div>
         ))}
       </div>
 
       <div className="mt-2 flex flex-col gap-3 rounded-xl bg-inset px-6 py-4">
-        <GapRow label="티어 차이" blue={stats.blue.tierTotal} red={stats.red.tierTotal} scale={15} />
+        <GapRow label="산정티어 차이" blue={stats.blue.tierTotal} red={stats.red.tierTotal} scale={15} />
         <GapRow label="MMR 차이 (평균)" blue={stats.blue.mmrAverage} red={stats.red.mmrAverage} scale={100} />
       </div>
     </section>
