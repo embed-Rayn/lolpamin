@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DRAFT_LANES,
   DRAFT_SIDES,
@@ -36,16 +36,6 @@ export function TeamBuilder({ pool }: { pool: DraftPoolMember[] }) {
   const [hydrated, setHydrated] = useState(false);
   // 클릭으로 앉히기에서 고른 사람(대기 중이든 앉아 있든).
   const [picked, setPicked] = useState<string | null>(null);
-  // 열 명이 다 차면 체크박스 명단을 접는다 — 참여자와 라인업이 한 화면에 들어와야
-  // 끌어 놓기가 편하다. 다시 펼치는 건 언제든 된다.
-  const [pickerOpen, setPickerOpen] = useState(true);
-  const selectedCount = participantIds.length + guests.length;
-  const previousCount = useRef(selectedCount);
-
-  useEffect(() => {
-    if (previousCount.current < 10 && selectedCount >= 10) setPickerOpen(false);
-    previousCount.current = selectedCount;
-  }, [selectedCount]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -142,41 +132,17 @@ export function TeamBuilder({ pool }: { pool: DraftPoolMember[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {pickerOpen ? (
-        <div className="flex flex-col gap-1.5">
-          <ParticipantPicker
-            pool={pool}
-            selectedIds={participantIds}
-            guests={guests}
-            onToggle={toggleParticipant}
-            onSelectMany={(ids) => setParticipantIds((prev) => [...prev, ...ids.filter((id) => !prev.includes(id))])}
-            onAddGuest={(name) =>
-              setGuests([...guests, { name, mmr: GUEST_DEFAULT_MMR, tier: "UNRANKED", mainLane: null, subLane: null }])
-            }
-            onRemoveGuest={removeGuest}
-          />
-          {selectedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setPickerOpen(false)}
-              className="self-end text-[12px] font-bold text-muted hover:text-fg"
-            >
-              명단 접기 ▲
-            </button>
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          className="flex items-center justify-between rounded-xl border border-ink/[.06] bg-surface px-4 py-2.5 text-left transition-colors hover:bg-hover"
-        >
-          <span className="text-[14px] font-bold">
-            참여자 선택 <span className="ml-1.5 font-mono text-[12.5px] font-normal text-muted">{selectedCount}명 선택됨</span>
-          </span>
-          <span className="text-[12px] font-bold text-muted">펼치기 ▼</span>
-        </button>
-      )}
+      <ParticipantPicker
+        pool={pool}
+        selectedIds={participantIds}
+        guests={guests}
+        onToggle={toggleParticipant}
+        onSelectMany={(ids) => setParticipantIds((prev) => [...prev, ...ids.filter((id) => !prev.includes(id))])}
+        onAddGuest={(name) =>
+          setGuests([...guests, { name, mmr: GUEST_DEFAULT_MMR, tier: "UNRANKED", mainLane: null, subLane: null }])
+        }
+        onRemoveGuest={removeGuest}
+      />
       <ParticipantBench
         candidates={candidates}
         sideOf={(key) => sides.get(key) ?? null}
