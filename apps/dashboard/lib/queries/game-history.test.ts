@@ -45,9 +45,10 @@ async function playGame(
   winner: "BLUE" | "RED",
   createdById: string | null = null,
   mode: "RIFT" | "ARAM" = "RIFT",
+  playedAt: Date = new Date("2026-09-01T12:00:00Z"),
 ) {
   return saveGameResult(prisma, {
-    playedAt: new Date("2026-09-01T12:00:00Z"),
+    playedAt,
     blueMemberIds: blue.map((m) => m.id),
     redMemberIds: red.map((m) => m.id),
     winner,
@@ -219,6 +220,33 @@ describe("getGameHistory mode filter", () => {
       latestRift.gameResultId,
     ]);
     expect(riftOnly.rows.filter((r) => r.canCancel).map((r) => r.id)).toEqual([latestRift.gameResultId]);
+  });
+
+  it("narrows to one Seoul day on request, together with the mode", async () => {
+    const blue = await createLinkedMember("블루", 1000);
+    const red = await createLinkedMember("레드", 1000);
+    // 2026-10-04 00:30 Seoul (still the 3rd in UTC)
+    const lateNight = await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-03T15:30:00Z"));
+    const sameDayAram = await playGame([blue], [red], "RED", null, "ARAM", new Date("2026-10-04T10:00:00Z"));
+    await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-03T14:30:00Z")); // the 3rd
+
+    const day = await getGameHistory({ date: "2026-10-04" });
+    expect(day.rows.map((r) => r.id).sort()).toEqual([lateNight.gameResultId, sameDayAram.gameResultId].sort());
+    expect(day).toMatchObject({ date: "2026-10-04", totalCount: 2, liveCount: 2 });
+
+    const dayRift = await getGameHistory({ date: "2026-10-04", mode: "RIFT" });
+    expect(dayRift.rows.map((r) => r.id)).toEqual([lateNight.gameResultId]);
+  });
+
+  it("keeps the cancellable flag on each mode's latest game even under a date filter", async () => {
+    const blue = await createLinkedMember("블루", 1000);
+    const red = await createLinkedMember("레드", 1000);
+    const older = await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-04T10:00:00Z"));
+    await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-05T10:00:00Z"));
+
+    const [row] = (await getGameHistory({ date: "2026-10-04" })).rows;
+    expect(row.id).toBe(older.gameResultId);
+    expect(row.canCancel).toBe(false);
   });
 
   it("parses the mode and page from the URL leniently", () => {

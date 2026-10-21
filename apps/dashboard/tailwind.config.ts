@@ -44,6 +44,9 @@ const ROLES = [
   "purple",
   "purple-tint",
   "discord",
+  // game modes on /match-calendar — stay blue/red whatever the skin
+  "rift",
+  "aram",
 ] as const;
 
 const config: Config = {

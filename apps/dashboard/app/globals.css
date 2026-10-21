@@ -46,6 +46,9 @@
   --c-gold-deep: 184 134 11;
   --c-orange: 232 118 43;
   --c-purple: 124 82 232;
+  /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
+  --c-rift: 59 125 224;
+  --c-aram: 224 75 75;
   --c-purple-tint: 239 231 254;
   --c-discord: 88 101 242;
 
@@ -85,6 +88,9 @@
   --c-gold-deep: 197 138 16;
   --c-orange: 240 122 58;
   --c-purple: 168 85 247;
+  /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
+  --c-rift: 66 133 244;
+  --c-aram: 226 72 72;
   --c-purple-tint: 246 233 255;
   --c-discord: 88 101 242;
 
@@ -124,6 +130,9 @@
   --c-gold-deep: 201 162 39;
   --c-orange: 242 152 92;
   --c-purple: 216 180 245;
+  /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
+  --c-rift: 96 150 240;
+  --c-aram: 236 100 100;
   --c-purple-tint: 42 32 51;
   --c-discord: 88 101 242;
 

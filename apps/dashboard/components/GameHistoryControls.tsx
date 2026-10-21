@@ -7,22 +7,23 @@ const MODES: Array<{ key: GameHistoryMode; label: string }> = [
   { key: "ARAM", label: "칼바람" },
 ];
 
-export function historyHref(mode: GameHistoryMode, page: number): string {
+export function historyHref(mode: GameHistoryMode, page: number, date: string | null = null): string {
   const params = new URLSearchParams();
   if (mode !== "all") params.set("mode", mode);
+  if (date !== null) params.set("date", date);
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/match-history?${qs}` : "/match-history";
 }
 
-export function GameHistoryModeFilter({ mode }: { mode: GameHistoryMode }) {
+export function GameHistoryModeFilter({ mode, date }: { mode: GameHistoryMode; date: string | null }) {
   return (
     <div className="flex gap-1">
       {MODES.map((m) => (
         <Link
           key={m.key}
           // 모드를 바꾸면 1쪽부터 — 다른 필터의 3쪽은 이 필터에 없을 수 있다.
-          href={historyHref(m.key, 1)}
+          href={historyHref(m.key, 1, date)}
           className={`rounded-md border px-2.5 py-1 text-[12.5px] font-semibold ${
             mode === m.key
               ? "border-accent/45 bg-accent/[.18] text-accent-soft"
@@ -53,10 +54,12 @@ function pageNumbers(page: number, pageCount: number): Array<number | "gap"> {
 
 export function GameHistoryPagination({
   mode,
+  date,
   page,
   pageCount,
 }: {
   mode: GameHistoryMode;
+  date: string | null;
   page: number;
   pageCount: number;
 }) {
@@ -68,7 +71,7 @@ export function GameHistoryPagination({
   return (
     <nav className="flex items-center justify-center gap-1.5" aria-label="쪽">
       {page > 1 ? (
-        <Link href={historyHref(mode, page - 1)} className={linkClass}>
+        <Link href={historyHref(mode, page - 1, date)} className={linkClass}>
           ‹
         </Link>
       ) : (
@@ -87,18 +90,49 @@ export function GameHistoryPagination({
             {p}
           </span>
         ) : (
-          <Link key={p} href={historyHref(mode, p)} className={linkClass}>
+          <Link key={p} href={historyHref(mode, p, date)} className={linkClass}>
             {p}
           </Link>
         ),
       )}
       {page < pageCount ? (
-        <Link href={historyHref(mode, page + 1)} className={linkClass}>
+        <Link href={historyHref(mode, page + 1, date)} className={linkClass}>
           ›
         </Link>
       ) : (
         <span className={disabledClass}>›</span>
       )}
     </nav>
+  );
+}
+
+// 날짜 하나로 좁히기. 자바스크립트 없이 GET 폼으로 보낸다 — 모드는 숨은 칸으로 따라가고,
+// 쪽은 1쪽부터다. /match-calendar의 날짜 칸이 같은 ?date=로 이 화면에 들어온다.
+export function GameHistoryDateFilter({ mode, date }: { mode: GameHistoryMode; date: string | null }) {
+  return (
+    <form action="/match-history" className="flex items-center gap-1.5">
+      {mode !== "all" && <input type="hidden" name="mode" value={mode} />}
+      <input
+        type="date"
+        name="date"
+        defaultValue={date ?? ""}
+        aria-label="경기 날짜"
+        className="rounded-md border border-ink/[.09] bg-inset px-2 py-[3px] font-mono text-[12.5px] text-fg outline-none focus:border-accent"
+      />
+      <button
+        type="submit"
+        className="rounded-md border border-ink/[.09] px-2.5 py-1 text-[12.5px] font-semibold text-faint hover:text-fg-2"
+      >
+        보기
+      </button>
+      {date !== null && (
+        <Link
+          href={historyHref(mode, 1)}
+          className="rounded-md border border-accent/45 bg-accent/[.12] px-2.5 py-1 text-[12.5px] font-semibold text-accent-soft"
+        >
+          날짜 해제 ✕
+        </Link>
+      )}
+    </form>
   );
 }

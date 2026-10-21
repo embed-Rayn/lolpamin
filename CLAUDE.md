@@ -137,7 +137,8 @@ rules as the Riot ID refresh). Its button lives on `/member-admin`, not `/matche
 champion (`topMasteries`). The API names champions by numeric key, mapped through
 `ddragon-map.json`'s `championKeys`.
 
-`/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and pages
+`/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and by one Seoul day
+(`?date=YYYY-MM-DD`, a GET form, matched on `playedAt`), and pages
 20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
 page). `canCancel` is decided **per mode** across the whole table, not the
 current page or filter, because `cancelGameResult` accepts the newest live game
@@ -145,6 +146,15 @@ of the game's own mode — so 협곡 and 칼바람 each have one cancellable row
 date-time (`/replay-import` defaults it to the `.rofl` file's lastModified — replays carry
 no wall clock) and shown in Seoul time (`formatPlayedAt`); games imported while only a date
 was sent sit at UTC midnight and show their date alone instead of a fake 09:00.
+
+`/match-calendar` (내전 캘린더, public, for showing outsiders how active the group is) lays
+one Seoul month (`?month=YYYY-MM`, never a future month) out Sunday-first: each day is
+tinted by its game count on an absolute scale (`calendarHeatLevel`, not relative to the
+month — a quiet month should look quiet) and dotted one dot per game, 협곡 `bg-rift` blue,
+칼바람 `bg-aram` red (own colour tokens, because the pink skin's accent and danger are both
+pink); past `CALENDAR_DOT_LIMIT` a day shows per-mode numbers instead. Cancelled games are
+not counted, though `/match-history` still lists them. A day with games links to
+`/match-history?date=`. The month math is `buildMonthCalendar` in `packages/core`.
 
 `/player-stats` aggregates rift results per member per lane from `ReplayPlayerStat`
 only — a hand-entered game has no position or KDA, so its count can be lower than
@@ -385,8 +395,8 @@ server → client boundary.
 
 ## Mobile
 
-Ten read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`) work down to a
+Eleven read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/match-calendar`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`) work down to a
 375px phone; the fifteen operator screens (`matches`, `replay-import`, `team-builder`,
 `kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
 `events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/new`, `meeting-notes/[id]`,
