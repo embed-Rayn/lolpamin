@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import type { MemberTier } from "@lolpamin/db";
-import { laneLabel, TIER_OPTIONS, tierLabel, type DraftSide } from "@lolpamin/core";
+import { TIER_OPTIONS, tierLabel, type DraftSide } from "@lolpamin/core";
 import type { LineupCandidate, LineupGuest } from "@/lib/team-builder/lineup";
 import { acceptDrag, readDragPayload, setDragPayload, type DragPayload } from "@/components/draft/dnd";
 import { GuestMmrInput, LaneSelect } from "@/components/draft/CandidateTable";
 import { MasteryChampionStrip } from "@/components/MasteryChampionStrip";
 import { MemberTierCell } from "@/components/MemberTierCell";
+import { MemberLaneCell } from "@/components/MemberLaneCell";
 import { tierTone } from "./tier-tone";
 
 const GRID = "grid grid-cols-[18px_120px_minmax(0,1fr)_60px_88px_60px_64px_64px_240px_52px] items-center gap-3";
@@ -150,20 +151,20 @@ export function ParticipantBench({
             ) : (
               <span className="text-right font-mono font-bold">{c.mmr}</span>
             )}
-            {c.isGuest ? (
-              <div onClick={stop} onMouseDown={stop}>
+            <div onClick={stop} onMouseDown={stop}>
+              {c.memberId === null ? (
                 <LaneSelect value={c.mainLane} onChange={(mainLane) => onGuestChange(c.name, { mainLane })} />
-              </div>
-            ) : (
-              <span className="text-center">{laneLabel(c.mainLane)}</span>
-            )}
-            {c.isGuest ? (
-              <div onClick={stop} onMouseDown={stop}>
+              ) : (
+                <MemberLaneCell key={c.key} memberId={c.memberId} slot="main" lane={c.mainLane} isAdmin />
+              )}
+            </div>
+            <div onClick={stop} onMouseDown={stop}>
+              {c.memberId === null ? (
                 <LaneSelect value={c.subLane} onChange={(subLane) => onGuestChange(c.name, { subLane })} />
-              </div>
-            ) : (
-              <span className="text-center text-muted">{laneLabel(c.subLane)}</span>
-            )}
+              ) : (
+                <MemberLaneCell key={c.key} memberId={c.memberId} slot="sub" lane={c.subLane} isAdmin />
+              )}
+            </div>
             <MasteryChampionStrip masteries={c.masteries.slice(0, 5)} />
             <span
               className={`rounded-full px-2 py-0.5 text-center text-[11px] font-bold ${

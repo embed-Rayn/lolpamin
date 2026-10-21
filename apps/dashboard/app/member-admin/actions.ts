@@ -69,6 +69,8 @@ export async function updateMemberLaneAction(
   revalidatePath("/member-admin");
   revalidatePath("/member-info");
   revalidatePath("/rift");
+  revalidatePath("/team-builder");
+  revalidatePath("/matches");
   return { error: null };
 }
 
