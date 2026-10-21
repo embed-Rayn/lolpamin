@@ -37,7 +37,7 @@ async function accountWith(memberId: string, puuid: string, gameName: string, ro
 
 describe("getDraftPool", () => {
   it("combines masteries over every account and shows the heaviest account as the riot id", async () => {
-    const m = await prisma.member.create({ data: { realName: "가", mainLane: "MID", subLane: "TOP", tier: "EMERALD_2" } });
+    const m = await prisma.member.create({ data: { realName: "가", mainLane: "MID", subLane: "TOP", tier: "EMERALD_2", peakTier: "DIAMOND_3" } });
     await accountWith(m.id, "p-1", "본캐", [[1, 10, 500], [2, 9, 400]]);
     await accountWith(m.id, "p-2", "부캐", [[2, 12, 300], [3, 5, 50]]);
 
@@ -46,6 +46,7 @@ describe("getDraftPool", () => {
     expect(row).toMatchObject({
       id: m.id,
       tier: "EMERALD_2",
+      peakTier: "DIAMOND_3",
       mainLane: "MID",
       subLane: "TOP",
       riotId: "본캐#KR1",

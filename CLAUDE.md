@@ -218,8 +218,11 @@ second call per account. Compare tiers with `isHigherTier` (ladder order), not t
 that (25–30), 아이언 and 언랭 both 0 — and is never stored, so editing the table
 moves every score at once. It feeds `/team-builder` (2.3, admin-only), where an admin
 picks participants with the `/matches` picker (same `getDraftPool`, guests get a
-hand-picked tier) and drags them into a mirrored BLUE/RED lineup; the footer shows the
-tier-score **sum** gap and the **average** MMR gap (`lineupSideStats`). Seating has none
+hand-picked tier) and drags them — or clicks a chip, then a seat — into a mirrored
+BLUE/RED lineup. The picker folds once ten are chosen and the participant chips stay
+sticky, so chips and lineup fit one screen; each chip shows 최고티어 and lets the admin
+edit 산정티어 in place (`MemberTierCell`). The footer shows the 산정티어-score **sum** gap
+and the **average** MMR gap (`lineupSideStats`). Seating has none
 of the draft's rules — `lineupReducer` in `packages/core` swaps two seated players and
 bumps an occupant back to the bench. Nothing is saved: state lives in `sessionStorage`
 (`lolpamin.team-builder.v1`, apart from the draft's key). `packages/core` imports the `MemberTier` type from `@lolpamin/db` — the

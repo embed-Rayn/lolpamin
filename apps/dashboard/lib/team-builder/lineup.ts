@@ -19,7 +19,12 @@ export interface LineupGuest extends Guest {
 }
 
 export interface LineupCandidate extends Candidate {
+  // 산정티어 — 점수 합에 들어가는 값.
   tier: MemberTier;
+  // 최고티어. 게스트는 없다(null).
+  peakTier: MemberTier | null;
+  // 산정티어를 고칠 회원 id. 게스트는 null.
+  memberId: string | null;
 }
 
 export function buildLineupCandidates(
@@ -31,7 +36,13 @@ export function buildLineupCandidates(
     ...pool.map((m) => [memberKey(m.id), m.tier] as const),
     ...guests.map((g) => [guestKey(g.name), g.tier] as const),
   ]);
-  return buildCandidates(pool, participantIds, guests).map((c) => ({ ...c, tier: tiers.get(c.key) ?? "UNRANKED" }));
+  const byKey = new Map(pool.map((m) => [memberKey(m.id), m]));
+  return buildCandidates(pool, participantIds, guests).map((c) => ({
+    ...c,
+    tier: tiers.get(c.key) ?? "UNRANKED",
+    peakTier: byKey.get(c.key)?.peakTier ?? null,
+    memberId: byKey.get(c.key)?.id ?? null,
+  }));
 }
 
 export function sideStats(

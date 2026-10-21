@@ -8,6 +8,8 @@ export interface DraftPoolMember {
   mmr: number;
   // 산정티어. 수동 팀짜기가 점수 합을 낸다(tierScore).
   tier: MemberTier;
+  // 최고티어. 참고값이라 점수에 들어가지 않는다.
+  peakTier: MemberTier;
   wins: number;
   losses: number;
   mainLane: Lane | null;
@@ -32,6 +34,7 @@ export async function getDraftPool(prisma: PrismaClient): Promise<DraftPoolMembe
       id: true,
       mainLane: true,
       subLane: true,
+      peakTier: true,
       riotId: true,
       riotAccounts: {
         orderBy: { firstSeenAt: "asc" },
@@ -66,6 +69,7 @@ export async function getDraftPool(prisma: PrismaClient): Promise<DraftPoolMembe
       name: m.name,
       mmr: m.mmr,
       tier: m.tier,
+      peakTier: detail.peakTier,
       wins: m.wins,
       losses: m.losses,
       mainLane: detail.mainLane,
