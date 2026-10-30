@@ -8,7 +8,9 @@ import {
   MEETING_NOTE_BODY_MAX,
   MEETING_NOTE_IMAGE_MAX_BYTES,
   MeetingNoteConflictError,
+  MeetingNoteTaskChangedError,
   MeetingNoteValidationError,
+  toggleMeetingNoteTask,
   UNATTACHED_IMAGE_TTL_MS,
   updateMeetingNote,
 } from "./meeting-notes";
@@ -121,6 +123,46 @@ describe("updateMeetingNote", () => {
     await updateMeetingNote(prisma, id, input(""), 0, null);
     expect(await prisma.meetingNoteImage.count({ where: { noteId: id } })).toBe(0);
     expect(await prisma.meetingNoteImage.findUnique({ where: { id: image.id } })).toBeNull();
+  });
+});
+
+describe("updateMeetingNote conflict", () => {
+  it("carries the current note on the error", async () => {
+    const op = await prisma.admin.create({ data: { username: "op", passwordHash: "x" } });
+    const { id } = await createMeetingNote(prisma, input("A"), null);
+    await updateMeetingNote(prisma, id, input("B", "바뀐 제목"), 0, op.id);
+    const error = await updateMeetingNote(prisma, id, input("C"), 0, null).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(MeetingNoteConflictError);
+    expect((error as MeetingNoteConflictError).current).toMatchObject({
+      title: "바뀐 제목",
+      meetingDate: "2026-10-02",
+      body: "B",
+      version: 1,
+      updatedByName: "op",
+    });
+    expect((error as MeetingNoteConflictError).current.updatedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe("toggleMeetingNoteTask", () => {
+  it("flips only that line, bumps version and records the admin", async () => {
+    const op = await prisma.admin.create({ data: { username: "op", passwordHash: "x" } });
+    const { id } = await createMeetingNote(prisma, input("- [ ] a\n- [ ] a"), null);
+    await toggleMeetingNoteTask(prisma, id, 1, "a", true, op.id);
+    const note = await prisma.meetingNote.findUniqueOrThrow({ where: { id } });
+    expect(note.body).toBe("- [ ] a\n- [x] a");
+    expect(note.version).toBe(1);
+    expect(note.updatedById).toBe(op.id);
+  });
+
+  it("refuses when the line no longer holds that task", async () => {
+    const { id } = await createMeetingNote(prisma, input("- [ ] a"), null);
+    await expect(toggleMeetingNoteTask(prisma, id, 0, "b", true, null)).rejects.toThrow(MeetingNoteTaskChangedError);
+    expect((await prisma.meetingNote.findUniqueOrThrow({ where: { id } })).body).toBe("- [ ] a");
+  });
+
+  it("rejects a missing note", async () => {
+    await expect(toggleMeetingNoteTask(prisma, "nope", 0, "a", true, null)).rejects.toThrow("회의록을 찾을 수 없습니다.");
   });
 });
 

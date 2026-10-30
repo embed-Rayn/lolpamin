@@ -8,24 +8,33 @@ import {
   createMeetingNote,
   deleteMeetingNote,
   MeetingNoteConflictError,
+  MeetingNoteTaskChangedError,
   MeetingNoteValidationError,
+  toggleMeetingNoteTask,
   updateMeetingNote,
+  type MeetingNoteSnapshot,
 } from "@/lib/mutations/meeting-notes";
 
 interface MeetingNoteActionResult {
   error: string | null;
 }
 
+// MeetingNoteSnapshot with the date as a string: server-action results cross to the client.
+export type MeetingNoteSnapshotDto = Omit<MeetingNoteSnapshot, "updatedAt"> & { updatedAt: string };
+
 // Validation and conflict messages are written for the operator; anything else (a Prisma
 // error in English) is replaced by a short Korean fallback.
 function toMessage(error: unknown, fallback: string): string {
-  return error instanceof MeetingNoteValidationError || error instanceof MeetingNoteConflictError
+  return error instanceof MeetingNoteValidationError ||
+    error instanceof MeetingNoteConflictError ||
+    error instanceof MeetingNoteTaskChangedError
     ? error.message
     : fallback;
 }
 
 function revalidateNote(id: string) {
   revalidatePath("/meeting-notes");
+  revalidatePath("/meeting-notes/tasks");
   revalidatePath(`/meeting-notes/${id}`);
   revalidatePath(`/meeting-notes/${id}/edit`);
 }
@@ -54,7 +63,10 @@ export async function createMeetingNoteAction(
   return { error: null, id };
 }
 
-export async function updateMeetingNoteAction(id: string, formData: FormData): Promise<MeetingNoteActionResult> {
+export async function updateMeetingNoteAction(
+  id: string,
+  formData: FormData,
+): Promise<MeetingNoteActionResult & { conflict?: MeetingNoteSnapshotDto }> {
   const acting = await requireAdmin();
   // Number("") is 0, which would pass as a real version; an empty field must fail validation.
   const rawVersion = String(formData.get("version") ?? "");
@@ -62,9 +74,28 @@ export async function updateMeetingNoteAction(id: string, formData: FormData): P
   try {
     await updateMeetingNote(prisma, id, readInput(formData), version, acting.id);
   } catch (error) {
+    if (error instanceof MeetingNoteConflictError) {
+      return { error: error.message, conflict: { ...error.current, updatedAt: error.current.updatedAt.toISOString() } };
+    }
     return { error: toMessage(error, "회의록을 저장하지 못했습니다.") };
   }
   revalidateNote(id);
+  return { error: null };
+}
+
+export async function toggleMeetingNoteTaskAction(
+  noteId: string,
+  line: number,
+  expectedText: string,
+  checked: boolean,
+): Promise<MeetingNoteActionResult> {
+  const acting = await requireAdmin();
+  try {
+    await toggleMeetingNoteTask(prisma, noteId, line, expectedText, checked, acting.id);
+  } catch (error) {
+    return { error: toMessage(error, "할 일을 저장하지 못했습니다.") };
+  }
+  revalidateNote(noteId);
   return { error: null };
 }
 

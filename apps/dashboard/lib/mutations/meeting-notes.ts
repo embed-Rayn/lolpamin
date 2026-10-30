@@ -1,4 +1,10 @@
-import { extractMeetingNoteImageIds, formatEventDateTime, parseMeetingDateInput } from "@lolpamin/core";
+import {
+  extractMeetingNoteImageIds,
+  formatEventDateTime,
+  parseMeetingDateInput,
+  toggleMeetingNoteTaskLine,
+  toMeetingDateInput,
+} from "@lolpamin/core";
 import type { Prisma, PrismaClient } from "@lolpamin/db";
 import { adminLabel, adminNames } from "@/lib/queries/meeting-notes";
 
@@ -10,13 +16,30 @@ export const UNATTACHED_IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class MeetingNoteValidationError extends Error {}
 
+// The note as it stands, handed back on a conflict so the editor can carry ticks over or
+// show both versions side by side.
+export interface MeetingNoteSnapshot {
+  title: string;
+  meetingDate: string; // YYYY-MM-DD
+  body: string;
+  version: number;
+  updatedByName: string;
+  updatedAt: Date;
+}
+
 // The message is shown to the operator as is; their typed text stays in the editor.
 export class MeetingNoteConflictError extends Error {
-  constructor(updatedAt: Date, updatedByName: string) {
+  constructor(readonly current: MeetingNoteSnapshot) {
     super(
-      `다른 운영진(${updatedByName})이 ${formatEventDateTime(updatedAt)}에 먼저 수정했습니다. ` +
+      `다른 운영진(${current.updatedByName})이 ${formatEventDateTime(current.updatedAt)}에 먼저 수정했습니다. ` +
         "내 내용은 화면에 남아 있으니 복사해 두고 새로 고침한 뒤 다시 반영해 주세요.",
     );
+  }
+}
+
+export class MeetingNoteTaskChangedError extends Error {
+  constructor() {
+    super("회의록이 바뀌었습니다. 새로 고침해 주세요.");
   }
 }
 
@@ -90,16 +113,53 @@ export async function updateMeetingNote(
       data: { ...data, updatedById: adminId, version: { increment: 1 } },
     });
     if (count === 0) {
-      const current = await tx.meetingNote.findUnique({ where: { id }, select: { updatedAt: true, updatedById: true } });
+      const current = await tx.meetingNote.findUnique({
+        where: { id },
+        select: { title: true, meetingDate: true, body: true, version: true, updatedAt: true, updatedById: true },
+      });
       if (!current) throw new MeetingNoteValidationError(NOTE_NOT_FOUND);
       const names = await adminNames(tx, [current.updatedById]);
-      throw new MeetingNoteConflictError(current.updatedAt, adminLabel(names, current.updatedById));
+      throw new MeetingNoteConflictError({
+        title: current.title,
+        meetingDate: toMeetingDateInput(current.meetingDate),
+        body: current.body,
+        version: current.version,
+        updatedByName: adminLabel(names, current.updatedById),
+        updatedAt: current.updatedAt,
+      });
     }
 
     const imageIds = extractMeetingNoteImageIds(data.body);
     await attachReferencedImages(tx, id, imageIds);
     // An image the body no longer mentions is gone from the note for good.
     await tx.meetingNoteImage.deleteMany({ where: { noteId: id, id: { notIn: imageIds } } });
+  });
+}
+
+// A tick from the view page or the task board. No expectedVersion: it rewrites one checkbox,
+// never someone's text — but it checks that line `line` still holds the task the caller saw,
+// and bumps version so an editor open on this note goes through the conflict flow on save.
+export async function toggleMeetingNoteTask(
+  prisma: PrismaClient,
+  noteId: string,
+  line: number,
+  expectedText: string,
+  checked: boolean,
+  adminId: string | null,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const note = await tx.meetingNote.findUnique({
+      where: { id: noteId },
+      select: { body: true, version: true, meetingDate: true },
+    });
+    if (!note) throw new MeetingNoteValidationError(NOTE_NOT_FOUND);
+    const body = toggleMeetingNoteTaskLine(note.body, note.meetingDate, line, expectedText, checked);
+    if (body === null) throw new MeetingNoteTaskChangedError();
+    const { count } = await tx.meetingNote.updateMany({
+      where: { id: noteId, version: note.version },
+      data: { body, updatedById: adminId, version: { increment: 1 } },
+    });
+    if (count === 0) throw new MeetingNoteTaskChangedError();
   });
 }
 
