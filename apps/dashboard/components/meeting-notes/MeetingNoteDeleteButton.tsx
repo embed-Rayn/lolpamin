@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteMeetingNoteAction } from "@/app/meeting-notes/actions";
+import { browserStorage, clearDraft, draftKey, stashKey } from "@/lib/meeting-notes/draft-storage";
 
 // Two steps: the first click arms the button, the second deletes. Not undoable.
 export function MeetingNoteDeleteButton({ noteId }: { noteId: string }) {
@@ -25,6 +26,9 @@ export function MeetingNoteDeleteButton({ noteId }: { noteId: string }) {
           setArmed(false);
           return;
         }
+        // A draft or stash of a deleted note would be offered to nobody, forever.
+        clearDraft(browserStorage(), draftKey(noteId));
+        clearDraft(browserStorage(), stashKey(noteId));
         router.push("/meeting-notes");
         router.refresh();
       } catch {

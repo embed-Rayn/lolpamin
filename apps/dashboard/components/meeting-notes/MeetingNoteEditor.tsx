@@ -6,15 +6,29 @@ import {
   addMeetingNoteImageAction,
   createMeetingNoteAction,
   updateMeetingNoteAction,
+  type MeetingNoteSnapshotDto,
 } from "@/app/meeting-notes/actions";
 import {
+  browserStorage,
+  clearDraft,
+  draftKey,
+  readDraft,
+  stashKey,
+  writeDraft,
+  type MeetingNoteDraft,
+} from "@/lib/meeting-notes/draft-storage";
+import {
   enterEdit,
+  extractMeetingNoteImageIds,
+  formatEventDateTime,
+  rebaseMeetingNoteToggles,
   indentEdit,
   toggleBoldEdit,
   togglePrefixEdit,
   type LinePrefix,
   type TextEdit,
 } from "@lolpamin/core";
+import { ConflictPanel } from "./ConflictPanel";
 import { EditorToolbar } from "./EditorToolbar";
 import { MeetingNoteBody, type MeetingNoteTaskToggle } from "./MeetingNoteBody";
 
@@ -22,6 +36,22 @@ const TITLE_MAX = 100;
 const BODY_MAX = 50_000;
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const DRAFT_DELAY_MS = 2000;
+// How many times a save carries other admins' ticks over before showing the conflict panel.
+const REBASE_ATTEMPTS = 2;
+
+interface NoteValues {
+  title: string;
+  meetingDate: string;
+  body: string;
+}
+
+interface NoteBase extends NoteValues {
+  version: number | null;
+}
+
+const sameValues = (a: NoteValues, b: NoteValues) =>
+  a.title === b.title && a.meetingDate === b.meetingDate && a.body === b.body;
 
 // Replaces (or with null removes) the first line equal to `line`. Placeholders are unique,
 // so the line the upload inserted is found wherever the operator's typing has pushed it.
@@ -34,10 +64,12 @@ function replaceLine(body: string, line: string, next: string | null): string {
   return lines.join("\n");
 }
 
-// New note when noteId is absent; otherwise an edit opened at `version`.
+// New note when noteId is absent; otherwise an edit opened at `version`, last saved by
+// updatedByName.
 export function MeetingNoteEditor({
   noteId,
   version,
+  updatedByName,
   initialTitle,
   initialMeetingDate,
   initialBody,
@@ -45,6 +77,7 @@ export function MeetingNoteEditor({
 }: {
   noteId?: string;
   version?: number;
+  updatedByName?: string;
   initialTitle: string;
   initialMeetingDate: string;
   initialBody: string;
@@ -63,6 +96,77 @@ export function MeetingNoteEditor({
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // The server values this editor's text is based on. A ref, because the save's conflict
+  // handling reads it inside an async chain where state would be stale.
+  const baseRef = useRef<NoteBase>({
+    version: version ?? null,
+    title: initialTitle,
+    meetingDate: initialMeetingDate,
+    body: initialBody,
+  });
+  const [draftOffer, setDraftOffer] = useState<MeetingNoteDraft | null>(null);
+  const [draftChecked, setDraftChecked] = useState(false);
+  const [stash, setStash] = useState<MeetingNoteDraft | null>(null);
+  const [conflict, setConflict] = useState<MeetingNoteSnapshotDto | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // On open, offer a draft this browser kept for this note if it differs from the server's.
+  useEffect(() => {
+    const storage = browserStorage();
+    const draft = readDraft(storage, draftKey(noteId));
+    if (draft && !sameValues(draft, { title: initialTitle, meetingDate: initialMeetingDate, body: initialBody })) {
+      setDraftOffer(draft);
+    }
+    if (noteId) setStash(readDraft(storage, stashKey(noteId)));
+    setDraftChecked(true);
+    // Mount only: the props are the server values the page was opened with.
+  }, []);
+
+  // Autosave. Held while an older draft is still on offer, so typing does not overwrite it
+  // before the operator chose 불러오기 or 버리기.
+  useEffect(() => {
+    if (!draftChecked || draftOffer) return;
+    const timer = window.setTimeout(() => {
+      const base = baseRef.current;
+      const key = draftKey(noteId);
+      if (sameValues({ title, meetingDate, body }, base)) {
+        clearDraft(browserStorage(), key);
+        return;
+      }
+      writeDraft(browserStorage(), key, {
+        title,
+        meetingDate,
+        body,
+        imageIds,
+        baseVersion: base.version,
+        baseTitle: noteId ? base.title : null,
+        baseMeetingDate: noteId ? base.meetingDate : null,
+        baseBody: noteId ? base.body : null,
+        savedAt: new Date().toISOString(),
+      });
+    }, DRAFT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [draftChecked, draftOffer, noteId, title, meetingDate, body, imageIds]);
+
+  function loadDraft(draft: MeetingNoteDraft) {
+    setTitle(draft.title);
+    setMeetingDate(draft.meetingDate);
+    setBody(draft.body);
+    setImageIds((ids) => [...new Set([...ids, ...draft.imageIds])]);
+    // Saving goes through the conflict rules against what the draft was written on.
+    baseRef.current = {
+      version: draft.baseVersion ?? baseRef.current.version,
+      title: draft.baseTitle ?? baseRef.current.title,
+      meetingDate: draft.baseMeetingDate ?? baseRef.current.meetingDate,
+      body: draft.baseBody ?? baseRef.current.body,
+    };
+    setDraftOffer(null);
+  }
+
+  function discardDraft() {
+    clearDraft(browserStorage(), draftKey(noteId));
+    setDraftOffer(null);
+  }
 
   // Writing a new `value` to a controlled textarea sends the caret to the end, so a
   // programmatic body change records where the caret should land and the layout effect
@@ -280,41 +384,181 @@ export function MeetingNoteEditor({
     accepted.forEach((file, i) => void uploadOne(file, placeholders[i]));
   }
 
+  function finishSaved(id: string, applied: number) {
+    clearDraft(browserStorage(), draftKey(noteId));
+    const go = () => {
+      router.push(`/meeting-notes/${id}`);
+      router.refresh();
+    };
+    if (applied > 0) {
+      setNotice(`다른 운영진의 체크 ${applied}건을 반영해 저장했습니다.`);
+      window.setTimeout(go, 1200);
+    } else {
+      go();
+    }
+  }
+
+  // Saves `values` against baseRef. A conflict where only checkboxes moved is carried over
+  // and retried (up to REBASE_ATTEMPTS); any other conflict opens the side-by-side panel.
+  async function submitUpdate(id: string, values: NoteValues, applied: number, attempt: number): Promise<void> {
+    const formData = new FormData();
+    formData.set("title", values.title);
+    formData.set("meetingDate", values.meetingDate);
+    formData.set("body", values.body);
+    formData.set("version", String(baseRef.current.version ?? ""));
+    const result = await updateMeetingNoteAction(id, formData);
+    if (!result.error) {
+      finishSaved(id, applied);
+      return;
+    }
+    const current = result.conflict;
+    if (!current) {
+      setError(result.error);
+      return;
+    }
+    const base = baseRef.current;
+    const rebased =
+      current.title === base.title && current.meetingDate === base.meetingDate
+        ? rebaseMeetingNoteToggles(base.body, current.body, values.body)
+        : null;
+    if (rebased && attempt < REBASE_ATTEMPTS) {
+      baseRef.current = { version: current.version, title: current.title, meetingDate: current.meetingDate, body: current.body };
+      setBody(rebased.body);
+      await submitUpdate(id, { ...values, body: rebased.body }, applied + rebased.applied, attempt + 1);
+      return;
+    }
+    setConflict(current);
+  }
+
   function save(event: React.FormEvent) {
     event.preventDefault();
-    if (uploading > 0) return;
-    const formData = new FormData();
-    formData.set("title", title);
-    formData.set("meetingDate", meetingDate);
-    formData.set("body", body);
+    if (uploading > 0 || conflict) return;
+    const values = { title, meetingDate, body };
     setError(null);
     startTransition(async () => {
       try {
         if (noteId) {
-          formData.set("version", String(version ?? ""));
-          const result = await updateMeetingNoteAction(noteId, formData);
-          if (result.error) {
-            setError(result.error);
-            return;
-          }
-          router.push(`/meeting-notes/${noteId}`);
-          router.refresh();
+          await submitUpdate(noteId, values, 0, 0);
           return;
         }
+        const formData = new FormData();
+        formData.set("title", values.title);
+        formData.set("meetingDate", values.meetingDate);
+        formData.set("body", values.body);
         const result = await createMeetingNoteAction(formData);
         if (result.error || !result.id) {
           setError(result.error ?? "회의록을 저장하지 못했습니다.");
           return;
         }
-        router.push(`/meeting-notes/${result.id}`);
+        finishSaved(result.id, 0);
       } catch {
         setError("회의록을 저장하지 못했습니다. 로그인 상태를 확인해 주세요.");
       }
     });
   }
 
+  function overwrite(current: MeetingNoteSnapshotDto) {
+    if (!noteId || !window.confirm(`${current.updatedByName}님이 고친 내용을 내 글로 덮어씁니다. 계속할까요?`)) return;
+    baseRef.current = { version: current.version, title: current.title, meetingDate: current.meetingDate, body: current.body };
+    setConflict(null);
+    setError(null);
+    const values = { title, meetingDate, body };
+    startTransition(async () => {
+      try {
+        await submitUpdate(noteId, values, 0, REBASE_ATTEMPTS);
+      } catch {
+        setError("회의록을 저장하지 못했습니다. 로그인 상태를 확인해 주세요.");
+      }
+    });
+  }
+
+  // Keeps my text in the stash, then reopens the editor on the other admin's version.
+  function loadTheirs(current: MeetingNoteSnapshotDto) {
+    if (!noteId) return;
+    const mine: MeetingNoteDraft = {
+      title,
+      meetingDate,
+      body,
+      imageIds,
+      baseVersion: null,
+      baseTitle: null,
+      baseMeetingDate: null,
+      baseBody: null,
+      savedAt: new Date().toISOString(),
+    };
+    writeDraft(browserStorage(), stashKey(noteId), mine);
+    setStash(mine);
+    baseRef.current = { version: current.version, title: current.title, meetingDate: current.meetingDate, body: current.body };
+    setTitle(current.title);
+    setMeetingDate(current.meetingDate);
+    setBody(current.body);
+    setImageIds((ids) => [...new Set([...ids, ...extractMeetingNoteImageIds(current.body)])]);
+    setConflict(null);
+    setError(null);
+  }
+
+  function dropStash() {
+    if (noteId) clearDraft(browserStorage(), stashKey(noteId));
+    setStash(null);
+  }
+
   return (
     <form onSubmit={save} className="flex flex-col gap-3 rounded-xl border border-ink/[.06] bg-surface p-5">
+      {draftOffer && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-orange/40 bg-orange/[.08] px-3 py-2 text-[12.5px] text-fg-2">
+          <span>
+            저장하지 않은 내용이 있습니다 ({formatEventDateTime(new Date(draftOffer.savedAt))})
+            {noteId && draftOffer.baseVersion !== null && draftOffer.baseVersion !== version && (
+              <> · 그 사이 {updatedByName ?? "다른 운영진"}님이 수정했습니다</>
+            )}
+          </span>
+          <span className="flex flex-none gap-1.5">
+            <button
+              type="button"
+              onClick={() => loadDraft(draftOffer)}
+              className="rounded-md bg-accent px-2.5 py-1 font-bold text-white hover:bg-accent-hover"
+            >
+              불러오기
+            </button>
+            <button type="button" onClick={discardDraft} className="rounded-md border border-ink/[.12] px-2.5 py-1 font-bold">
+              버리기
+            </button>
+          </span>
+        </div>
+      )}
+      {conflict && (
+        <ConflictPanel
+          conflict={conflict}
+          mine={{ title, meetingDate, body }}
+          onOverwrite={() => overwrite(conflict)}
+          onLoadTheirs={() => loadTheirs(conflict)}
+        />
+      )}
+      {stash && (
+        <details className="rounded-lg border border-ink/[.08] bg-surface-2 px-3 py-2 text-[12.5px]">
+          <summary className="cursor-pointer font-bold text-fg-2">
+            보관한 내 글 ({formatEventDateTime(new Date(stash.savedAt))})
+          </summary>
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="text-faint">
+              {stash.title} · {stash.meetingDate}
+            </div>
+            <textarea
+              readOnly
+              value={stash.body}
+              rows={8}
+              className="rounded-md border border-ink/[.1] bg-inset px-2.5 py-1.5 font-mono text-[12.5px] text-fg"
+            />
+            <button
+              type="button"
+              onClick={dropStash}
+              className="self-start rounded-md border border-ink/[.12] px-2.5 py-1 font-bold text-fg-2"
+            >
+              보관 삭제
+            </button>
+          </div>
+        </details>
+      )}
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1.5">
           <span className="text-[13px] font-bold text-fg-2">제목</span>
@@ -406,12 +650,13 @@ export function MeetingNoteEditor({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={isPending || uploading > 0}
+          disabled={isPending || uploading > 0 || conflict !== null}
           className="rounded-lg bg-accent px-4 py-2 text-[13px] font-bold text-white hover:bg-accent-hover disabled:opacity-50"
         >
           {isPending ? "저장 중…" : "저장"}
         </button>
-        {error && <span className="text-[12.5px] text-danger-soft">{error}</span>}
+        {notice && <span className="text-[12.5px] text-success-soft">{notice}</span>}
+        {error && !conflict && <span className="text-[12.5px] text-danger-soft">{error}</span>}
       </div>
     </form>
   );

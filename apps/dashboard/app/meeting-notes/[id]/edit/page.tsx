@@ -24,6 +24,7 @@ export default async function EditMeetingNotePage({ params }: { params: { id: st
         <MeetingNoteEditor
           noteId={note.id}
           version={note.version}
+          updatedByName={note.updatedByName}
           initialTitle={note.title}
           initialMeetingDate={toMeetingDateInput(note.meetingDate)}
           initialBody={note.body}
