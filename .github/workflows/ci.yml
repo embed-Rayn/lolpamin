@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lolpamin
+          POSTGRES_PASSWORD: lolpamin
+          POSTGRES_DB: lolpamin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lolpamin -d lolpamin_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Both point at the throwaway test database. DATABASE_URL is set too so
+      # nothing can fall back to a database the tests were not meant to reset.
+      DATABASE_URL: postgresql://lolpamin:lolpamin@localhost:5432/lolpamin_test
+      DATABASE_URL_TEST: postgresql://lolpamin:lolpamin@localhost:5432/lolpamin_test
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the node:20 base image the Dockerfiles build on.
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run generate --workspace=@lolpamin/db
+
+      - name: Apply migrations to the test database
+        run: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
+
+      - name: Test
+        run: npm test
+
+      - name: Build dashboard
+        run: npm run build --workspace=dashboard
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Required reviewers on this environment are the manual approval gate.
+    environment: production
+    # Never run two deploys at once, and never cancel one halfway through.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host oci
+            HostName ${{ secrets.OCI_INSTANCE_IP }}
+            Port ${{ secrets.OCI_INSTANCE_SSH_PORT }}
+            User ${{ secrets.OCI_INSTANCE_SSH_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          EOF
+
+      # Same three steps as the manual deploy in CLAUDE.md. git archive only
+      # overwrites: files deleted in git still have to be removed by hand.
+      - name: Sync tree
+        run: git archive HEAD | ssh oci 'tar x -C ~/lolpamin'
+
+      - name: Build images
+        run: ssh oci 'cd ~/lolpamin && sudo docker compose -f docker-compose.prod.yml build'
+
+      - name: Restart services
+        run: ssh oci 'cd ~/lolpamin && sudo docker compose -f docker-compose.prod.yml up -d'
+
+      # The dashboard runs prisma migrate deploy before next start, so a
+      # schema mismatch shows up here as a dashboard that never answers.
+      - name: Health check
+        run: |
+          curl -fsS -o /dev/null --retry 24 --retry-delay 5 --retry-all-errors \
+            "http://${{ secrets.OCI_INSTANCE_IP }}:3200/"
