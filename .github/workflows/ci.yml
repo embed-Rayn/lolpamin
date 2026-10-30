@@ -83,9 +83,13 @@ jobs:
           KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          # Secrets set from a Windows shell arrive with CRLF line ends; a trailing \r on a
+          # key line makes ssh reject the host key ("Host key verification failed").
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          # Public fingerprints only, so a mismatch is diagnosable from the log.
+          ssh-keygen -l -f ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host oci
             HostName ${{ secrets.OCI_INSTANCE_IP }}
@@ -95,6 +99,7 @@ jobs:
             IdentitiesOnly yes
             StrictHostKeyChecking yes
           EOF
+          sed -i 's/\r$//' ~/.ssh/config
 
       # Same three steps as the manual deploy in CLAUDE.md. git archive only
       # overwrites: files deleted in git still have to be removed by hand.
