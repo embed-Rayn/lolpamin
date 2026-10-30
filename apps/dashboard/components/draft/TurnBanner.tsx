@@ -30,7 +30,7 @@ export function TurnBanner({
     text = "";
   }
 
-  const tone = turn === "blue" ? "border-accent/50 bg-accent/10" : turn === "red" ? "border-danger/50 bg-danger/10" : "border-ink/[.08] bg-surface";
+  const tone = turn === "blue" ? "border-team-blue/50 bg-team-blue/10" : turn === "red" ? "border-team-red/50 bg-team-red/10" : "border-ink/[.08] bg-surface";
 
   return (
     <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${tone}`}>

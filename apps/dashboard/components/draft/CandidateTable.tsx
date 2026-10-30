@@ -96,7 +96,7 @@ export function CandidateTable({
       {candidates.length === 0 && <div className="py-6 text-center text-[13px] text-faint">위에서 참여자를 선택하세요.</div>}
       {candidates.map((c, index) => {
         const seat = seatOf(draft, c.key);
-        const tone = seat?.side === "blue" ? "bg-accent/10" : seat?.side === "red" ? "bg-danger/10" : "";
+        const tone = seat?.side === "blue" ? "bg-team-blue/10" : seat?.side === "red" ? "bg-team-red/10" : "";
         return (
           <div
             key={c.key}
@@ -135,9 +135,9 @@ export function CandidateTable({
             <span
               className={`rounded border px-1.5 py-0.5 text-center text-[11.5px] font-bold ${
                 seat?.side === "blue"
-                  ? "border-accent/50 text-accent-soft"
+                  ? "border-team-blue/50 text-team-blue-soft"
                   : seat?.side === "red"
-                    ? "border-danger/50 text-danger-soft"
+                    ? "border-team-red/50 text-team-red-soft"
                     : "border-ink/[.12] text-faint"
               }`}
             >
@@ -147,12 +147,12 @@ export function CandidateTable({
               {seat === null && !captainsReady && (
                 <>
                   {draft.captains.blue === null && (
-                    <button onClick={() => onSetCaptain("blue", c)} className="rounded border border-accent/50 px-1.5 py-0.5 text-[11.5px] font-bold text-accent-soft">
+                    <button onClick={() => onSetCaptain("blue", c)} className="rounded border border-team-blue/50 px-1.5 py-0.5 text-[11.5px] font-bold text-team-blue-soft">
                       블루 팀장
                     </button>
                   )}
                   {draft.captains.red === null && (
-                    <button onClick={() => onSetCaptain("red", c)} className="rounded border border-danger/50 px-1.5 py-0.5 text-[11.5px] font-bold text-danger-soft">
+                    <button onClick={() => onSetCaptain("red", c)} className="rounded border border-team-red/50 px-1.5 py-0.5 text-[11.5px] font-bold text-team-red-soft">
                       레드 팀장
                     </button>
                   )}
@@ -161,7 +161,7 @@ export function CandidateTable({
               {seat === null && turn !== null && (
                 <button
                   onClick={() => onPick(c)}
-                  className={`rounded px-2 py-0.5 text-[11.5px] font-bold text-white ${turn === "blue" ? "bg-accent" : "bg-danger"}`}
+                  className={`rounded px-2 py-0.5 text-[11.5px] font-bold text-white ${turn === "blue" ? "bg-team-blue" : "bg-team-red"}`}
                 >
                   뽑기
                 </button>

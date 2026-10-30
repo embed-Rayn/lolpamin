@@ -49,6 +49,11 @@
   /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
   --c-rift: 59 125 224;
   --c-aram: 224 75 75;
+  /* /matches and /team-builder sides: blue and red on every skin. */
+  --c-team-blue: 59 125 224;
+  --c-team-blue-soft: 39 102 196;
+  --c-team-red: 224 75 75;
+  --c-team-red-soft: 210 52 52;
   --c-purple-tint: 239 231 254;
   --c-discord: 88 101 242;
 
@@ -91,6 +96,11 @@
   /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
   --c-rift: 66 133 244;
   --c-aram: 226 72 72;
+  /* /matches and /team-builder sides: blue and red on every skin. */
+  --c-team-blue: 66 133 244;
+  --c-team-blue-soft: 37 99 205;
+  --c-team-red: 226 72 72;
+  --c-team-red-soft: 200 50 50;
   --c-purple-tint: 246 233 255;
   --c-discord: 88 101 242;
 
@@ -133,6 +143,11 @@
   /* /match-calendar mode dots: blue and red on every skin (pink's accent is pink). */
   --c-rift: 96 150 240;
   --c-aram: 236 100 100;
+  /* /matches and /team-builder sides: blue and red on every skin. */
+  --c-team-blue: 68 114 196;
+  --c-team-blue-soft: 143 180 245;
+  --c-team-red: 224 90 90;
+  --c-team-red-soft: 238 139 139;
   --c-purple-tint: 42 32 51;
   --c-discord: 88 101 242;
 

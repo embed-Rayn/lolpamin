@@ -25,17 +25,17 @@ const ROW = "grid grid-cols-[minmax(0,1fr)_76px_minmax(0,1fr)] items-stretch gap
 const TONE: Record<DraftSide, { label: string; text: string; wash: string; ring: string; bar: string }> = {
   blue: {
     label: "BLUE",
-    text: "text-accent-soft",
-    wash: "bg-accent/[.07]",
-    ring: "border-accent/60 bg-accent/[.14]",
-    bar: "bg-accent",
+    text: "text-team-blue-soft",
+    wash: "bg-team-blue/[.07]",
+    ring: "border-team-blue/60 bg-team-blue/[.14]",
+    bar: "bg-team-blue",
   },
   red: {
     label: "RED",
-    text: "text-danger-soft",
-    wash: "bg-danger/[.07]",
-    ring: "border-danger/60 bg-danger/[.14]",
-    bar: "bg-danger",
+    text: "text-team-red-soft",
+    wash: "bg-team-red/[.07]",
+    ring: "border-team-red/60 bg-team-red/[.14]",
+    bar: "bg-team-red",
   },
 };
 
@@ -145,7 +145,7 @@ function SideBanner({ side, stats }: { side: DraftSide; stats: LineupSideStats }
   return (
     <div
       className={`flex items-center justify-between overflow-hidden rounded-2xl px-6 py-4 ${
-        blue ? "bg-gradient-to-r from-accent/25 to-accent/[.04]" : "flex-row-reverse bg-gradient-to-l from-danger/25 to-danger/[.04]"
+        blue ? "bg-gradient-to-r from-team-blue/25 to-team-blue/[.04]" : "flex-row-reverse bg-gradient-to-l from-team-red/25 to-team-red/[.04]"
       }`}
     >
       <div className={`text-[34px] font-black leading-none tracking-[.18em] ${tone.text}`}>{tone.label}</div>
@@ -188,7 +188,7 @@ function GapRow({
 
   return (
     <div className="grid grid-cols-[110px_minmax(0,1fr)_180px_minmax(0,1fr)_110px] items-center gap-4">
-      <span className="text-right font-mono text-[22px] font-extrabold text-accent-soft">{blue ?? "—"}</span>
+      <span className="text-right font-mono text-[22px] font-extrabold text-team-blue-soft">{blue ?? "—"}</span>
       <div className="relative h-2 overflow-hidden rounded-full bg-ink/[.06]">
         {leader === "blue" && <div className={`absolute right-0 top-0 h-full rounded-l-full ${TONE.blue.bar}`} style={{ width }} />}
       </div>
@@ -201,7 +201,7 @@ function GapRow({
       <div className="relative h-2 overflow-hidden rounded-full bg-ink/[.06]">
         {leader === "red" && <div className={`absolute left-0 top-0 h-full rounded-r-full ${TONE.red.bar}`} style={{ width }} />}
       </div>
-      <span className="text-left font-mono text-[22px] font-extrabold text-danger-soft">{red ?? "—"}</span>
+      <span className="text-left font-mono text-[22px] font-extrabold text-team-red-soft">{red ?? "—"}</span>
     </div>
   );
 }

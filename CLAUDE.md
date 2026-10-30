@@ -388,7 +388,9 @@ roles (`bg-surface`, `text-muted`, `border-ink/[.06]`, `text-accent-soft`…) as
 on light) and is always used with an opacity, so `border-ink/[.06]` is a faint line
 on every skin. Inline styles use `rgb(var(--c-role))`. The two canvas renderers
 (`CannonCanvas`, `MarbleRaceCanvas`) keep literal colours: the stage is dark on
-every skin. `text-white` is only allowed on a solid `bg-accent` / semantic button.
+every skin. Team sides on `/matches` and `/team-builder` use `team-blue`/`team-red`
+(`-soft` for text), never `accent`/`danger` — on the pink skin both of those are pink and
+the two teams looked the same. `text-white` is only allowed on a solid `bg-accent` / semantic button.
 Changing the skin `revalidatePath("/", "layout")` so every page re-renders with the
 new attribute.
 

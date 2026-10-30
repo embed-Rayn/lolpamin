@@ -169,9 +169,9 @@ export function ParticipantBench({
             <span
               className={`rounded-full px-2 py-0.5 text-center text-[11px] font-bold ${
                 side === "blue"
-                  ? "bg-accent/15 text-accent-soft"
+                  ? "bg-team-blue/15 text-team-blue-soft"
                   : side === "red"
-                    ? "bg-danger/15 text-danger-soft"
+                    ? "bg-team-red/15 text-team-red-soft"
                     : "bg-ink/[.06] text-faint"
               }`}
             >

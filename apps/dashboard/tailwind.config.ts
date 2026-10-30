@@ -47,6 +47,12 @@ const ROLES = [
   // game modes on /match-calendar — stay blue/red whatever the skin
   "rift",
   "aram",
+  // draft / team-builder sides — blue and red whatever the skin (pink's accent
+  // and danger are both pink)
+  "team-blue",
+  "team-blue-soft",
+  "team-red",
+  "team-red-soft",
 ] as const;
 
 const config: Config = {

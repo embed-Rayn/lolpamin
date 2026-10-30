@@ -5,8 +5,8 @@ import type { Candidate } from "@/lib/draft/candidates";
 import { acceptDrag, readDragPayload, setDragPayload, type DragPayload } from "./dnd";
 
 const HEAD: Record<DraftSide, { label: string; text: string; cell: string }> = {
-  blue: { label: "BLUE", text: "text-accent-soft", cell: "bg-accent/10" },
-  red: { label: "RED", text: "text-danger-soft", cell: "bg-danger/10" },
+  blue: { label: "BLUE", text: "text-team-blue-soft", cell: "bg-team-blue/10" },
+  red: { label: "RED", text: "text-team-red-soft", cell: "bg-team-red/10" },
 };
 
 export function EntryBoard({

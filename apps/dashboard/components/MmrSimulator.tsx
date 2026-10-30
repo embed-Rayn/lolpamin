@@ -66,7 +66,7 @@ export function MmrSimulator({
 
       <div className="flex flex-col gap-1.5 rounded-lg border border-ink/[.06] bg-inset px-3.5 py-3 font-mono text-[12px] leading-relaxed text-muted">
         <div>
-          <span className="text-accent-soft">기대승률(블루)</span> = 1 / (1 + 10<sup>((레드평균 − 블루평균) / 400)</sup>)
+          <span className="text-team-blue-soft">기대승률(블루)</span> = 1 / (1 + 10<sup>((레드평균 − 블루평균) / 400)</sup>)
         </div>
         <div>
           <span className="text-accent-soft">변동</span> = round(K × (경기결과 − 기대승률)) + 참가점수
@@ -85,8 +85,8 @@ export function MmrSimulator({
       <div className="flex flex-wrap items-end gap-3">
         {(
           [
-            ["블루 평균", blueRaw, setBlueRaw, "rgb(var(--c-accent-soft))"],
-            ["레드 평균", redRaw, setRedRaw, "rgb(var(--c-danger-soft))"],
+            ["블루 평균", blueRaw, setBlueRaw, "rgb(var(--c-team-blue-soft))"],
+            ["레드 평균", redRaw, setRedRaw, "rgb(var(--c-team-red-soft))"],
           ] as const
         ).map(([label, value, setValue, color]) => (
           <label key={label} className="flex flex-col gap-1.5">
@@ -131,8 +131,8 @@ export function MmrSimulator({
             <tbody>
               {(
                 [
-                  ["블루 팀원", "rgb(var(--c-accent-soft))", outcomes.blueWins.blueDelta, outcomes.redWins.blueDelta],
-                  ["레드 팀원", "rgb(var(--c-danger-soft))", outcomes.blueWins.redDelta, outcomes.redWins.redDelta],
+                  ["블루 팀원", "rgb(var(--c-team-blue-soft))", outcomes.blueWins.blueDelta, outcomes.redWins.blueDelta],
+                  ["레드 팀원", "rgb(var(--c-team-red-soft))", outcomes.blueWins.redDelta, outcomes.redWins.redDelta],
                 ] as const
               ).map(([label, color, onBlueWin, onRedWin]) => (
                 <tr key={label} className="border-t border-ink/[.06]">
