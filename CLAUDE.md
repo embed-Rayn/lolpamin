@@ -208,8 +208,29 @@ image delete) wins unless it is a not-yet-revealed hidden image. Thumbnails are
 login and `/api/meeting-notes/images/[id]` answers 404 (never 403, never cached) to anyone
 without a session. There is no live co-editing: the editor sends the `MeetingNote.version`
 it was opened at and `updateMeetingNote` refuses the save if it moved
-(`MeetingNoteConflictError`, naming who saved first; the typed text stays on screen).
-`version`, not `updatedAt`, because two saves can land in one millisecond. The body is a
+(`MeetingNoteConflictError`, which carries the note as it now stands).
+`version`, not `updatedAt`, because two saves can land in one millisecond. On a refused save
+the editor first asks `rebaseMeetingNoteToggles` (`packages/core`) whether only checkboxes
+moved since its base; if so it carries those ticks into the typed text and saves again (twice
+at most). Otherwise `ConflictPanel` shows both versions side by side: 「내 것으로 덮어쓰기」
+saves against the new version, 「상대 것 불러오기」 reopens on theirs and keeps mine in
+`localStorage` (`lolpamin.meeting-note.stash.<id>`, the 「보관한 내 글」 panel). The editor
+also autosaves a draft per note to `localStorage` (`lolpamin.meeting-note.draft.<id|new>`,
+`lib/meeting-notes/draft-storage.ts`) with the base it was written on, offered on reopen and
+never sent to the server. It is a split view (text left, live preview right) whose Tab,
+Enter-continues-the-list, toolbar and Ctrl+B are pure `TextEdit`s from
+`packages/core/src/meeting-note-editing.ts`, applied through `execCommand("insertText")` so
+Ctrl+Z undoes each; Enter/Tab do nothing while an IME is composing.
+
+**Tasks** are the body's checkbox items: `- [ ] @담당 내용 ~11/14` — `@name` assignees (grouped
+case-insensitively, never matched to the roster), `~M/D` due (year from `meetingDate`, an
+earlier month/day means next year), each inherited separately from the nearest ancestor list
+item that names one (`extractMeetingNoteTasks`). Computed on read, not stored.
+`/meeting-notes/tasks` (tab beside the list) groups open tasks by assignee, 미지정 last,
+due-first; overdue is `text-danger-soft`, within 3 days `text-orange`. A tick on the view
+page or the board (`toggleMeetingNoteTask`) rewrites that one line with no `version` check —
+it verifies the line still holds the same task text instead — and bumps `version`, which
+the rebase above absorbs. A checkbox inside a blockquote renders but cannot be ticked. The body is a
 standard markdown (GFM, plus `remark-breaks` so one newline is a line break) rendered by
 `react-markdown` in `MeetingNoteBody`, with **no raw-HTML plugin** — HTML in a body shows as
 text, never as markup. Nesting follows CommonMark: a sub-list must be indented to the parent
@@ -407,9 +428,9 @@ server → client boundary.
 
 Eleven read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
 `/match-history`, `/match-calendar`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`) work down to a
-375px phone; the fifteen operator screens (`matches`, `replay-import`, `team-builder`,
+375px phone; the sixteen operator screens (`matches`, `replay-import`, `team-builder`,
 `kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
-`events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/new`, `meeting-notes/[id]`,
+`events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/tasks`, `meeting-notes/new`, `meeting-notes/[id]`,
 `meeting-notes/[id]/edit`) show a "PC에서
 이용해 주세요" notice below `md` via `AppShell`'s `desktopOnly` prop — the real
 content stays in the DOM (`hidden md:block`), so a browser's "desktop site"
