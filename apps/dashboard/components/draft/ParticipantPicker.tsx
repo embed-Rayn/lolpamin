@@ -13,6 +13,7 @@ export function ParticipantPicker({
   onSelectMany,
   onAddGuest,
   onRemoveGuest,
+  onClearAll,
 }: {
   pool: DraftPoolMember[];
   selectedIds: string[];
@@ -23,12 +24,15 @@ export function ParticipantPicker({
   onSelectMany: (ids: string[]) => void;
   onAddGuest: (name: string) => void;
   onRemoveGuest: (name: string) => void;
+  // Drops every selected member and guest in one call, for the same stale-selection reason.
+  onClearAll: () => void;
 }) {
   const search = useMultiNameSearch(pool);
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState<string | null>(null);
 
   const selected = new Set(selectedIds);
+  const selectedCount = selectedIds.length + guests.length;
   const visible = [...pool]
     .sort((a, b) => a.name.localeCompare(b.name, "ko"))
     .filter(search.matches);
@@ -46,9 +50,18 @@ export function ParticipantPicker({
     <section className="flex flex-col gap-3 rounded-xl border border-ink/[.06] bg-surface px-4 py-3.5">
       <div className="flex items-center justify-between">
         <h2 className="m-0 text-[14px] font-bold">참여자 선택</h2>
-        <span className="text-[12px] text-faint">
-          {selectedIds.length + guests.length}명 선택
-        </span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[12px] text-faint">{selectedCount}명 선택</span>
+          <button
+            onClick={() => {
+              if (window.confirm("선택한 참여자를 모두 취소할까요? 배치된 자리도 함께 비워집니다.")) onClearAll();
+            }}
+            disabled={selectedCount === 0}
+            className="rounded-lg border border-ink/[.12] px-2.5 py-1 text-[12px] font-bold disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            모두 취소
+          </button>
+        </div>
       </div>
       <input
         value={search.query}

@@ -142,6 +142,12 @@ export function TeamBuilder({ pool }: { pool: DraftPoolMember[] }) {
           setGuests([...guests, { name, mmr: GUEST_DEFAULT_MMR, tier: "UNRANKED", mainLane: null, subLane: null }])
         }
         onRemoveGuest={removeGuest}
+        onClearAll={() => {
+          setPicked(null);
+          setParticipantIds([]);
+          setGuests([]);
+          apply({ type: "reset" });
+        }}
       />
       <ParticipantBench
         candidates={candidates}
