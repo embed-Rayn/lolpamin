@@ -70,7 +70,7 @@ query (`sortByDisplayedMmr`), not in `orderBy`. The board's only filters are
 their own pages. The Discord bot still shows stored ratings. `/members` is a
 permanent redirect to `/rift`. The two boards are read-only and lay out differently (`MemberTable`'s
 `mode`): `/rift` shows 주라인·부라인 (editable in place by admins through `MemberLaneCell`) and 최고티어 (`peakTier`, sortable), `/aram` drops
-tier altogether and shows the top 10 champions with their summed mastery points (`/rift` the top 5, `/matches` candidates the top 7, all through the same strip; points read 999 / 73k / 1.2M)
+tier altogether and shows the top 10 champions with their summed mastery points (`/rift` the top 5, `/matches` candidates the top 7, `/member-admin` the top 3, all through the same strip; points read 999 / 73k / 1.2M)
 (`MasteryChampionStrip`, `formatMasteryPoints`). Neither shows the Discord name or
 deletes members — 관리 (`DeleteMemberButton`) lives on `/member-admin`. `/member-info` shows the same displayed rating
 per mode beside each 판 column, and its 평균 MMR cards average the **stored**

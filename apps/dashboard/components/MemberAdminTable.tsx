@@ -6,15 +6,15 @@ import { MemberAgeCell } from "@/components/MemberAgeCell";
 import { MemberTierCell } from "@/components/MemberTierCell";
 import { MemberLaneCell } from "@/components/MemberLaneCell";
 import { MemberRiotAccountsCell } from "@/components/MemberRiotAccountsCell";
-import { MasteryChampions } from "@/components/MasteryChampions";
+import { MasteryChampionStrip } from "@/components/MasteryChampionStrip";
 import { InactiveLastActiveCell } from "@/components/InactiveLastActiveCell";
 import { MemberNoteCell } from "@/components/MemberNoteCell";
 import { DeleteMemberButton } from "@/components/DeleteMemberButton";
 
-// 순번·나이·활동일은 몇 글자라 고정폭, 티어 두 칸은 select라 조금 넓게. 모스트는 아이콘
-// 세 개와 레벨이 들어간다. 라이엇 계정(칩 + 입력창)과 비고가 남는 폭을 나눠 가진다. 맨 끝
+// 순번·나이·활동일은 몇 글자라 고정폭, 티어 두 칸은 select라 조금 넓게. 모스트는 초상화
+// 세 개와 숙련도 포인트가 들어간다. 라이엇 계정(칩 + 입력창)과 비고가 남는 폭을 나눠 가진다. 맨 끝
 // 관리(회원 삭제)는 /rift에서 옮겨 왔다.
-const GRID = "grid-cols-[40px_88px_56px_104px_104px_72px_72px_1.4fr_132px_136px_64px_1fr_64px]";
+const GRID = "grid-cols-[40px_88px_56px_104px_104px_72px_72px_1.4fr_144px_136px_64px_1fr_64px]";
 
 // 이름·나이는 오름차순, 티어는 높은 쪽부터, 최근 활동은 오래된 쪽부터 시작한다 — 이 화면에서
 // 찾는 것은 "누가 오래 안 나왔나"다.
@@ -87,7 +87,7 @@ export function MemberAdminTable({
           <MemberLaneCell memberId={m.id} slot="main" lane={m.mainLane} isAdmin />
           <MemberLaneCell memberId={m.id} slot="sub" lane={m.subLane} isAdmin />
           <MemberRiotAccountsCell memberId={m.id} accounts={m.riotAccounts} isAdmin />
-          <MasteryChampions masteries={m.masteries} />
+          <MasteryChampionStrip masteries={m.masteries} />
           <InactiveLastActiveCell memberId={m.id} lastActiveDate={m.lastActiveDate} isAdmin />
           <div className={`text-center font-mono text-[12.5px] ${daysClassName(m.daysSinceActive)}`}>
             D+{m.daysSinceActive}
