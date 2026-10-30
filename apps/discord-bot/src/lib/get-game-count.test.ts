@@ -18,9 +18,12 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function playedIn(memberId: string, cancelled: boolean) {
+// createdAt is what the reset baseline compares against. Tests that straddle a reset pin it,
+// so a game and a reset written in the same millisecond cannot flip the result.
+async function playedIn(memberId: string, cancelled: boolean, createdAt?: Date) {
   const game = await prisma.gameResult.create({
     data: {
+      createdAt,
       playedAt: new Date("2026-09-01T12:00:00Z"),
       winner: "BLUE",
       cancelledAt: cancelled ? new Date() : null,
@@ -30,6 +33,10 @@ async function playedIn(memberId: string, cancelled: boolean) {
     data: { gameResultId: game.id, memberId, team: "BLUE", mmrBefore: 1000, mmrAfter: 1017 },
   });
 }
+
+const BEFORE_RESET = new Date("2026-09-01T00:00:00Z");
+const RESET_AT = new Date("2026-09-02T00:00:00Z");
+const AFTER_RESET = new Date("2026-09-03T00:00:00Z");
 
 describe("getGameCount", () => {
   it("returns 0 for a member who has never played", async () => {
@@ -67,19 +74,19 @@ describe("getGameCount", () => {
   // 대시보드의 전적 집계와 같은 기준선을 봐야 두 화면이 같은 숫자를 말한다.
   it("leaves a game entered before the last reset out of the count", async () => {
     const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
-    await playedIn(member.id, false);
+    await playedIn(member.id, false, BEFORE_RESET);
 
-    await prisma.ratingReset.create({ data: { kind: "SOFT", memberCount: 1 } });
+    await prisma.ratingReset.create({ data: { kind: "SOFT", memberCount: 1, resetAt: RESET_AT } });
 
     expect(await getGameCount(prisma, member.id)).toBe(0);
   });
 
   it("counts a game entered after the last reset", async () => {
     const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
-    await playedIn(member.id, false);
+    await playedIn(member.id, false, BEFORE_RESET);
 
-    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1 } });
-    await playedIn(member.id, false);
+    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1, resetAt: RESET_AT } });
+    await playedIn(member.id, false, AFTER_RESET);
 
     expect(await getGameCount(prisma, member.id)).toBe(1);
   });
@@ -89,8 +96,8 @@ describe("getGameCount", () => {
     await prisma.ratingReset.create({
       data: { kind: "SOFT", memberCount: 1, resetAt: new Date("2026-01-01T00:00:00Z") },
     });
-    await playedIn(member.id, false);
-    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1 } });
+    await playedIn(member.id, false, BEFORE_RESET);
+    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 1, resetAt: RESET_AT } });
 
     expect(await getGameCount(prisma, member.id)).toBe(0);
   });
