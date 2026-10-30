@@ -63,9 +63,10 @@ describe("marble race", () => {
   });
 
   it("lets the paddle wheels steal the win from the marble that arrives first", () => {
-    // Roughly two races in five turn over at the wheels; over twelve runs, never
-    // seeing it would mean the last obstacle stopped mattering.
-    const runs = Array.from({ length: 12 }, () => race(8));
+    // Roughly one race in three turns over at the wheels; over forty runs, never
+    // seeing it would mean the last obstacle stopped mattering. Twelve runs missed
+    // it about once in 170 by chance alone (measured 104/300), which failed CI.
+    const runs = Array.from({ length: 40 }, () => race(8));
     const flipped = runs.filter(
       (r) => r.leaderAtWheels !== null && r.leaderAtWheels !== r.winnerId
     );
