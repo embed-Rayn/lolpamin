@@ -12,7 +12,7 @@ export default async function NewMeetingNotePage() {
 
   return (
     <AppShell activeNav="meeting-notes" pageTitle="회의록 작성" pageDesc="새 회의록" desktopOnly>
-      <div className="flex max-w-4xl flex-col gap-3 px-7 pb-10 pt-6">
+      <div className="flex max-w-[1400px] flex-col gap-3 px-7 pb-10 pt-6">
         <MeetingNoteEditor
           initialTitle=""
           initialMeetingDate={seoulTodayInput(new Date())}

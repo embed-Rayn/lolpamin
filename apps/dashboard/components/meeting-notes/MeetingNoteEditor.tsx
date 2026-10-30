@@ -7,7 +7,16 @@ import {
   createMeetingNoteAction,
   updateMeetingNoteAction,
 } from "@/app/meeting-notes/actions";
-import { MeetingNoteBody } from "./MeetingNoteBody";
+import {
+  enterEdit,
+  indentEdit,
+  toggleBoldEdit,
+  togglePrefixEdit,
+  type LinePrefix,
+  type TextEdit,
+} from "@lolpamin/core";
+import { EditorToolbar } from "./EditorToolbar";
+import { MeetingNoteBody, type MeetingNoteTaskToggle } from "./MeetingNoteBody";
 
 const TITLE_MAX = 100;
 const BODY_MAX = 50_000;
@@ -24,9 +33,6 @@ function replaceLine(body: string, line: string, next: string | null): string {
   else lines[index] = next;
   return lines.join("\n");
 }
-
-const tabClass = (active: boolean) =>
-  `rounded-md px-3 py-1 text-[12.5px] font-bold ${active ? "bg-accent/[.15] text-accent-soft" : "text-faint hover:text-fg-2"}`;
 
 // New note when noteId is absent; otherwise an edit opened at `version`.
 export function MeetingNoteEditor({
@@ -53,7 +59,7 @@ export function MeetingNoteEditor({
   const [meetingDate, setMeetingDate] = useState(initialMeetingDate);
   const [body, setBody] = useState(initialBody);
   const [imageIds, setImageIds] = useState(initialImageIds);
-  const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const previewRef = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -135,6 +141,107 @@ export function MeetingNoteEditor({
     });
   }
 
+  // Applies a core TextEdit as one browser insertion, so Ctrl+Z undoes it in one step. When
+  // the browser refuses execCommand, falls back to a state write (no undo entry).
+  function applyEdit(edit: TextEdit) {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(edit.start, edit.end);
+    const done =
+      edit.insert === ""
+        ? edit.start === edit.end || document.execCommand("delete")
+        : document.execCommand("insertText", false, edit.insert);
+    if (done) {
+      el.setSelectionRange(edit.selStart, edit.selEnd);
+      return;
+    }
+    pendingCaret.current = { start: edit.selStart, end: edit.selEnd };
+    setBody((current) => current.slice(0, edit.start) + edit.insert + current.slice(edit.end));
+  }
+
+  function selection(): { text: string; start: number; end: number } | null {
+    const el = textareaRef.current;
+    return el ? { text: el.value, start: el.selectionStart, end: el.selectionEnd } : null;
+  }
+
+  function applyPrefix(prefix: LinePrefix) {
+    const sel = selection();
+    if (sel) applyEdit(togglePrefixEdit(sel.text, sel.start, sel.end, prefix));
+  }
+
+  function applyBold() {
+    const sel = selection();
+    if (sel) applyEdit(toggleBoldEdit(sel.text, sel.start, sel.end));
+  }
+
+  function applyIndent(outdent: boolean) {
+    const sel = selection();
+    if (sel) applyEdit(indentEdit(sel.text, sel.start, sel.end, outdent));
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Korean input composes a syllable across keystrokes; touching Enter/Tab mid-composition
+    // duplicates or drops the last syllable.
+    const composing = event.nativeEvent.isComposing || event.keyCode === 229;
+    const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
+    if (event.key === "Tab" && plain) {
+      event.preventDefault();
+      if (!composing) applyIndent(event.shiftKey);
+      return;
+    }
+    if (event.key === "Enter" && plain && !event.shiftKey) {
+      const el = event.currentTarget;
+      if (el.selectionStart !== el.selectionEnd) return;
+      const edit = enterEdit(el.value, el.selectionStart, composing);
+      if (edit) {
+        event.preventDefault();
+        applyEdit(edit);
+      }
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      applyBold();
+    }
+  }
+
+  // A tick in the preview rewrites that line's box in the text, as an undoable edit, and
+  // leaves the caret where it was.
+  function togglePreviewTask({ line, checked }: MeetingNoteTaskToggle) {
+    const el = textareaRef.current;
+    if (!el) return;
+    const lines = el.value.split("\n");
+    if (line >= lines.length) return;
+    const box = /\[[ xX]\]/.exec(lines[line]);
+    if (!box) return;
+    const at = lines.slice(0, line).reduce((sum, l) => sum + l.length + 1, 0) + box.index;
+    const { selectionStart, selectionEnd } = el;
+    applyEdit({ start: at, end: at + 3, insert: checked ? "[x]" : "[ ]", selStart: selectionStart, selEnd: selectionEnd });
+  }
+
+  // Keeps the preview near the caret: the last rendered block that starts at or above the
+  // caret's line is scrolled into the preview column's view.
+  function followCaret() {
+    const el = textareaRef.current;
+    const preview = previewRef.current;
+    if (!el || !preview) return;
+    const caretLine = el.value.slice(0, el.selectionStart).split("\n").length - 1;
+    let target: HTMLElement | null = null;
+    let targetLine = -1;
+    preview.querySelectorAll<HTMLElement>("[data-line]").forEach((node) => {
+      const line = Number(node.dataset.line);
+      if (line <= caretLine && line >= targetLine) {
+        target = node;
+        targetLine = line;
+      }
+    });
+    if (!target) return;
+    const box = (target as HTMLElement).getBoundingClientRect();
+    const view = preview.getBoundingClientRect();
+    if (box.top < view.top || box.top > view.bottom - 40) preview.scrollTop += box.top - view.top - 24;
+  }
+
   async function uploadOne(file: File, placeholder: string) {
     const formData = new FormData();
     formData.set("file", file);
@@ -169,7 +276,6 @@ export function MeetingNoteEditor({
     if (accepted.length === 0) return;
     const placeholders = accepted.map(() => `![업로드 중…](pending-${Date.now()}-${++placeholderSeq.current})`);
     insertAtCursor(placeholders.join("\n"));
-    setTab("edit");
     setUploading((n) => n + accepted.length);
     accepted.forEach((file, i) => void uploadOne(file, placeholders[i]));
   }
@@ -232,43 +338,34 @@ export function MeetingNoteEditor({
         </label>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          <button type="button" className={tabClass(tab === "edit")} onClick={() => setTab("edit")}>
-            편집
-          </button>
-          <button type="button" className={tabClass(tab === "preview")} onClick={() => setTab("preview")}>
-            미리보기
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          {uploading > 0 && <span className="text-[12px] text-faint">이미지 {uploading}장 올리는 중…</span>}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-ink/[.1] px-3 py-1.5 text-[12.5px] font-bold text-fg-2 hover:bg-hover"
-          >
-            이미지 추가
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={IMAGE_TYPES.join(",")}
-            multiple
-            hidden
-            onChange={(e) => {
-              uploadFiles(Array.from(e.target.files ?? []));
-              e.target.value = "";
-            }}
-          />
-        </div>
+      <div className="flex items-center justify-between rounded-lg border border-ink/[.08] bg-surface-2 px-2 py-1">
+        <EditorToolbar
+          onPrefix={applyPrefix}
+          onBold={applyBold}
+          onIndent={applyIndent}
+          onImage={() => fileInputRef.current?.click()}
+        />
+        {uploading > 0 && <span className="text-[12px] text-faint">이미지 {uploading}장 올리는 중…</span>}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={IMAGE_TYPES.join(",")}
+          multiple
+          hidden
+          onChange={(e) => {
+            uploadFiles(Array.from(e.target.files ?? []));
+            e.target.value = "";
+          }}
+        />
       </div>
 
-      {tab === "edit" ? (
+      <div className="grid grid-cols-2 gap-4">
         <textarea
           ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onSelect={followCaret}
           onPaste={(e) => {
             const files = Array.from(e.clipboardData.files);
             // Excel/Word put text and a picture of it on the clipboard; text wins.
@@ -289,20 +386,21 @@ export function MeetingNoteEditor({
             else setError("지원하지 않는 이미지 형식입니다(png, jpg, webp, gif만 가능합니다).");
           }}
           maxLength={BODY_MAX}
-          rows={22}
           placeholder={"# 안건\n- 논의 내용\n1. 결정 사항\n   - 세부 내용\n- [ ] 할 일\n**굵게**\n\n이미지는 붙여넣기(Ctrl+V)나 끌어다 놓기로 넣을 수 있습니다."}
-          className="rounded-lg border border-ink/[.1] bg-inset px-3 py-2 font-mono text-[13.5px] leading-relaxed text-fg"
+          className="h-[70vh] resize-none rounded-lg border border-ink/[.1] bg-inset px-3 py-2 font-mono text-[13.5px] leading-relaxed text-fg"
         />
-      ) : (
-        <div className="min-h-[300px] rounded-lg border border-ink/[.06] bg-inset px-4 py-3">
-          <MeetingNoteBody body={body} imageIds={imageIds} />
+        <div
+          ref={previewRef}
+          className="h-[70vh] overflow-y-auto rounded-lg border border-ink/[.06] bg-surface px-4 py-3"
+          aria-label="미리보기"
+        >
+          <MeetingNoteBody body={body} imageIds={imageIds} meetingDate={meetingDate} onToggleTask={togglePreviewTask} />
         </div>
-      )}
+      </div>
 
       <div className="text-[11.5px] text-faint">
-        마크다운: <code># 제목</code> · <code>- 목록</code> · <code>1. 번호</code> · <code>- [ ] 할 일</code> ·{" "}
-        <code>**굵게**</code> · <code>~~취소선~~</code> · <code>[링크](주소)</code> · 하위 목록은 윗줄 글자 시작 위치까지 들여쓰기
-        (<code>1. </code> 아래는 3칸, <code>- </code> 아래는 2칸) · 이미지 붙여넣기/끌어다 놓기
+        <code>Tab</code> 들여쓰기 · <code>Shift+Tab</code> 내어쓰기 · <code>Ctrl+B</code> 굵게 · <code>Enter</code> 목록 이어
+        쓰기 · 할 일: <code>- [ ] @이름 내용 ~11/14</code> · 이미지는 붙여넣기/끌어다 놓기
       </div>
 
       <div className="flex items-center gap-3">
