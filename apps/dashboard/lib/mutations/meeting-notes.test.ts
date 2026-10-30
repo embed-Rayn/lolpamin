@@ -126,6 +126,16 @@ describe("updateMeetingNote", () => {
   });
 });
 
+describe("line endings", () => {
+  // Browsers send textarea newlines as CRLF in multipart form data; the editor compares with LF.
+  it("stores bodies with LF newlines on create and update", async () => {
+    const { id } = await createMeetingNote(prisma, input("a\r\nb"), null);
+    expect((await prisma.meetingNote.findUniqueOrThrow({ where: { id } })).body).toBe("a\nb");
+    await updateMeetingNote(prisma, id, input("c\r\nd"), 0, null);
+    expect((await prisma.meetingNote.findUniqueOrThrow({ where: { id } })).body).toBe("c\nd");
+  });
+});
+
 describe("updateMeetingNote conflict", () => {
   it("carries the current note on the error", async () => {
     const op = await prisma.admin.create({ data: { username: "op", passwordHash: "x" } });
@@ -153,6 +163,19 @@ describe("toggleMeetingNoteTask", () => {
     expect(note.body).toBe("- [ ] a\n- [x] a");
     expect(note.version).toBe(1);
     expect(note.updatedById).toBe(op.id);
+  });
+
+  it("lets two quick ticks on different lines both land", async () => {
+    const { id } = await createMeetingNote(prisma, input("- [ ] a\n- [ ] b\n- [ ] c\n- [ ] d"), null);
+    await Promise.all([
+      toggleMeetingNoteTask(prisma, id, 0, "a", true, null),
+      toggleMeetingNoteTask(prisma, id, 1, "b", true, null),
+      toggleMeetingNoteTask(prisma, id, 2, "c", true, null),
+      toggleMeetingNoteTask(prisma, id, 3, "d", true, null),
+    ]);
+    const note = await prisma.meetingNote.findUniqueOrThrow({ where: { id } });
+    expect(note.body).toBe("- [x] a\n- [x] b\n- [x] c\n- [x] d");
+    expect(note.version).toBe(4);
   });
 
   it("refuses when the line no longer holds that task", async () => {

@@ -72,7 +72,7 @@ export function MeetingNoteEditor({
   updatedByName,
   initialTitle,
   initialMeetingDate,
-  initialBody,
+  initialBody: storedBody,
   initialImageIds,
 }: {
   noteId?: string;
@@ -83,6 +83,9 @@ export function MeetingNoteEditor({
   initialBody: string;
   initialImageIds: string[];
 }) {
+  // textarea.value is always LF; notes saved before bodies were normalized may hold CRLF,
+  // which would make every comparison below see a change that is not there.
+  const initialBody = storedBody.replace(/\r\n?/g, "\n");
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -421,7 +424,8 @@ export function MeetingNoteEditor({
       current.title === base.title && current.meetingDate === base.meetingDate
         ? rebaseMeetingNoteToggles(base.body, current.body, values.body)
         : null;
-    if (rebased && attempt < REBASE_ATTEMPTS) {
+    // A tick the rebase could not place would be reverted by saving my body: show the panel.
+    if (rebased && rebased.skipped === 0 && attempt < REBASE_ATTEMPTS) {
       baseRef.current = { version: current.version, title: current.title, meetingDate: current.meetingDate, body: current.body };
       setBody(rebased.body);
       await submitUpdate(id, { ...values, body: rebased.body }, applied + rebased.applied, attempt + 1);

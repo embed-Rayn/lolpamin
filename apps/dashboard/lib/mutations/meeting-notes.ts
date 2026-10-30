@@ -13,6 +13,7 @@ export const MEETING_NOTE_BODY_MAX = 50_000;
 export const MEETING_NOTE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_MEETING_NOTE_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 export const UNATTACHED_IMAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const TOGGLE_ATTEMPTS = 5;
 
 export class MeetingNoteValidationError extends Error {}
 
@@ -58,7 +59,9 @@ const NOTE_NOT_FOUND = "회의록을 찾을 수 없습니다.";
 
 function cleanInput(input: MeetingNoteInput) {
   const title = input.title.trim();
-  const body = input.body.trim();
+  // Multipart form data turns the textarea's LF into CRLF; store LF so the editor's
+  // comparisons with textarea.value (always LF) hold.
+  const body = input.body.replace(/\r\n?/g, "\n").trim();
   if (!title) throw new MeetingNoteValidationError("제목을 입력해 주세요.");
   if (title.length > MEETING_NOTE_TITLE_MAX) {
     throw new MeetingNoteValidationError(`제목은 ${MEETING_NOTE_TITLE_MAX}자를 넘을 수 없습니다.`);
@@ -147,20 +150,26 @@ export async function toggleMeetingNoteTask(
   checked: boolean,
   adminId: string | null,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const note = await tx.meetingNote.findUnique({
-      where: { id: noteId },
-      select: { body: true, version: true, meetingDate: true },
+  // Losing the version race to another save is retried on the fresh body: two quick ticks
+  // on one note are not a conflict. A line that no longer holds the task still is.
+  for (let attempt = 0; attempt < TOGGLE_ATTEMPTS; attempt++) {
+    const written = await prisma.$transaction(async (tx) => {
+      const note = await tx.meetingNote.findUnique({
+        where: { id: noteId },
+        select: { body: true, version: true, meetingDate: true },
+      });
+      if (!note) throw new MeetingNoteValidationError(NOTE_NOT_FOUND);
+      const body = toggleMeetingNoteTaskLine(note.body, note.meetingDate, line, expectedText, checked);
+      if (body === null) throw new MeetingNoteTaskChangedError();
+      const { count } = await tx.meetingNote.updateMany({
+        where: { id: noteId, version: note.version },
+        data: { body, updatedById: adminId, version: { increment: 1 } },
+      });
+      return count > 0;
     });
-    if (!note) throw new MeetingNoteValidationError(NOTE_NOT_FOUND);
-    const body = toggleMeetingNoteTaskLine(note.body, note.meetingDate, line, expectedText, checked);
-    if (body === null) throw new MeetingNoteTaskChangedError();
-    const { count } = await tx.meetingNote.updateMany({
-      where: { id: noteId, version: note.version },
-      data: { body, updatedById: adminId, version: { increment: 1 } },
-    });
-    if (count === 0) throw new MeetingNoteTaskChangedError();
-  });
+    if (written) return;
+  }
+  throw new MeetingNoteTaskChangedError();
 }
 
 // Images go with it (onDelete: Cascade). Deleting twice is harmless.
