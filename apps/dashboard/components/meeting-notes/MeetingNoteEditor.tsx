@@ -290,7 +290,7 @@ export function MeetingNoteEditor({
           }}
           maxLength={BODY_MAX}
           rows={22}
-          placeholder={"# 안건\n- 논의 내용\n1. 결정 사항\n- [ ] 할 일\n**굵게**\n\n이미지는 붙여넣기(Ctrl+V)나 끌어다 놓기로 넣을 수 있습니다."}
+          placeholder={"# 안건\n- 논의 내용\n1. 결정 사항\n   - 세부 내용\n- [ ] 할 일\n**굵게**\n\n이미지는 붙여넣기(Ctrl+V)나 끌어다 놓기로 넣을 수 있습니다."}
           className="rounded-lg border border-ink/[.1] bg-inset px-3 py-2 font-mono text-[13.5px] leading-relaxed text-fg"
         />
       ) : (
@@ -300,8 +300,9 @@ export function MeetingNoteEditor({
       )}
 
       <div className="text-[11.5px] text-faint">
-        서식: <code># 제목</code> · <code>- 목록</code> · <code>1. 번호</code> · <code>- [ ] 할 일</code> ·{" "}
-        <code>**굵게**</code> · 이미지 붙여넣기/끌어다 놓기
+        마크다운: <code># 제목</code> · <code>- 목록</code> · <code>1. 번호</code> · <code>- [ ] 할 일</code> ·{" "}
+        <code>**굵게**</code> · <code>~~취소선~~</code> · <code>[링크](주소)</code> · 하위 목록은 윗줄 글자 시작 위치까지 들여쓰기
+        (<code>1. </code> 아래는 3칸, <code>- </code> 아래는 2칸) · 이미지 붙여넣기/끌어다 놓기
       </div>
 
       <div className="flex items-center gap-3">

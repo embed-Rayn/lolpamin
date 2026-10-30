@@ -210,9 +210,12 @@ without a session. There is no live co-editing: the editor sends the `MeetingNot
 it was opened at and `updateMeetingNote` refuses the save if it moved
 (`MeetingNoteConflictError`, naming who saved first; the typed text stays on screen).
 `version`, not `updatedAt`, because two saves can land in one millisecond. The body is a
-markdown subset rendered by our own parser (`parseMeetingNoteBody` in `packages/core`:
-`#`–`###`, `-`, `1.`, `- [ ]`/`- [x]`, whole-line `![](imageId)`, `**bold**`) — no HTML path
-at all. Images upload one per server action into `MeetingNoteImage` with `noteId = null`
+standard markdown (GFM, plus `remark-breaks` so one newline is a line break) rendered by
+`react-markdown` in `MeetingNoteBody`, with **no raw-HTML plugin** — HTML in a body shows as
+text, never as markup. Nesting follows CommonMark: a sub-list must be indented to the parent
+item's text (3 spaces under `1. `), or it becomes a sibling list. An image is
+`![](imageId)`; ids outside the note's own images render as an empty box, and
+`extractMeetingNoteImageIds` (`packages/core`) counts every occurrence, inline ones too. Images upload one per server action into `MeetingNoteImage` with `noteId = null`
 before the note exists; a save attaches the unowned ones its body references (never one
 owned by another note) and deletes the note's images the body dropped. Unowned images older
 than 24h are swept on the next upload. `meetingDate` (회의일) is a calendar day stored as UTC
