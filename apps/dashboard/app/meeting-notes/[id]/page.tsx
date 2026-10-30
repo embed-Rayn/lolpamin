@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { formatEventDate, formatEventDateTime, formatMeetingDate } from "@lolpamin/core";
+import { formatEventDate, formatEventDateTime, formatMeetingDate, toMeetingDateInput } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
-import { MeetingNoteBody } from "@/components/meeting-notes/MeetingNoteBody";
+import { MeetingNoteViewBody } from "@/components/meeting-notes/MeetingNoteViewBody";
 import { MeetingNoteDeleteButton } from "@/components/meeting-notes/MeetingNoteDeleteButton";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { loginPathFor } from "@/lib/auth/next-path";
@@ -47,7 +47,13 @@ export default async function MeetingNotePage({ params }: { params: { id: string
             <MeetingNoteDeleteButton noteId={note.id} />
           </div>
         </header>
-        <MeetingNoteBody body={note.body} imageIds={note.imageIds} />
+        <MeetingNoteViewBody
+          key={note.version}
+          noteId={note.id}
+          body={note.body}
+          meetingDate={toMeetingDateInput(note.meetingDate)}
+          imageIds={note.imageIds}
+        />
       </article>
     </AppShell>
   );

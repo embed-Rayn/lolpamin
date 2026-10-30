@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => ({
     // development database.
     env: { DATABASE_URL_TEST: loadEnv(mode, repoRoot, "").DATABASE_URL_TEST ?? "" },
   },
+  // Next compiles JSX with the automatic runtime; component tests render the same files.
+  esbuild: { jsx: "automatic" },
   resolve: {
     // tsconfig.json의 "@/*": ["./*"]와 같은 별칭. Vitest는 tsconfig paths를 읽지 않으므로
     // 여기서 다시 선언해야 @/lib/... 임포트가 테스트에서 해결된다.
