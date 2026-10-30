@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatEventDate, formatEventDateTime, formatMeetingDate } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
+import { MeetingNotesTabs } from "@/components/meeting-notes/MeetingNotesTabs";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { loginPathFor } from "@/lib/auth/next-path";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +24,7 @@ export default async function MeetingNotesPage({ searchParams }: { searchParams:
   return (
     <AppShell activeNav="meeting-notes" pageTitle="회의록" pageDesc="운영진 전용 · 관리자만 볼 수 있습니다" desktopOnly>
       <div className="flex flex-col gap-4 px-7 pb-10 pt-6">
+        <MeetingNotesTabs active="notes" />
         <div className="flex items-center justify-between">
           <div className="text-[13px] text-faint">
             총 {list.total}건{list.pageCount > 1 && ` · ${list.page}/${list.pageCount}쪽`}
