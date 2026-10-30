@@ -55,7 +55,7 @@
   export function normalizeAssignee(name: string): string; // lower-cased, for grouping
   // Returns the new body, or null when line `line` is not a task whose MeetingNoteTask.text
   // (token-stripped, as extracted with the same body) equals expectedText.
-  export function toggleMeetingNoteTaskLine(body: string, line: number, expectedText: string, checked: boolean): string | null;
+  export function toggleMeetingNoteTaskLine(body: string, meetingDate: Date, line: number, expectedText: string, checked: boolean): string | null;
   ```
 
 - [ ] **Step 1: Write failing tests** in `meeting-note-tasks.test.ts` (`const md = new Date("2026-10-30T00:00:00Z")`):
@@ -71,7 +71,7 @@
   - `"invalid due stays as text"`: `"- [ ] a ~13/40"` → `{text:"a ~13/40", due:null}`.
   - `"handles CRLF"`: `"- [ ] a\r\n- [ ] b"` → lines 0 and 1, texts `"a"`,`"b"`.
   - `"dedupes assignees case-insensitively, keeping first spelling"`: `"- [ ] @Rayn @rayn x"` → `["Rayn"]`; `normalizeAssignee("Rayn") === "rayn"`.
-  - `toggleMeetingNoteTaskLine`:
+  - `toggleMeetingNoteTaskLine` (all with `md`):
     - `"- [ ] a\n- [ ] a"`, line 1, `"a"`, true → `"- [ ] a\n- [x] a"`.
     - `"  1. [x] @b c ~11/1"`, line 0, `"c"`, false → `"  1. [ ] @b c ~11/1"`.
     - text mismatch → `null`; non-task line → `null`; line out of range → `null`.
@@ -164,7 +164,7 @@
   - `"toggleMeetingNoteTask on a missing note"` → `MeetingNoteValidationError("회의록을 찾을 수 없습니다.")`.
   - `"conflict error carries the current note"`: update at version 0 after another update → caught error `instanceof MeetingNoteConflictError` and `error.current` equals `{ title, meetingDate: "2026-10-02", body, version: 1, updatedByName: "op" }` (plus `updatedAt`).
 - [ ] **Step 2: Run** `npx vitest run lib/mutations/meeting-notes.test.ts` (cwd `apps/dashboard`). Expected: FAIL.
-- [ ] **Step 3: Implement.** Toggle: in a transaction read `{body, version}`, compute with `toggleMeetingNoteTaskLine`, `updateMany({ where: { id, version }, data: { body, updatedById, version: { increment: 1 } } })`; `count === 0` → `MeetingNoteTaskChangedError`. Image attachment unaffected (a toggle never changes image references). Conflict: load the snapshot fields in the existing `count === 0` branch. Action: return `conflict` (ISO `updatedAt`) on `MeetingNoteConflictError`; toggle action maps both error classes to their messages, revalidates `/meeting-notes`, `/meeting-notes/tasks`, `/meeting-notes/${id}`.
+- [ ] **Step 3: Implement.** Toggle: in a transaction read `{body, version, meetingDate}`, compute with `toggleMeetingNoteTaskLine`, `updateMany({ where: { id, version }, data: { body, updatedById, version: { increment: 1 } } })`; `count === 0` → `MeetingNoteTaskChangedError`. Image attachment unaffected (a toggle never changes image references). Conflict: load the snapshot fields in the existing `count === 0` branch. Action: return `conflict` (ISO `updatedAt`) on `MeetingNoteConflictError`; toggle action maps both error classes to their messages, revalidates `/meeting-notes`, `/meeting-notes/tasks`, `/meeting-notes/${id}`.
 - [ ] **Step 4: Run.** Expected: PASS.
 - [ ] **Step 5: Commit** `feat(meeting-notes): save task toggles and return the current note on conflict`.
 
