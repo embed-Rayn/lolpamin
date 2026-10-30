@@ -1,9 +1,12 @@
 name: CI
 
 on:
+  # A docs-only change runs no tests and queues no deploy.
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
 
 concurrency:
   group: ci-${{ github.ref }}
