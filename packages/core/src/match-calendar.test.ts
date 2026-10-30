@@ -3,11 +3,12 @@ import {
   buildMonthCalendar,
   calendarHeatLevel,
   CALENDAR_DOT_LIMIT,
+  gameDayKey,
+  gameDayRange,
+  gameMonthRange,
   parseDateKey,
   parseMonthKey,
   seoulDateKey,
-  seoulDayRange,
-  seoulMonthRange,
   shiftMonth,
 } from "./match-calendar";
 
@@ -24,6 +25,21 @@ describe("seoulDateKey", () => {
   });
 });
 
+describe("gameDayKey", () => {
+  it("keeps the hours before 06:00 Seoul on the previous day", () => {
+    // 2026-10-04 00:30 Seoul — the tail of the 3rd's 내전
+    expect(gameDayKey(new Date("2026-10-03T15:30:00Z"))).toBe("2026-10-03");
+    // 2026-10-04 05:59 Seoul
+    expect(gameDayKey(new Date("2026-10-03T20:59:00Z"))).toBe("2026-10-03");
+    // 2026-10-04 06:00 Seoul
+    expect(gameDayKey(new Date("2026-10-03T21:00:00Z"))).toBe("2026-10-04");
+  });
+
+  it("keeps a bare-date import (UTC midnight, 09:00 Seoul) on its own date", () => {
+    expect(gameDayKey(new Date("2026-10-04T00:00:00Z"))).toBe("2026-10-04");
+  });
+});
+
 describe("parseDateKey", () => {
   it("accepts a real calendar day only", () => {
     expect(parseDateKey("2026-10-04")).toBe("2026-10-04");
@@ -33,11 +49,11 @@ describe("parseDateKey", () => {
   });
 });
 
-describe("seoulDayRange", () => {
-  it("is the half-open Seoul day", () => {
-    const { start, end } = seoulDayRange("2026-10-04");
-    expect(start.toISOString()).toBe("2026-10-03T15:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-10-04T15:00:00.000Z");
+describe("gameDayRange", () => {
+  it("runs from 06:00 Seoul to 06:00 the next morning", () => {
+    const { start, end } = gameDayRange("2026-10-04");
+    expect(start.toISOString()).toBe("2026-10-03T21:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-10-04T21:00:00.000Z");
   });
 });
 
@@ -55,16 +71,19 @@ describe("parseMonthKey", () => {
     expect(parseMonthKey("2026-11", now)).toEqual({ year: 2026, month: 10 });
   });
 
-  it("uses the Seoul month at a UTC month boundary", () => {
-    expect(parseMonthKey(undefined, new Date("2026-10-31T16:00:00Z"))).toEqual({ year: 2026, month: 11 });
+  it("uses the game day's month at a month boundary", () => {
+    // 2026-11-01 01:00 Seoul is still October's last game day
+    expect(parseMonthKey(undefined, new Date("2026-10-31T16:00:00Z"))).toEqual({ year: 2026, month: 10 });
+    // 2026-11-01 07:00 Seoul
+    expect(parseMonthKey(undefined, new Date("2026-10-31T22:00:00Z"))).toEqual({ year: 2026, month: 11 });
   });
 });
 
-describe("seoulMonthRange / shiftMonth", () => {
-  it("spans the Seoul month", () => {
-    const { start, end } = seoulMonthRange({ year: 2026, month: 12 });
-    expect(start.toISOString()).toBe("2026-11-30T15:00:00.000Z");
-    expect(end.toISOString()).toBe("2026-12-31T15:00:00.000Z");
+describe("gameMonthRange / shiftMonth", () => {
+  it("spans the month's game days", () => {
+    const { start, end } = gameMonthRange({ year: 2026, month: 12 });
+    expect(start.toISOString()).toBe("2026-11-30T21:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-12-31T21:00:00.000Z");
   });
 
   it("rolls over the year", () => {
@@ -84,8 +103,10 @@ describe("buildMonthCalendar", () => {
     { playedAt: new Date("2026-10-04T11:00:00Z"), mode: "RIFT" as const },
     { playedAt: new Date("2026-10-04T12:00:00Z"), mode: "RIFT" as const },
     { playedAt: new Date("2026-10-04T13:00:00Z"), mode: "ARAM" as const },
-    // 00:10 on the 4th in Seoul, still the 3rd in UTC
-    { playedAt: new Date("2026-10-03T15:10:00Z"), mode: "ARAM" as const },
+    // 07:10 on the 4th in Seoul, still the 3rd in UTC
+    { playedAt: new Date("2026-10-03T22:10:00Z"), mode: "ARAM" as const },
+    // 01:00 on the 11th in Seoul — the 10th's game day
+    { playedAt: new Date("2026-10-10T16:00:00Z"), mode: "ARAM" as const },
     { playedAt: new Date("2026-10-10T00:00:00Z"), mode: "RIFT" as const },
   ];
 
@@ -103,12 +124,14 @@ describe("buildMonthCalendar", () => {
     const day4 = cal.weeks.flat().find((c) => c?.day === 4)!;
     expect(day4).toMatchObject({ key: "2026-10-04", rift: 2, aram: 2, total: 4, heat: 2 });
     const day10 = cal.weeks.flat().find((c) => c?.day === 10)!;
-    expect(day10).toMatchObject({ rift: 1, aram: 0, total: 1, heat: 1 });
+    expect(day10).toMatchObject({ rift: 1, aram: 1, total: 2, heat: 1 });
+    const day11 = cal.weeks.flat().find((c) => c?.day === 11)!;
+    expect(day11.total).toBe(0);
   });
 
   it("marks today and sums the month", () => {
     expect(cal.weeks.flat().find((c) => c?.isToday)?.day).toBe(21);
-    expect(cal.summary).toEqual({ total: 5, rift: 3, aram: 2, activeDays: 2 });
+    expect(cal.summary).toEqual({ total: 6, rift: 3, aram: 3, activeDays: 2 });
   });
 
   it("ignores games outside the month", () => {

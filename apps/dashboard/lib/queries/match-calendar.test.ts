@@ -41,11 +41,11 @@ const OCT = { year: 2026, month: 10 };
 const NOW = new Date("2026-10-21T03:00:00Z");
 
 describe("getMatchCalendar", () => {
-  it("counts the month's games per Seoul day and mode, and the members who played", async () => {
+  it("counts the month's games per game day and mode, and the members who played", async () => {
     const [a, b, c] = await Promise.all([member("가"), member("나"), member("다")]);
-    await play([a], [b], "2026-10-03T15:30:00Z"); // the 4th in Seoul
+    await play([a], [b], "2026-10-04T16:30:00Z"); // 01:30 on the 5th in Seoul — the 4th's game day
     await play([a], [c], "2026-10-04T10:00:00Z", "ARAM");
-    await play([a], [b], "2026-09-30T10:00:00Z"); // September
+    await play([a], [b], "2026-09-30T19:00:00Z"); // 04:00 on Oct 1st in Seoul — September's last game day
 
     const cal = await getMatchCalendar(prisma, OCT, NOW);
 

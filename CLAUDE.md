@@ -137,7 +137,7 @@ rules as the Riot ID refresh). Its button lives on `/member-admin`, not `/matche
 champion (`topMasteries`). The API names champions by numeric key, mapped through
 `ddragon-map.json`'s `championKeys`.
 
-`/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and by one Seoul day
+`/match-history` filters by mode (`?mode=RIFT|ARAM`, default both) and by one game day
 (`?date=YYYY-MM-DD`, a GET form, matched on `playedAt`), and pages
 20 at a time (`?page=N`, server-side skip/take, out-of-range clamped to the last
 page). `canCancel` is decided **per mode** across the whole table, not the
@@ -147,8 +147,13 @@ date-time (`/replay-import` defaults it to the `.rofl` file's lastModified — r
 no wall clock) and shown in Seoul time (`formatPlayedAt`); games imported while only a date
 was sent sit at UTC midnight and show their date alone instead of a fake 09:00.
 
+Both `/match-history`'s date filter and `/match-calendar` count in **game days**: a day runs
+06:00–06:00 Seoul (`GAME_DAY_START_HOUR`, `gameDayKey`/`gameDayRange`), because a night's 내전
+runs past midnight and a replay's `playedAt` is its end time — a midnight boundary filed the
+night's last games under the next day. The time shown on a row is still the real `playedAt`.
+
 `/match-calendar` (내전 캘린더, public, for showing outsiders how active the group is) lays
-one Seoul month (`?month=YYYY-MM`, never a future month) out Sunday-first: each day is
+one month of game days (`?month=YYYY-MM`, never a future month) out Sunday-first: each day is
 tinted by its game count on an absolute scale (`calendarHeatLevel`, not relative to the
 month — a quiet month should look quiet) and dotted one dot per game, 협곡 `bg-rift` blue,
 칼바람 `bg-aram` red (own colour tokens, because the pink skin's accent and danger are both

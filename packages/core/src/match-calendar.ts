@@ -1,8 +1,16 @@
 // `type` is load-bearing — a value import would boot the Prisma client (see lane.ts).
 import type { GameMode } from "@lolpamin/db";
 
-// /match-calendar and /match-history's date filter. A day is a Seoul calendar day: the group
+// /match-calendar and /match-history's date filter. A day is a Seoul *game day*: the group
 // plays in Seoul, and the server renders in UTC. Seoul has no DST, so +09:00 always holds.
+//
+// A game day runs from GAME_DAY_START_HOUR to the same hour the next morning, not midnight to
+// midnight. A night's 내전 often runs past 12, and a replay carries no start time — playedAt
+// defaults to the file's lastModified, which is when the game ended — so a midnight boundary
+// filed the night's last games under the next day.
+export const GAME_DAY_START_HOUR = 6;
+const GAME_DAY_OFFSET_MS = GAME_DAY_START_HOUR * 3_600_000;
+const START_TIME = `T${String(GAME_DAY_START_HOUR).padStart(2, "0")}:00:00+09:00`;
 
 const SEOUL_DATE = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
@@ -11,9 +19,14 @@ const SEOUL_DATE = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** "YYYY-MM-DD" of the Seoul day holding `date`. */
+/** "YYYY-MM-DD" of the Seoul calendar day holding `date`. */
 export function seoulDateKey(date: Date): string {
   return SEOUL_DATE.format(date);
+}
+
+/** "YYYY-MM-DD" of the game day holding `date`: before GAME_DAY_START_HOUR is still yesterday. */
+export function gameDayKey(date: Date): string {
+  return seoulDateKey(new Date(date.getTime() - GAME_DAY_OFFSET_MS));
 }
 
 /** A real "YYYY-MM-DD" day, or null. Values come from the URL. */
@@ -23,9 +36,9 @@ export function parseDateKey(value: string | undefined): string | null {
   return !Number.isNaN(date.getTime()) && seoulDateKey(date) === value ? value : null;
 }
 
-/** The Seoul day as a half-open instant range [start, end). */
-export function seoulDayRange(key: string): { start: Date; end: Date } {
-  const start = new Date(`${key}T00:00:00+09:00`);
+/** The game day as a half-open instant range [start, end). */
+export function gameDayRange(key: string): { start: Date; end: Date } {
+  const start = new Date(`${key}${START_TIME}`);
   return { start, end: new Date(start.getTime() + 86_400_000) };
 }
 
@@ -34,8 +47,10 @@ export interface YearMonth {
   month: number; // 1–12
 }
 
+// The month of the current game day, so at 01:00 on the 1st last night's games are still
+// "this month".
 function currentSeoulMonth(now: Date): YearMonth {
-  const [year, month] = seoulDateKey(now).split("-").map(Number);
+  const [year, month] = gameDayKey(now).split("-").map(Number);
   return { year, month };
 }
 
@@ -71,12 +86,12 @@ export function currentMonth(now: Date): YearMonth {
   return currentSeoulMonth(now);
 }
 
-/** The Seoul month as a half-open instant range [start, end). */
-export function seoulMonthRange(ym: YearMonth): { start: Date; end: Date } {
+/** The month's game days as a half-open instant range [start, end). */
+export function gameMonthRange(ym: YearMonth): { start: Date; end: Date } {
   const next = shiftMonth(ym, 1);
   return {
-    start: new Date(`${monthKey(ym)}-01T00:00:00+09:00`),
-    end: new Date(`${monthKey(next)}-01T00:00:00+09:00`),
+    start: new Date(`${monthKey(ym)}-01${START_TIME}`),
+    end: new Date(`${monthKey(next)}-01${START_TIME}`),
   };
 }
 
@@ -121,7 +136,7 @@ export function buildMonthCalendar(
   const prefix = `${monthKey(ym)}-`;
   const counts = new Map<string, { rift: number; aram: number }>();
   for (const game of games) {
-    const key = seoulDateKey(game.playedAt);
+    const key = gameDayKey(game.playedAt);
     if (!key.startsWith(prefix)) continue;
     const tally = counts.get(key) ?? { rift: 0, aram: 0 };
     if (game.mode === "ARAM") tally.aram += 1;

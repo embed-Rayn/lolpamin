@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { GameMode } from "@lolpamin/db";
-import { seoulDayRange } from "@lolpamin/core";
+import { gameDayRange } from "@lolpamin/core";
 import type { GameDetail } from "@/lib/game-detail/types";
 
 export interface GameHistoryPlayer {
@@ -76,9 +76,9 @@ export async function getGameHistory(
 ): Promise<GameHistoryPage> {
   const mode = options.mode ?? "all";
   const date = options.date ?? null;
-  // 날짜는 경기한 날(playedAt)의 서울 날짜다 — /match-calendar가 칸을 나누는 기준과 같아야
+  // 날짜는 경기한 날(playedAt)의 게임일(서울 새벽 6시 경계)이다 — /match-calendar가 칸을 나누는 기준과 같아야
   // 칸을 눌러 온 사람이 같은 판들을 본다.
-  const day = date === null ? null : seoulDayRange(date);
+  const day = date === null ? null : gameDayRange(date);
   const where = {
     ...(mode === "all" ? {} : { mode }),
     ...(day === null ? {} : { playedAt: { gte: day.start, lt: day.end } }),

@@ -222,13 +222,14 @@ describe("getGameHistory mode filter", () => {
     expect(riftOnly.rows.filter((r) => r.canCancel).map((r) => r.id)).toEqual([latestRift.gameResultId]);
   });
 
-  it("narrows to one Seoul day on request, together with the mode", async () => {
+  it("narrows to one game day on request, together with the mode", async () => {
     const blue = await createLinkedMember("블루", 1000);
     const red = await createLinkedMember("레드", 1000);
-    // 2026-10-04 00:30 Seoul (still the 3rd in UTC)
-    const lateNight = await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-03T15:30:00Z"));
+    // 2026-10-05 00:30 Seoul — past midnight, still the 4th's game day
+    const lateNight = await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-04T15:30:00Z"));
     const sameDayAram = await playGame([blue], [red], "RED", null, "ARAM", new Date("2026-10-04T10:00:00Z"));
-    await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-03T14:30:00Z")); // the 3rd
+    await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-03T20:30:00Z")); // 05:30 on the 4th: the 3rd
+    await playGame([blue], [red], "BLUE", null, "RIFT", new Date("2026-10-04T21:00:00Z")); // 06:00 on the 5th: the 5th
 
     const day = await getGameHistory({ date: "2026-10-04" });
     expect(day.rows.map((r) => r.id).sort()).toEqual([lateNight.gameResultId, sameDayAram.gameResultId].sort());
