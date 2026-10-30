@@ -27,6 +27,7 @@ export * from "./played-at";
 export * from "./meeting-note-body";
 export * from "./meeting-note-tasks";
 export * from "./meeting-note-rebase";
+export * from "./meeting-note-editing";
 export * from "./meeting-note-date";
 export * from "./lineup";
 export * from "./match-calendar";
