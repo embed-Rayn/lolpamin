@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { formatEventDate } from "@lolpamin/core";
+import { formatEventDate, formatMeetingDate } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
+import { EventDdayBadge } from "@/components/events/EventDdayBadge";
 import { NavIcon } from "@/components/nav-icons";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
@@ -35,9 +36,16 @@ export default async function EventsPage() {
               <Link
                 key={post.id}
                 href={`/events/${post.id}`}
-                className="group flex flex-col overflow-hidden rounded-xl border border-ink/[.06] bg-surface hover:border-ink/[.14]"
+                className={`group flex flex-col overflow-hidden rounded-xl border bg-surface ${
+                  post.promoted
+                    ? "border-accent/60 ring-2 ring-accent/20 hover:border-accent"
+                    : "border-ink/[.06] hover:border-ink/[.14]"
+                }`}
               >
-                <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-inset">
+                <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-inset">
+                  {post.daysLeft !== null && (
+                    <EventDdayBadge daysLeft={post.daysLeft} className="absolute left-2 top-2" />
+                  )}
                   {post.thumbnailSrc ? (
                     <img src={post.thumbnailSrc} alt="" loading="lazy" className="h-full w-full object-contain" />
                   ) : (
@@ -46,7 +54,15 @@ export default async function EventsPage() {
                 </div>
                 <div className="flex flex-col gap-1 px-4 py-3">
                   <div className="truncate text-[15px] font-bold text-fg group-hover:text-accent">{post.title}</div>
-                  <div className="text-[12.5px] text-faint">{formatEventDate(post.createdAt)}</div>
+                  <div className="flex items-center gap-2 text-[12.5px] text-faint">
+                    {post.eventDate && (
+                      <span className={post.promoted ? "font-bold text-accent-soft" : ""}>
+                        이벤트일 {formatMeetingDate(post.eventDate)}
+                      </span>
+                    )}
+                    {post.eventDate && <span className="text-ghost">·</span>}
+                    <span>{formatEventDate(post.createdAt)}</span>
+                  </div>
                 </div>
               </Link>
             ))}

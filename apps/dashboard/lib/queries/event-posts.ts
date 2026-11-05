@@ -1,4 +1,11 @@
-import { canViewEventImage, isEventRevealed, pickEventThumbnailId } from "@lolpamin/core";
+import {
+  canViewEventImage,
+  eventDaysLeft,
+  isEventRevealed,
+  parseMeetingDateInput,
+  pickEventThumbnailId,
+  seoulTodayInput,
+} from "@lolpamin/core";
 import type { EventImageKind, PrismaClient } from "@lolpamin/db";
 
 export const EVENT_REVEAL_LABEL_DEFAULT = "추후 공개까지";
@@ -7,7 +14,20 @@ export function eventImageSrc(id: string): string {
   return `/api/events/images/${id}`;
 }
 
-export interface EventPostCard {
+// The event date doubles as the promotion's expiry (isEventPromoted).
+interface EventDateInfo {
+  eventDate: Date | null;
+  // Days from Seoul today: 0 on the day, negative once over, null without a date.
+  daysLeft: number | null;
+  promoted: boolean;
+}
+
+function eventDateInfo(eventDate: Date | null, now: Date): EventDateInfo {
+  const daysLeft = eventDaysLeft(eventDate, now);
+  return { eventDate, daysLeft, promoted: daysLeft !== null && daysLeft >= 0 };
+}
+
+export interface EventPostCard extends EventDateInfo {
   id: string;
   title: string;
   createdAt: Date;
@@ -19,7 +39,7 @@ export interface EventImageRef {
   src: string;
 }
 
-export interface EventPostDetail {
+export interface EventPostDetail extends EventDateInfo {
   id: string;
   title: string;
   body: string;
@@ -45,9 +65,17 @@ const IMAGE_REFS = {
 export async function listEventPosts(prisma: PrismaClient, now: Date = new Date()): Promise<EventPostCard[]> {
   const posts = await prisma.eventPost.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: { id: true, title: true, createdAt: true, revealedAt: true, thumbnailImageId: true, images: IMAGE_REFS },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      eventDate: true,
+      revealedAt: true,
+      thumbnailImageId: true,
+      images: IMAGE_REFS,
+    },
   });
-  return posts.map((post) => {
+  const cards = posts.map((post) => {
     const thumbnailId = pickEventThumbnailId(
       post.images,
       isEventRevealed(post.revealedAt, now),
@@ -58,8 +86,21 @@ export async function listEventPosts(prisma: PrismaClient, now: Date = new Date(
       title: post.title,
       createdAt: post.createdAt,
       thumbnailSrc: thumbnailId ? eventImageSrc(thumbnailId) : null,
+      ...eventDateInfo(post.eventDate, now),
     };
   });
+  // Promoted posts are pinned on top, the nearest event first; the rest keep newest-first.
+  // sort is stable, so equal keys keep the query's order.
+  return cards.sort((a, b) => {
+    if (a.promoted !== b.promoted) return a.promoted ? -1 : 1;
+    return a.promoted ? a.daysLeft! - b.daysLeft! : 0;
+  });
+}
+
+// The sidebar badge: posts whose event day has not ended in Seoul.
+export async function countPromotedEventPosts(prisma: PrismaClient, now: Date = new Date()): Promise<number> {
+  const today = parseMeetingDateInput(seoulTodayInput(now))!;
+  return prisma.eventPost.count({ where: { eventDate: { gte: today } } });
 }
 
 // For a visitor an unrevealed hidden image is dropped here, so its id never reaches the HTML.
@@ -76,6 +117,7 @@ export async function getEventPost(
       title: true,
       body: true,
       createdAt: true,
+      eventDate: true,
       revealedAt: true,
       revealLabel: true,
       thumbnailImageId: true,
@@ -97,6 +139,7 @@ export async function getEventPost(
     title: post.title,
     body: post.body,
     createdAt: post.createdAt,
+    ...eventDateInfo(post.eventDate, now),
     revealed,
     revealedAt: post.revealedAt,
     revealLabel: post.revealLabel,

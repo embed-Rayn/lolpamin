@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { loginPathFor } from "@/lib/auth/next-path";
-import { formatEventDateTime } from "@lolpamin/core";
+import { formatEventDateTime, toMeetingDateInput } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
 import { EventImageManager } from "@/components/events/EventImageManager";
 import { EventPostForm } from "@/components/events/EventPostForm";
@@ -26,6 +26,7 @@ export default async function EditEventPostPage({ params }: { params: { id: stri
         <EventPostForm
           initialTitle={post.title}
           initialBody={post.body}
+          initialEventDate={post.eventDate ? toMeetingDateInput(post.eventDate) : ""}
           submitLabel="저장"
           onSubmit={updateEventPostAction.bind(null, post.id)}
         />

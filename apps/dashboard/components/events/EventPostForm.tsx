@@ -10,12 +10,15 @@ const BODY_MAX = 5000;
 export function EventPostForm({
   initialTitle = "",
   initialBody = "",
+  initialEventDate = "",
   submitLabel,
   onSubmit,
   openEditorAfterCreate = false,
 }: {
   initialTitle?: string;
   initialBody?: string;
+  // YYYY-MM-DD, blank for none.
+  initialEventDate?: string;
   submitLabel: string;
   onSubmit: (formData: FormData) => Promise<{ error: string | null; id?: string }>;
   openEditorAfterCreate?: boolean;
@@ -56,6 +59,20 @@ export function EventPostForm({
           required
           className="rounded-lg border border-ink/[.1] bg-inset px-3 py-2 text-[14px] text-fg"
         />
+      </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-bold text-fg-2">
+          이벤트일 <span className="font-normal text-faint">· 홍보 만료일, 선택</span>
+        </span>
+        <input
+          type="date"
+          name="eventDate"
+          defaultValue={initialEventDate}
+          className="w-48 rounded-lg border border-ink/[.1] bg-inset px-3 py-2 text-[14px] text-fg"
+        />
+        <span className="text-[12px] text-faint">
+          그날이 끝날 때까지 목록 맨 위에 D-day와 함께 강조되고 사이드바 배지에 셉니다. 비우면 일반 공지입니다.
+        </span>
       </label>
       <label className="flex flex-col gap-1.5">
         <span className="text-[13px] font-bold text-fg-2">내용</span>

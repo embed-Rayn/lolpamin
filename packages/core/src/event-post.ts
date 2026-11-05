@@ -1,3 +1,5 @@
+import { parseMeetingDateInput, seoulTodayInput } from "./meeting-note-date";
+
 // Mirrors the Prisma enum EventImageKind as a string union so core stays free of
 // another @lolpamin/db dependency; the Prisma values are assignable to it.
 export type EventImageKindName = "MAIN" | "HIDDEN";
@@ -76,4 +78,27 @@ export function formatEventDate(date: Date): string {
 export function formatEventDateTime(date: Date): string {
   const parts = Object.fromEntries(EVENT_DATE_TIME_PARTS.formatToParts(date).map((p) => [p.type, p.value]));
   return `${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
+const DAY_MS = 86_400_000;
+
+// EventPost.eventDate is a calendar day stored as UTC midnight (like MeetingNote.meetingDate).
+// Days from today in Seoul to that day: 0 on the day, negative once it is over, null when the
+// post has no event date.
+export function eventDaysLeft(eventDate: Date | null, now: Date): number | null {
+  if (eventDate === null) return null;
+  const today = parseMeetingDateInput(seoulTodayInput(now))!;
+  return Math.round((eventDate.getTime() - today.getTime()) / DAY_MS);
+}
+
+// The event date is also the promotion's expiry: the post is highlighted (list top, sidebar
+// badge) through the end of that day in Seoul, then falls back into the plain list.
+export function isEventPromoted(eventDate: Date | null, now: Date): boolean {
+  const days = eventDaysLeft(eventDate, now);
+  return days !== null && days >= 0;
+}
+
+export function formatEventDday(daysLeft: number): string {
+  if (daysLeft < 0) return "종료";
+  return daysLeft === 0 ? "D-DAY" : `D-${daysLeft}`;
 }

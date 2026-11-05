@@ -10,6 +10,8 @@ export interface SidebarNavItem {
   label: string;
   icon: NavIconName;
   badge?: string;
+  // orange (default) flags something to deal with; accent highlights something to look at.
+  badgeTone?: "orange" | "accent";
   // Not built yet: rendered as an inert row with a 추가 예정 tag.
   disabled?: boolean;
 }
@@ -19,7 +21,14 @@ export interface SidebarNavGroup {
   label: string;
   icon: NavIconName;
   items: SidebarNavItem[];
+  // Shown on the group header only while it is folded, so a fold never hides it.
+  badge?: string;
 }
+
+const BADGE_TONE = {
+  orange: "bg-orange/[.16] text-orange",
+  accent: "bg-accent text-white",
+} as const;
 
 const COLLAPSED_KEY = "lolpamin.nav.collapsed";
 
@@ -84,6 +93,11 @@ export function SidebarNav({ groups, activeNav }: { groups: SidebarNavGroup[]; a
             >
               <NavIcon name={g.icon} size={18} className={isActiveGroup ? "text-accent" : "text-muted"} />
               <span className="flex-1 text-left">{g.label}</span>
+              {!isOpen && g.badge && (
+                <span className={`rounded-full px-1.5 py-0.5 font-mono text-[12px] font-bold ${BADGE_TONE.accent}`}>
+                  {g.badge}
+                </span>
+              )}
               <NavIcon
                 name="chevron-down"
                 size={16}
@@ -122,7 +136,9 @@ export function SidebarNav({ groups, activeNav }: { groups: SidebarNavGroup[]; a
                       />
                       <span className="flex-1">{n.label}</span>
                       {n.badge && (
-                        <span className="rounded-full bg-orange/[.16] px-1.5 py-0.5 font-mono text-[12px] font-bold text-orange">
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 font-mono text-[12px] font-bold ${BADGE_TONE[n.badgeTone ?? "orange"]}`}
+                        >
                           {n.badge}
                         </span>
                       )}

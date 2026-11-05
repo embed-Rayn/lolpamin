@@ -10,6 +10,7 @@ import {
   setEventThumbnail,
 } from "../mutations/event-posts";
 import {
+  countPromotedEventPosts,
   EVENT_REVEAL_LABEL_DEFAULT,
   eventImageSrc,
   getEventImageForViewer,
@@ -172,5 +173,42 @@ describe("chosen thumbnail", () => {
 
     expect((await listEventPosts(prisma))[0].thumbnailSrc).toBe(eventImageSrc(second.id));
     expect((await getEventPost(prisma, id, true))?.thumbnailImageId).toBe(second.id);
+  });
+});
+
+describe("event date promotion", () => {
+  const now = new Date("2026-11-05T03:00:00Z"); // 11-05 noon in Seoul
+
+  it("pins promoted posts on top, nearest event first, and reports the days left", async () => {
+    const plain = await createEventPost(prisma, { title: "일반", body: "" }, null);
+    const ended = await createEventPost(prisma, { title: "끝남", body: "", eventDate: "2026-11-04" }, null);
+    const later = await createEventPost(prisma, { title: "나중", body: "", eventDate: "2026-11-20" }, null);
+    const today = await createEventPost(prisma, { title: "오늘", body: "", eventDate: "2026-11-05" }, null);
+
+    const list = await listEventPosts(prisma, now);
+    expect(list.slice(0, 2).map((p) => p.id)).toEqual([today.id, later.id]);
+    expect(list.slice(2).map((p) => p.id).sort()).toEqual([ended.id, plain.id].sort());
+
+    const byId = Object.fromEntries(list.map((p) => [p.id, p]));
+    expect(byId[today.id]).toMatchObject({ promoted: true, daysLeft: 0 });
+    expect(byId[later.id]).toMatchObject({ promoted: true, daysLeft: 15 });
+    expect(byId[ended.id]).toMatchObject({ promoted: false, daysLeft: -1 });
+    expect(byId[plain.id]).toMatchObject({ promoted: false, daysLeft: null, eventDate: null });
+  });
+
+  it("counts only posts whose event day has not ended in Seoul", async () => {
+    await createEventPost(prisma, { title: "일반", body: "" }, null);
+    await createEventPost(prisma, { title: "끝남", body: "", eventDate: "2026-11-04" }, null);
+    await createEventPost(prisma, { title: "오늘", body: "", eventDate: "2026-11-05" }, null);
+    await createEventPost(prisma, { title: "나중", body: "", eventDate: "2026-11-20" }, null);
+
+    expect(await countPromotedEventPosts(prisma, now)).toBe(2);
+    // 11-05 15:00 UTC is 11-06 00:00 in Seoul: today's event has ended.
+    expect(await countPromotedEventPosts(prisma, new Date("2026-11-05T15:00:00Z"))).toBe(1);
+  });
+
+  it("reports the event date on the detail", async () => {
+    const { id } = await createEventPost(prisma, { title: "오늘", body: "", eventDate: "2026-11-07" }, null);
+    expect(await getEventPost(prisma, id, false, now)).toMatchObject({ daysLeft: 2, promoted: true });
   });
 });

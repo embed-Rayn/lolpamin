@@ -201,7 +201,12 @@ action so the 20mb body limit never bites. The rule is `canViewEventImage` in
 `packages/core`; the list thumbnail (`pickEventThumbnailId`) shows what a visitor
 would see, admins included — an admin-chosen `thumbnailImageId` (FK, `SET NULL` on
 image delete) wins unless it is a not-yet-revealed hidden image. Thumbnails are
-`object-contain`: a poster is shown whole, never cropped.
+`object-contain`: a poster is shown whole, never cropped. `EventPost.eventDate` (이벤트일) is optional and doubles as the
+**promotion's expiry**: a calendar day stored as UTC midnight (like `meetingDate`); through the
+end of that day in Seoul the post is promoted (`eventDaysLeft`/`isEventPromoted`) — pinned atop
+the list nearest-first with a D-day badge and an accent ring, and counted in the sidebar badge
+on 공지사항 (`countPromotedEventPosts`, accent tone, also shown on the folded 이벤트 group).
+After it the post drops back into the newest-first list tagged 종료.
 
 `/meeting-notes` (회의록, under 운영 관리 right after 회원 관리) is the one screen where
 **reading** is admin-only too — notes can carry member evaluations, so the pages redirect to

@@ -67,6 +67,22 @@ describe("createEventPost / updateEventPost", () => {
     await expect(createEventPost(prisma, { title: "가".repeat(100), body: "가".repeat(5000) }, null)).resolves.toBeDefined();
   });
 
+  it("stores the event date as a calendar day and clears it when blank", async () => {
+    const { id } = await createEventPost(prisma, { title: "제목", body: "", eventDate: "2026-11-10" }, null);
+    let row = await prisma.eventPost.findUniqueOrThrow({ where: { id } });
+    expect(row.eventDate?.toISOString()).toBe("2026-11-10T00:00:00.000Z");
+
+    await updateEventPost(prisma, id, { title: "제목", body: "", eventDate: "" }, null);
+    row = await prisma.eventPost.findUniqueOrThrow({ where: { id } });
+    expect(row.eventDate).toBeNull();
+  });
+
+  it("rejects an impossible event date", async () => {
+    await expect(createEventPost(prisma, { title: "제목", body: "", eventDate: "2026-02-30" }, null)).rejects.toThrow(
+      "이벤트일이 올바르지 않습니다.",
+    );
+  });
+
   it("refuses to update a missing post", async () => {
     await expect(updateEventPost(prisma, "missing", { title: "제목", body: "" }, null)).rejects.toThrow(
       "글을 찾을 수 없습니다.",

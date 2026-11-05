@@ -4,6 +4,7 @@ import { getInactiveMembers } from "@lolpamin/core";
 import { effectiveKakaoNickname } from "@/lib/queries/inactive";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { getBranding } from "@/lib/queries/branding";
+import { countPromotedEventPosts } from "@/lib/queries/event-posts";
 import { BrandLogo } from "./BrandLogo";
 import { HeaderAuth } from "./HeaderAuth";
 import { MobileDrawer } from "./MobileDrawer";
@@ -42,7 +43,7 @@ export interface AppShellProps {
 }
 
 export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, children }: AppShellProps) {
-  const [totalCount, allMembersForInactivity, currentAdmin, branding] = await Promise.all([
+  const [totalCount, allMembersForInactivity, currentAdmin, branding, promotedEventCount] = await Promise.all([
     prisma.member.count({ where: { mergedIntoId: null } }),
     prisma.member.findMany({
       where: { mergedIntoId: null },
@@ -60,6 +61,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
     }),
     getCurrentAdmin(),
     getBranding(prisma),
+    countPromotedEventPosts(prisma),
   ]);
   const inactiveNavCount = getInactiveMembers(
     allMembersForInactivity.map((m) => ({ ...m, kakaoNickname: effectiveKakaoNickname(m) })),
@@ -106,7 +108,18 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
       key: "event-board",
       label: "이벤트",
       icon: "megaphone",
-      items: [{ key: "events", href: "/events", label: "공지사항", icon: "file-text" }],
+      // Badge = posts still within their event date (the promotion's expiry); none, no badge.
+      badge: promotedEventCount > 0 ? String(promotedEventCount) : undefined,
+      items: [
+        {
+          key: "events",
+          href: "/events",
+          label: "공지사항",
+          icon: "file-text",
+          badge: promotedEventCount > 0 ? String(promotedEventCount) : undefined,
+          badgeTone: "accent",
+        },
+      ],
     },
   ];
   if (currentAdmin) {

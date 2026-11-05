@@ -34,7 +34,11 @@ function revalidatePost(postId: string) {
 }
 
 function readInput(formData: FormData) {
-  return { title: String(formData.get("title") ?? ""), body: String(formData.get("body") ?? "") };
+  return {
+    title: String(formData.get("title") ?? ""),
+    body: String(formData.get("body") ?? ""),
+    eventDate: String(formData.get("eventDate") ?? ""),
+  };
 }
 
 // Returns the new id instead of calling redirect(): a redirecting action resolves the

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatEventDate, formatEventDateTime } from "@lolpamin/core";
+import { formatEventDate, formatEventDateTime, formatMeetingDate } from "@lolpamin/core";
 import { AppShell } from "@/components/AppShell";
 import { EventAdminBar } from "@/components/events/EventAdminBar";
 import { EventCountdown } from "@/components/events/EventCountdown";
+import { EventDdayBadge } from "@/components/events/EventDdayBadge";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
 import { prisma } from "@/lib/prisma";
 import { getEventPost } from "@/lib/queries/event-posts";
@@ -27,6 +28,23 @@ export default async function EventPostPage({ params }: { params: { id: string }
           <h2 className="m-0 text-[20px] font-extrabold tracking-tight text-fg md:text-[24px]">{post.title}</h2>
           <div className="text-[12.5px] text-faint">{formatEventDate(post.createdAt)}</div>
         </header>
+
+        {post.eventDate && post.daysLeft !== null && (
+          <div
+            className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+              post.promoted ? "border-accent/40 bg-accent-tint" : "border-ink/[.06] bg-surface"
+            }`}
+          >
+            <EventDdayBadge daysLeft={post.daysLeft} className="text-[13px]" />
+            <div className="flex flex-col">
+              <span className="text-[12px] text-faint">이벤트일</span>
+              <span className={`text-[15px] font-bold ${post.promoted ? "text-accent-soft" : "text-muted"}`}>
+                {formatMeetingDate(post.eventDate)}
+                {!post.promoted && " · 종료된 이벤트"}
+              </span>
+            </div>
+          </div>
+        )}
 
         {isAdmin && (
           <EventAdminBar

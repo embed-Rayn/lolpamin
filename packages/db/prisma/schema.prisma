@@ -374,6 +374,9 @@ model EventPost {
   body             String       @default("")
   revealedAt       DateTime?
   revealLabel      String?
+  // 이벤트일 = 홍보 만료일. UTC 자정으로 저장한 달력 날짜(서울 기준). 그날이 끝날 때까지
+  // 목록 위에 강조하고 사이드바 배지에 센다. null이면 일반 공지.
+  eventDate        DateTime?
   // 목록 썸네일로 쓸 사진. null이면 자동 규칙(pickEventThumbnailId).
   thumbnailImageId String?      @unique
   thumbnailImage   EventImage?  @relation("EventPostThumbnail", fields: [thumbnailImageId], references: [id], onDelete: SetNull)

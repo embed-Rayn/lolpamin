@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   canViewEventImage,
+  eventDaysLeft,
+  formatEventDday,
+  isEventPromoted,
   formatCountdown,
   formatEventDate,
   formatEventDateTime,
@@ -118,5 +121,48 @@ describe("formatCountdown", () => {
 describe("formatEventDateTime", () => {
   it("formats month, day and time in Korean time", () => {
     expect(formatEventDateTime(new Date("2026-10-03T12:00:00Z"))).toBe("10.03 21:00");
+  });
+});
+
+describe("eventDaysLeft", () => {
+  const eventDate = new Date("2026-11-10T00:00:00Z");
+
+  it("is null without an event date", () => {
+    expect(eventDaysLeft(null, new Date("2026-11-05T03:00:00Z"))).toBeNull();
+  });
+
+  it("counts calendar days from Seoul today", () => {
+    expect(eventDaysLeft(eventDate, new Date("2026-11-05T03:00:00Z"))).toBe(5);
+  });
+
+  it("is zero on the day itself, Seoul time", () => {
+    // 11-09 15:00 UTC is already 11-10 00:00 in Seoul.
+    expect(eventDaysLeft(eventDate, new Date("2026-11-09T15:00:00Z"))).toBe(0);
+    expect(eventDaysLeft(eventDate, new Date("2026-11-10T14:59:00Z"))).toBe(0);
+  });
+
+  it("goes negative once the day is over", () => {
+    expect(eventDaysLeft(eventDate, new Date("2026-11-10T15:00:00Z"))).toBe(-1);
+  });
+});
+
+describe("isEventPromoted", () => {
+  const eventDate = new Date("2026-11-10T00:00:00Z");
+
+  it("promotes through the event day and stops after it", () => {
+    expect(isEventPromoted(eventDate, new Date("2026-11-10T14:59:00Z"))).toBe(true);
+    expect(isEventPromoted(eventDate, new Date("2026-11-10T15:00:00Z"))).toBe(false);
+  });
+
+  it("never promotes a post without a date", () => {
+    expect(isEventPromoted(null, new Date())).toBe(false);
+  });
+});
+
+describe("formatEventDday", () => {
+  it("reads D-DAY, D-N or 종료", () => {
+    expect(formatEventDday(0)).toBe("D-DAY");
+    expect(formatEventDday(3)).toBe("D-3");
+    expect(formatEventDday(-1)).toBe("종료");
   });
 });

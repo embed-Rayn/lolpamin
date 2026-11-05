@@ -1,3 +1,4 @@
+import { parseMeetingDateInput } from "@lolpamin/core";
 import type { EventImageKind, PrismaClient } from "@lolpamin/db";
 
 export const EVENT_TITLE_MAX = 100;
@@ -13,6 +14,8 @@ export class EventPostValidationError extends Error {}
 export interface EventPostInput {
   title: string;
   body: string;
+  // YYYY-MM-DD from <input type="date">; blank or missing means no event date.
+  eventDate?: string;
 }
 
 export interface EventImageUpload {
@@ -22,7 +25,7 @@ export interface EventImageUpload {
 
 const POST_NOT_FOUND = "글을 찾을 수 없습니다.";
 
-function cleanInput(input: EventPostInput): EventPostInput {
+function cleanInput(input: EventPostInput): { title: string; body: string; eventDate: Date | null } {
   const title = input.title.trim();
   const body = input.body.trim();
   if (!title) throw new EventPostValidationError("제목을 입력해 주세요.");
@@ -32,7 +35,10 @@ function cleanInput(input: EventPostInput): EventPostInput {
   if (body.length > EVENT_BODY_MAX) {
     throw new EventPostValidationError(`본문은 ${EVENT_BODY_MAX}자를 넘을 수 없습니다.`);
   }
-  return { title, body };
+  const rawDate = input.eventDate?.trim() ?? "";
+  const eventDate = rawDate ? parseMeetingDateInput(rawDate) : null;
+  if (rawDate && !eventDate) throw new EventPostValidationError("이벤트일이 올바르지 않습니다.");
+  return { title, body, eventDate };
 }
 
 export async function createEventPost(
