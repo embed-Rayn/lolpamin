@@ -28,6 +28,10 @@ export const CANCEL_GAME_RESULT_ERRORS = {
  * 되돌리면 참가자만 옛 점수로 되살아난다(resetAllRatings 참고). 리셋이 「가장 최근 판」의
  * 앞을 끊으므로, 리셋 직후에는 되돌릴 수 있는 경기가 하나도 없는 것이 맞다.
  *
+ * 대회·스크림 경기(kind != INTERNAL)는 이 LIFO 사슬 밖이다. MMR을 건드리지 않으므로(mmrAfter ===
+ * mmrBefore) 되돌릴 점수가 없고, 내전의 「가장 최근 판」 판정에도 끼지 않는다. 그래서 순서·리셋·
+ * 흡수 가드 없이 취소 표시만 남기며, 대회 페이지 스위치가 꺼져 있어도 취소할 수 있다.
+ *
  * 흡수로 이 경기의 참가 기록이 생존자에게 넘어와 있으면(GameParticipant.absorbedFromId)
  * 마찬가지로 되돌릴 수 없다. absorbMember는 참가 기록을 생존자에게 옮기지만 mmrBefore는
  * 원주인의 그 시점 점수다 — memberId(지금은 생존자)와 mmrBefore(원주인의 값)가 더 이상
@@ -49,8 +53,16 @@ export async function cancelGameResult(
     if (!game) throw new Error(CANCEL_GAME_RESULT_ERRORS.notFound);
     if (game.cancelledAt !== null) throw new Error(CANCEL_GAME_RESULT_ERRORS.alreadyCancelled);
 
+    if (game.kind !== "INTERNAL") {
+      await tx.gameResult.update({
+        where: { id: game.id },
+        data: { cancelledAt: new Date(), cancelledById: adminId, replayKey: null },
+      });
+      return;
+    }
+
     const latest = await tx.gameResult.findFirst({
-      where: { cancelledAt: null, mode: game.mode },
+      where: { cancelledAt: null, mode: game.mode, kind: "INTERNAL" },
       orderBy: { createdAt: "desc" },
       select: { id: true },
     });

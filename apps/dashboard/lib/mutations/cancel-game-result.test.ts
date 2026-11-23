@@ -290,3 +290,75 @@ describe("cancelGameResult", () => {
     );
   });
 });
+
+async function createTournamentGame(
+  blue: { id: string }[],
+  red: { id: string }[],
+  kind: "TOURNAMENT" | "SCRIM" = "TOURNAMENT",
+) {
+  return prisma.gameResult.create({
+    data: {
+      playedAt: new Date("2026-09-01T12:00:00Z"),
+      winner: "BLUE",
+      mode: "RIFT",
+      kind,
+      blueTeamSlot: 1,
+      redTeamSlot: 2,
+      replayKey: `rk-${Math.random()}`,
+      participants: {
+        create: [
+          ...blue.map((m) => ({ memberId: m.id, team: "BLUE" as const, mmrBefore: 1000, mmrAfter: 1000 })),
+          ...red.map((m) => ({ memberId: m.id, team: "RED" as const, mmrBefore: 1000, mmrAfter: 1000 })),
+        ],
+      },
+    },
+  });
+}
+
+describe("cancelGameResult with tournament games", () => {
+  it("still cancels the latest internal game after a tournament game was entered", async () => {
+    const blue = await createLinkedMember(1500);
+    const red = await createLinkedMember(1500);
+    const a = await playGame([blue], [red], "BLUE");
+    await createTournamentGame([blue], [red]);
+
+    await cancelGameResult(prisma, a.gameResultId, null);
+
+    expect(await mmrOf(blue.id)).toBe(1500);
+  });
+
+  it("cancels a tournament game without touching ratings and frees its replay key", async () => {
+    const blue = await createLinkedMember(1234);
+    const red = await createLinkedMember(1111);
+    const t = await createTournamentGame([blue], [red]);
+
+    await cancelGameResult(prisma, t.id, "admin-1");
+
+    expect(await mmrOf(blue.id)).toBe(1234);
+    expect(await mmrOf(red.id)).toBe(1111);
+    const after = await prisma.gameResult.findUniqueOrThrow({ where: { id: t.id } });
+    expect(after.cancelledAt).not.toBeNull();
+    expect(after.cancelledById).toBe("admin-1");
+    expect(after.replayKey).toBeNull();
+  });
+
+  it("cancels a tournament game entered before a rating reset", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const t = await createTournamentGame([blue], [red], "SCRIM");
+    await prisma.ratingReset.create({ data: { kind: "HARD", memberCount: 2 } });
+
+    await cancelGameResult(prisma, t.id, null);
+
+    const after = await prisma.gameResult.findUniqueOrThrow({ where: { id: t.id } });
+    expect(after.cancelledAt).not.toBeNull();
+  });
+
+  it("refuses an already cancelled tournament game", async () => {
+    const blue = await createLinkedMember(1000);
+    const red = await createLinkedMember(1000);
+    const t = await createTournamentGame([blue], [red]);
+    await cancelGameResult(prisma, t.id, null);
+    await expect(cancelGameResult(prisma, t.id, null)).rejects.toThrow(CANCEL_GAME_RESULT_ERRORS.alreadyCancelled);
+  });
+});

@@ -28,5 +28,6 @@ export async function cancelGameResultAction(gameResultId: string): Promise<{ er
   revalidatePath("/rift");
   revalidatePath("/inactive");
   revalidatePath("/matches");
+  revalidatePath("/tournament");
   return { error: null };
 }

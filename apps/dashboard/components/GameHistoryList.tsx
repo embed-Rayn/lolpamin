@@ -6,16 +6,18 @@ import { cancelGameResultAction } from "@/app/match-history/actions";
 import { GameDetailBoard } from "@/components/GameDetailBoard";
 import { formatPlayedAt } from "@lolpamin/core";
 
-function PlayerLine({ player, up }: { player: GameHistoryPlayer; up: boolean }) {
+function PlayerLine({ player, up, hideMmr }: { player: GameHistoryPlayer; up: boolean; hideMmr: boolean }) {
   return (
     <span className="whitespace-nowrap">
       <span className="text-fg-2">{player.name}</span>{" "}
       <span className="font-mono text-[12px] text-faint">
-        {player.mmrBefore}→{player.mmrAfter}
+        {hideMmr ? "-" : `${player.mmrBefore}→${player.mmrAfter}`}
       </span>{" "}
-      <span className={`font-mono text-[12px] ${up ? "text-success-soft" : "text-danger-soft"}`}>
-        {player.delta > 0 ? `+${player.delta}` : player.delta}
-      </span>
+      {!hideMmr && (
+        <span className={`font-mono text-[12px] ${up ? "text-success-soft" : "text-danger-soft"}`}>
+          {player.delta > 0 ? `+${player.delta}` : player.delta}
+        </span>
+      )}
     </span>
   );
 }
@@ -52,10 +54,12 @@ export function GameHistoryList({
     );
   }
 
-  function handleCancel(id: string) {
-    if (!window.confirm("이 모드의 가장 최근 경기를 되돌립니다. 참가자들의 MMR이 경기 전 값으로 돌아갑니다.\n\n되돌린 경기는 다시 살릴 수 없습니다. 진행할까요?")) {
-      return;
-    }
+  function handleCancel(id: string, kind: GameHistoryRow["kind"]) {
+    const message =
+      kind === "INTERNAL"
+        ? "이 모드의 가장 최근 경기를 되돌립니다. 참가자들의 MMR이 경기 전 값으로 돌아갑니다.\n\n되돌린 경기는 다시 살릴 수 없습니다. 진행할까요?"
+        : "이 경기를 되돌립니다. MMR에는 영향이 없습니다.\n\n되돌린 경기는 다시 살릴 수 없습니다. 진행할까요?";
+    if (!window.confirm(message)) return;
     setError(null);
     startTransition(async () => {
       const result = await cancelGameResultAction(id);
@@ -91,6 +95,16 @@ export function GameHistoryList({
                 {row.mode === "ARAM" ? "칼바람" : "협곡"}
               </span>
             )}
+            {row.kind !== "INTERNAL" && (
+              <span className="rounded-md bg-accent-soft/15 px-2 py-0.5 text-[12px] font-bold text-accent-soft">
+                {row.kind === "TOURNAMENT" ? "대회" : "스크림"}
+              </span>
+            )}
+            {row.teamLabels !== null && (
+              <span className="text-[13px] text-fg-2">
+                {row.teamLabels.blue} vs {row.teamLabels.red}
+              </span>
+            )}
             {row.isCancelled ? (
               <span className="rounded-md bg-purple-tint px-2 py-0.5 text-[12px] font-bold text-purple">
                 취소됨
@@ -116,7 +130,7 @@ export function GameHistoryList({
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => handleCancel(row.id)}
+                  onClick={() => handleCancel(row.id, row.kind)}
                   className="rounded-lg bg-raised px-3 py-1.5 text-[13px] font-bold text-fg-2 transition-colors hover:bg-raised-hover disabled:opacity-35"
                 >
                   되돌리기
@@ -140,13 +154,13 @@ export function GameHistoryList({
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="w-3 flex-none text-success-soft">↑</span>
               {row.winners.map((p) => (
-                <PlayerLine key={p.name} player={p} up />
+                <PlayerLine key={p.name} player={p} up hideMmr={row.kind !== "INTERNAL"} />
               ))}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="w-3 flex-none text-danger-soft">↓</span>
               {row.losers.map((p) => (
-                <PlayerLine key={p.name} player={p} up={false} />
+                <PlayerLine key={p.name} player={p} up={false} hideMmr={row.kind !== "INTERNAL"} />
               ))}
             </div>
           </div>

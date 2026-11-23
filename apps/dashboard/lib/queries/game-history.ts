@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { GameMode } from "@lolpamin/db";
-import { gameDayRange } from "@lolpamin/core";
+import type { GameKind, GameMode } from "@lolpamin/db";
+import { defaultTournamentTeamName, gameDayRange } from "@lolpamin/core";
 import type { GameDetail } from "@/lib/game-detail/types";
 
 export interface GameHistoryPlayer {
@@ -13,6 +13,9 @@ export interface GameHistoryPlayer {
 export interface GameHistoryRow {
   id: string;
   mode: GameMode;
+  kind: GameKind;
+  // 대회·스크림 판의 팀 이름. 내전은 null.
+  teamLabels: { blue: string; red: string } | null;
   playedAt: Date;
   winner: "BLUE" | "RED";
   createdByLabel: string;
@@ -72,7 +75,7 @@ function playerName(m: {
 }
 
 export async function getGameHistory(
-  options: { mode?: GameHistoryMode; page?: number; date?: string | null } = {},
+  options: { mode?: GameHistoryMode; page?: number; date?: string | null; kinds?: GameKind[] } = {},
 ): Promise<GameHistoryPage> {
   const mode = options.mode ?? "all";
   const date = options.date ?? null;
@@ -81,6 +84,7 @@ export async function getGameHistory(
   const day = date === null ? null : gameDayRange(date);
   const where = {
     ...(mode === "all" ? {} : { mode }),
+    ...(options.kinds === undefined ? {} : { kind: { in: options.kinds } }),
     ...(day === null ? {} : { playedAt: { gte: day.start, lt: day.end } }),
   };
 
@@ -92,7 +96,8 @@ export async function getGameHistory(
     // 놓치는 일은 없어야 하므로 두 모드를 모두 본다.
     prisma.gameResult.groupBy({
       by: ["mode"],
-      where: { cancelledAt: null },
+      // 대회·스크림은 MMR 사슬 밖이라 「가장 최근 판」 후보가 아니다.
+      where: { cancelledAt: null, kind: "INTERNAL" },
       _max: { createdAt: true },
     }),
   ]);
@@ -131,6 +136,11 @@ export async function getGameHistory(
       .filter((g) => g._max.createdAt !== null)
       .map((g) => `${g.mode}:${g._max.createdAt!.getTime()}`),
   );
+
+  const teams = await prisma.tournamentTeam.findMany();
+  const teamNameBySlot = new Map(teams.map((t) => [t.slot, t.name]));
+  const teamName = (slot: number | null) =>
+    slot === null ? "-" : (teamNameBySlot.get(slot) ?? defaultTournamentTeamName(slot));
 
   const adminIds = [
     ...new Set(
@@ -191,13 +201,19 @@ export async function getGameHistory(
     return {
       id: game.id,
       mode: game.mode,
+      kind: game.kind,
+      teamLabels:
+        game.kind === "INTERNAL"
+          ? null
+          : { blue: teamName(game.blueTeamSlot), red: teamName(game.redTeamSlot) },
       playedAt: game.playedAt,
       winner: game.winner as "BLUE" | "RED",
       createdByLabel: adminLabel(game.createdById),
       cancelledByLabel: game.cancelledAt === null ? null : adminLabel(game.cancelledById),
       isCancelled: game.cancelledAt !== null,
       canCancel:
-        game.cancelledAt === null && latestLiveKey.has(`${game.mode}:${game.createdAt.getTime()}`),
+        game.cancelledAt === null &&
+        (game.kind !== "INTERNAL" || latestLiveKey.has(`${game.mode}:${game.createdAt.getTime()}`)),
       winners: players.filter((p) => isWinner(p.team)).map(({ team: _team, ...rest }) => rest),
       losers: players.filter((p) => !isWinner(p.team)).map(({ team: _team, ...rest }) => rest),
       detail,

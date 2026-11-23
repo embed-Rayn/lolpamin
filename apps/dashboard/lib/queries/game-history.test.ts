@@ -382,3 +382,48 @@ describe("getGameHistory replay detail", () => {
     expect(half.member?.name).toBe("생존자");
   });
 });
+
+describe("getGameHistory with tournament games", () => {
+  async function seed() {
+    const blue = await createLinkedMember("블루", 1000);
+    const red = await createLinkedMember("레드", 1000);
+    const a = await playGame([blue], [red], "BLUE");
+    const t = await prisma.gameResult.create({
+      data: {
+        playedAt: new Date("2026-09-02T12:00:00Z"),
+        winner: "BLUE",
+        mode: "RIFT",
+        kind: "TOURNAMENT",
+        blueTeamSlot: 1,
+        redTeamSlot: 2,
+        participants: {
+          create: [
+            { memberId: blue.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1000 },
+            { memberId: red.id, team: "RED", mmrBefore: 1000, mmrAfter: 1000 },
+          ],
+        },
+      },
+    });
+    await prisma.tournamentTeam.create({ data: { slot: 2, name: "불꽃" } });
+    return { a, t };
+  }
+
+  it("keeps both the internal and the tournament game cancellable and labels the teams", async () => {
+    const { a, t } = await seed();
+    const { rows } = await getGameHistory();
+    const rowA = rows.find((r) => r.id === a.gameResultId)!;
+    const rowT = rows.find((r) => r.id === t.id)!;
+    expect(rowA.canCancel).toBe(true);
+    expect(rowA.kind).toBe("INTERNAL");
+    expect(rowA.teamLabels).toBeNull();
+    expect(rowT.canCancel).toBe(true);
+    expect(rowT.kind).toBe("TOURNAMENT");
+    expect(rowT.teamLabels).toEqual({ blue: "1팀", red: "불꽃" });
+  });
+
+  it("filters by kinds", async () => {
+    const { t } = await seed();
+    const { rows } = await getGameHistory({ kinds: ["TOURNAMENT", "SCRIM"] });
+    expect(rows.map((r) => r.id)).toEqual([t.id]);
+  });
+});
