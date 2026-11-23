@@ -17,7 +17,7 @@ const SOURCE_LABEL: Record<CandidateSource, string> = {
 };
 
 export interface CandidateSetupProps {
-  pool: LinkedMemberOption[];
+  pool: Pick<LinkedMemberOption, "id" | "name">[];
   sources: readonly CandidateSource[];
   source: CandidateSource;
   onSourceChange: (source: CandidateSource) => void;
@@ -28,6 +28,7 @@ export interface CandidateSetupProps {
   range: { min: number; max: number };
   onRangeChange: (range: { min: number; max: number }) => void;
   locked: boolean;
+  emptyPoolHint?: string;
 }
 
 const FIELD =
@@ -45,6 +46,7 @@ export function CandidateSetup({
   range,
   onRangeChange,
   locked,
+  emptyPoolHint,
 }: CandidateSetupProps) {
   const search = useMultiNameSearch(pool);
   const [manualName, setManualName] = useState("");
@@ -142,8 +144,8 @@ export function CandidateSetup({
 
           {pool.length === 0 ? (
             <div className="rounded-lg bg-surface-3 px-3 py-6 text-center text-[13px] text-muted">
-              계정이 연결된 회원이 없습니다. 05 계정 연결에서 먼저 연결하거나, 위 탭에서 숫자 뽑기를
-              쓰세요.
+              {emptyPoolHint ??
+                "계정이 연결된 회원이 없습니다. 05 계정 연결에서 먼저 연결하거나, 위 탭에서 숫자 뽑기를 쓰세요."}
             </div>
           ) : (
             <div className="grid max-h-[220px] grid-cols-8 gap-1.5 overflow-y-auto">

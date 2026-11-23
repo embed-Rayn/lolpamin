@@ -6,14 +6,17 @@ import type { BgmTrack } from "@/lib/draw/bgm";
 const FIELD =
   "rounded-lg border border-ink/[.09] bg-page px-2.5 py-1.5 text-[13px] text-fg outline-none disabled:opacity-40";
 
-export function BgmPlayer() {
-  const [tracks, setTracks] = useState<BgmTrack[]>([]);
-  const [selected, setSelected] = useState("");
+// `fixedTracks` skips the /api/bgm listing — the offline build (apps/draw-offline) has no
+// server to ask and ships its track list baked in.
+export function BgmPlayer({ fixedTracks }: { fixedTracks?: BgmTrack[] } = {}) {
+  const [tracks, setTracks] = useState<BgmTrack[]>(fixedTracks ?? []);
+  const [selected, setSelected] = useState(fixedTracks?.[0]?.url ?? "");
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.6);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
+    if (fixedTracks) return;
     let cancelled = false;
     fetch("/api/bgm")
       .then((res) => res.json())
@@ -28,7 +31,7 @@ export function BgmPlayer() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fixedTracks]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;

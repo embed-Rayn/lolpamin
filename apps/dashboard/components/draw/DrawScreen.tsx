@@ -13,6 +13,7 @@ import {
   type DrawState,
 } from "@lolpamin/core";
 import type { LinkedMemberOption } from "@/lib/queries/linked-members";
+import type { BgmTrack } from "@/lib/draw/bgm";
 import { toMemberCandidates, toNumberCandidates } from "@/lib/draw/candidates";
 import { secureNextIndex } from "@/lib/draw/random";
 import { clampSpeed } from "@/lib/draw/speed";
@@ -46,9 +47,14 @@ function readStoredSpeed(): number | null {
 export function DrawScreen({
   pool,
   variant,
+  bgmTracks,
+  emptyPoolHint,
 }: {
-  pool: LinkedMemberOption[];
+  // Only id and name are read here; the offline build passes bare { id, name } rows.
+  pool: Pick<LinkedMemberOption, "id" | "name">[];
   variant: "cannon" | "plinko";
+  bgmTracks?: BgmTrack[];
+  emptyPoolHint?: string;
 }) {
   const [source, setSource] = useState<CandidateSource>("members");
   // Nobody is ticked at first: a draw is for the people present today, picked by hand or by
@@ -182,6 +188,7 @@ export function DrawScreen({
           range={range}
           onRangeChange={setRange}
           locked={locked}
+          emptyPoolHint={emptyPoolHint}
         />
 
         {variant === "cannon" ? (
@@ -202,7 +209,7 @@ export function DrawScreen({
             speed={speed}
             onSpeedChange={setSpeed}
           />
-          <BgmPlayer />
+          <BgmPlayer fixedTracks={bgmTracks} />
           <div className="ml-auto whitespace-nowrap font-mono text-[13px] text-muted">
             {teamMode
               ? `${variant === "cannon" ? "발사" : "통과"} ${drawn.length} / 전체 ${active.candidates.length}`

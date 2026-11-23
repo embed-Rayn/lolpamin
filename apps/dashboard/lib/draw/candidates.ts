@@ -4,7 +4,7 @@ import type { LinkedMemberOption } from "@/lib/queries/linked-members";
 export const MAX_NUMBER_CANDIDATES = 1000;
 
 export function toMemberCandidates(
-  members: LinkedMemberOption[],
+  members: Pick<LinkedMemberOption, "id" | "name">[],
   selectedIds: ReadonlySet<string>
 ): DrawCandidate[] {
   return members.filter((m) => selectedIds.has(m.id)).map((m) => ({ id: m.id, label: m.name }));
