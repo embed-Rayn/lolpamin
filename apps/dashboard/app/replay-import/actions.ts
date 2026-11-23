@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { GameMode } from "@lolpamin/db";
+import type { GameKind, GameMode } from "@lolpamin/db";
 import { parseSeoulDateTimeInput, ROFL_PARSE_ERRORS, type ReplayPlayer } from "@lolpamin/core";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
@@ -56,6 +56,9 @@ export interface SaveReplayImportActionInput {
   winner: "BLUE" | "RED";
   assignments: ReplayAssignment[];
   mode?: GameMode;
+  kind?: GameKind;
+  blueTeamSlot?: number | null;
+  redTeamSlot?: number | null;
 }
 
 export async function saveReplayImportAction(
@@ -85,5 +88,6 @@ export async function saveReplayImportAction(
   revalidatePath("/matches");
   revalidatePath("/rift");
   revalidatePath("/inactive");
+  revalidatePath("/tournament");
   return { ok: true, data: result };
 }

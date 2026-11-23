@@ -1,6 +1,7 @@
-import type { GameMode, PrismaClient } from "@lolpamin/db";
+import type { GameKind, GameMode, PrismaClient } from "@lolpamin/db";
 import { isReplayPuuid, type ReplayPlayer } from "@lolpamin/core";
 import { saveGameResultTx, type SaveGameResultOutput } from "./save-game-result";
+import { SITE_SETTING_ID } from "../queries/site-theme";
 import { computeReplayKey } from "../replay-import/replay-key";
 
 export interface ReplayAssignment {
@@ -26,6 +27,10 @@ export interface SaveReplayImportInput {
   createdById?: string | null;
   // 리플레이에 큐 정보가 없어 관리자가 업로드 화면에서 직접 고른다. 기본은 협곡.
   mode?: GameMode;
+  // Non-INTERNAL games (tournament, scrim) need both team slots and never move MMR.
+  kind?: GameKind;
+  blueTeamSlot?: number | null;
+  redTeamSlot?: number | null;
 }
 
 export const SAVE_REPLAY_IMPORT_ERRORS = {
@@ -33,7 +38,13 @@ export const SAVE_REPLAY_IMPORT_ERRORS = {
   duplicateMember: "같은 회원이 두 슬롯에 배정돼 있습니다.",
   emptyTeam: "한 팀에 회원이 한 명도 없습니다. 최소 한 명은 회원이어야 합니다.",
   replayMismatch: "리플레이 정보가 일치하지 않습니다.",
+  tournamentDisabled: "대회 페이지가 꺼져 있습니다.",
+  sameTeam: "블루와 레드에 같은 팀을 고를 수 없습니다.",
+  tournamentMode: "대회 경기는 협곡만 가능합니다.",
+  missingTeam: "팀을 골라 주세요.",
 } as const;
+
+const isSlot = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 4;
 
 /**
  * 확정된 매칭을 저장한다. 계정 등록·경기 저장·활동 갱신이 한 트랜잭션 안에서 끝난다 —
@@ -48,6 +59,20 @@ export async function saveReplayImport(
   input: SaveReplayImportInput
 ): Promise<SaveGameResultOutput> {
   const { replayKey, replay, playedAt, winner, assignments, createdById = null, mode = "RIFT" } = input;
+  const kind = input.kind ?? "INTERNAL";
+
+  // Validate the tournament fields before any write. Internal games ignore slots entirely.
+  let blueTeamSlot: number | null = null;
+  let redTeamSlot: number | null = null;
+  if (kind !== "INTERNAL") {
+    if (mode !== "RIFT") throw new Error(SAVE_REPLAY_IMPORT_ERRORS.tournamentMode);
+    if (!isSlot(input.blueTeamSlot) || !isSlot(input.redTeamSlot)) {
+      throw new Error(SAVE_REPLAY_IMPORT_ERRORS.missingTeam);
+    }
+    if (input.blueTeamSlot === input.redTeamSlot) throw new Error(SAVE_REPLAY_IMPORT_ERRORS.sameTeam);
+    blueTeamSlot = input.blueTeamSlot;
+    redTeamSlot = input.redTeamSlot;
+  }
 
   // 클라이언트가 돌려보낸 스탯이 이 키의 경기인지 확인한다. 수치 조작까지 막지는 않는다 —
   // 관리자 전용 경로이고, 막으려는 것은 다른 경기(오래된 탭, 재업로드)의 스탯이 끼어드는 일이다.
@@ -70,6 +95,11 @@ export async function saveReplayImport(
 
   return prisma.$transaction(
     async (tx) => {
+      if (kind !== "INTERNAL") {
+        const setting = await tx.siteSetting.findUnique({ where: { id: SITE_SETTING_ID } });
+        if (!setting?.tournamentEnabled) throw new Error(SAVE_REPLAY_IMPORT_ERRORS.tournamentDisabled);
+      }
+
       const already = await tx.gameResult.findUnique({ where: { replayKey } });
       if (already) throw new Error(SAVE_REPLAY_IMPORT_ERRORS.alreadyImported);
 
@@ -143,6 +173,9 @@ export async function saveReplayImport(
         createdById,
         replayKey,
         mode,
+        kind,
+        blueTeamSlot,
+        redTeamSlot,
       });
 
       for (const a of assignments) {

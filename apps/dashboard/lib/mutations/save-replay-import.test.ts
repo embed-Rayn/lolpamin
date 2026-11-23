@@ -6,6 +6,7 @@ import { cancelGameResult } from "./cancel-game-result";
 import { prepareReplayImport } from "../replay-import/prepare-import";
 import { buildRoflFixture, replayInput, tenPlayers } from "../replay-import/test-fixture";
 import { parseRoflMetadata } from "@lolpamin/core";
+import { SITE_SETTING_ID } from "../queries/site-theme";
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -491,5 +492,86 @@ describe("saveReplayImport — one row per account across both PUUIDs", () => {
 
     expect((await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "api-puuid" } })).memberId).toBe(red.id);
     expect((await prisma.riotAccount.findUniqueOrThrow({ where: { puuid: "p-blue" } })).memberId).toBe(blue.id);
+  });
+});
+
+describe("saveReplayImport — tournament and scrim games", () => {
+  async function pair() {
+    const blue = await linkedMember("tblue");
+    const red = await linkedMember("tred");
+    const assignments = [assignment("p-tblue", "BLUE", blue.id), assignment("p-tred", "RED", red.id)];
+    return { blue, red, assignments };
+  }
+  const base = { playedAt: new Date("2026-09-05T12:00:00Z"), winner: "BLUE" as const };
+
+  it("saves a tournament game without touching any rating", async () => {
+    await prisma.siteSetting.create({ data: { id: SITE_SETTING_ID, tournamentEnabled: true } });
+    const { blue, red, assignments } = await pair();
+    const result = await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      ...base,
+      assignments,
+      kind: "TOURNAMENT",
+      blueTeamSlot: 1,
+      redTeamSlot: 2,
+    });
+
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(game.kind).toBe("TOURNAMENT");
+    expect(game.blueTeamSlot).toBe(1);
+    expect(game.redTeamSlot).toBe(2);
+    for (const m of [blue, red]) {
+      const row = await prisma.member.findUniqueOrThrow({ where: { id: m.id } });
+      expect(row.mmr).toBe(1000);
+      expect(row.lastActiveAt).toEqual(base.playedAt);
+    }
+    const parts = await prisma.gameParticipant.findMany({ where: { gameResultId: result.gameResultId } });
+    expect(parts).toHaveLength(2);
+    for (const p of parts) expect(p.mmrAfter).toBe(p.mmrBefore);
+    // The fixture replay holds only the two assigned players.
+    expect(await prisma.replayPlayerStat.count({ where: { gameResultId: result.gameResultId } })).toBe(2);
+  });
+
+  it("refuses when the tournament switch is off and writes nothing", async () => {
+    const { assignments } = await pair();
+    await expect(
+      saveReplayImport(prisma, { ...replayInput(assignments), ...base, assignments, kind: "TOURNAMENT", blueTeamSlot: 1, redTeamSlot: 2 }),
+    ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.tournamentDisabled);
+    expect(await prisma.gameResult.count()).toBe(0);
+  });
+
+  it("refuses the same team on both sides", async () => {
+    await prisma.siteSetting.create({ data: { id: SITE_SETTING_ID, tournamentEnabled: true } });
+    const { assignments } = await pair();
+    await expect(
+      saveReplayImport(prisma, { ...replayInput(assignments), ...base, assignments, kind: "SCRIM", blueTeamSlot: 2, redTeamSlot: 2 }),
+    ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.sameTeam);
+  });
+
+  it("refuses a missing or out-of-range team", async () => {
+    await prisma.siteSetting.create({ data: { id: SITE_SETTING_ID, tournamentEnabled: true } });
+    const { assignments } = await pair();
+    for (const redTeamSlot of [5, null]) {
+      await expect(
+        saveReplayImport(prisma, { ...replayInput(assignments), ...base, assignments, kind: "TOURNAMENT", blueTeamSlot: 1, redTeamSlot }),
+      ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.missingTeam);
+    }
+  });
+
+  it("refuses ARAM for a scrim", async () => {
+    await prisma.siteSetting.create({ data: { id: SITE_SETTING_ID, tournamentEnabled: true } });
+    const { assignments } = await pair();
+    await expect(
+      saveReplayImport(prisma, { ...replayInput(assignments), ...base, assignments, kind: "SCRIM", mode: "ARAM", blueTeamSlot: 1, redTeamSlot: 2 }),
+    ).rejects.toThrow(SAVE_REPLAY_IMPORT_ERRORS.tournamentMode);
+  });
+
+  it("ignores slots on an internal game", async () => {
+    const { blue, assignments } = await pair();
+    const result = await saveReplayImport(prisma, { ...replayInput(assignments), ...base, assignments, blueTeamSlot: 1, redTeamSlot: 2 });
+    const game = await prisma.gameResult.findUniqueOrThrow({ where: { id: result.gameResultId } });
+    expect(game.kind).toBe("INTERNAL");
+    expect(game.blueTeamSlot).toBeNull();
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: blue.id } })).mmr).not.toBe(1000);
   });
 });

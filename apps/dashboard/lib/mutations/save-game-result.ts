@@ -1,4 +1,4 @@
-import type { GameMode, Prisma, PrismaClient, Team } from "@lolpamin/db";
+import type { GameKind, GameMode, Prisma, PrismaClient, Team } from "@lolpamin/db";
 import { calculateTeamMmrChange } from "@lolpamin/core";
 import { getMmrConfig } from "../queries/mmr-config";
 import { ratingField } from "../rating-field";
@@ -15,6 +15,10 @@ export interface SaveGameResultInput {
   replayKey?: string | null;
   // 어느 레이팅 트랙인지. 기본은 협곡 — 기존 호출부(리플레이 임포트 포함)를 그대로 둔다.
   mode?: GameMode;
+  // Tournament and scrim games are recorded but never move a rating.
+  kind?: GameKind;
+  blueTeamSlot?: number | null;
+  redTeamSlot?: number | null;
 }
 
 export interface SaveGameResultOutput {
@@ -31,6 +35,10 @@ export async function saveGameResultTx(
   input: SaveGameResultInput
 ): Promise<SaveGameResultOutput> {
   const { playedAt, blueMemberIds, redMemberIds, winner, createdById = null, replayKey = null, mode = "RIFT" } = input;
+  const kind = input.kind ?? "INTERNAL";
+  const isInternal = kind === "INTERNAL";
+  const blueTeamSlot = isInternal ? null : (input.blueTeamSlot ?? null);
+  const redTeamSlot = isInternal ? null : (input.redTeamSlot ?? null);
   const field = ratingField(mode);
 
   const overlap = blueMemberIds.filter((id) => redMemberIds.includes(id));
@@ -69,16 +77,17 @@ export async function saveGameResultTx(
   const byId = new Map(members.map((m) => [m.id, m]));
   // 설정은 트랜잭션 안에서 읽는다 — 저장 도중 어드민이 K값을 바꿔도 이 경기는
   // 하나의 설정으로만 계산된다.
-  const config = await getMmrConfig(tx);
-  const { blueDelta, redDelta } = calculateTeamMmrChange({
-    blueRatings: blueMemberIds.map((id) => byId.get(id)![field]),
-    redRatings: redMemberIds.map((id) => byId.get(id)![field]),
-    winner,
-    config,
-  });
+  const { blueDelta, redDelta } = isInternal
+    ? calculateTeamMmrChange({
+        blueRatings: blueMemberIds.map((id) => byId.get(id)![field]),
+        redRatings: redMemberIds.map((id) => byId.get(id)![field]),
+        winner,
+        config: await getMmrConfig(tx),
+      })
+    : { blueDelta: 0, redDelta: 0 };
 
   const gameResult = await tx.gameResult.create({
-    data: { playedAt, winner: winner as Team, createdById, replayKey, mode },
+    data: { playedAt, winner: winner as Team, createdById, replayKey, mode, kind, blueTeamSlot, redTeamSlot },
   });
 
   const updates: SaveGameResultOutput["updates"] = [];
@@ -93,7 +102,9 @@ export async function saveGameResultTx(
       await tx.gameParticipant.create({
         data: { gameResultId: gameResult.id, memberId, team: team as Team, mmrBefore, mmrAfter },
       });
-      await tx.member.update({ where: { id: memberId }, data: { [field]: mmrAfter } });
+      if (isInternal) {
+        await tx.member.update({ where: { id: memberId }, data: { [field]: mmrAfter } });
+      }
       updates.push({ memberId, mmrBefore, mmrAfter });
     }
   }
