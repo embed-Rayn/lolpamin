@@ -17,4 +17,6 @@ export async function resetDatabase(client: PrismaClient): Promise<void> {
   await client.eventPost.deleteMany();
   await client.meetingNoteImage.deleteMany();
   await client.meetingNote.deleteMany();
+  await client.tournamentImage.deleteMany();
+  await client.tournamentTeam.deleteMany();
 }

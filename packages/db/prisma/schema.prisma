@@ -121,7 +121,13 @@ model GameResult {
   playedAt  DateTime
   winner    Team
   mode      GameMode @default(RIFT)
+  kind      GameKind @default(INTERNAL)
   createdAt DateTime @default(now())
+
+  // Tournament team slots (TournamentTeam.slot) for the blue/red side. No FK: slots
+  // have default names, so no TournamentTeam rows need to exist.
+  blueTeamSlot Int?
+  redTeamSlot  Int?
 
   // 같은 리플레이의 재업로드를 막는다. 정렬한 PUUID 10개 + gameLength의 SHA-256.
   // 파일명에 의존하지 않으므로 이름을 바꿔 올려도 같은 값이 나온다. 손으로 입력한 경기는 null이다.
@@ -141,6 +147,30 @@ model GameResult {
 
   // 되돌리기 대상은 "살아 있는 것 중 가장 나중에 입력된 것"이라 이 순서로 찾는다.
   @@index([cancelledAt, createdAt])
+  @@index([kind, cancelledAt])
+}
+
+enum GameKind {
+  INTERNAL
+  TOURNAMENT
+  SCRIM
+}
+
+// Tournament team display names, keyed by slot. Slots are fixed and have default names,
+// so a row exists only once an admin renames a team (hence no FK from GameResult).
+model TournamentTeam {
+  slot        Int      @id
+  name        String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
+model TournamentImage {
+  id        String   @id @default(cuid())
+  position  Int
+  bytes     Bytes
+  type      String
+  createdAt DateTime @default(now())
 }
 
 model GameParticipant {
@@ -342,6 +372,7 @@ model SiteSetting {
   masteryRefreshedAt DateTime?
   // 현재 솔로랭크로 최고티어를 마지막으로 올려 본 시각. 같은 이유로 DB에 둔다.
   tierRefreshedAt    DateTime?
+  tournamentEnabled  Boolean   @default(false)
   updatedAt          DateTime  @updatedAt
   updatedById        String?
 }
