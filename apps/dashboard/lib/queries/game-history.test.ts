@@ -421,6 +421,57 @@ describe("getGameHistory with tournament games", () => {
     expect(rowT.teamLabels).toEqual({ blue: "1팀", red: "불꽃" });
   });
 
+  it("hides the MMR change on the detail board of non-internal games only", async () => {
+    const { a, t } = await seed();
+    const stat = (puuid: string, team: "BLUE" | "RED") => ({
+      puuid,
+      gameName: puuid,
+      tagLine: "KR1",
+      team,
+      position: "TOP",
+      champion: "Aatrox",
+      level: 18,
+      kills: 1,
+      deaths: 1,
+      assists: 1,
+      cs: 100,
+      spell1: 4,
+      spell2: 14,
+      keystone: 8010,
+      subStyle: 8000,
+      items: [],
+      damageDealt: 1,
+      damageTaken: 1,
+      controlWards: 0,
+      wardsPlaced: 0,
+      wardsKilled: 0,
+      gold: 1,
+      baronKills: 0,
+      dragonKills: 0,
+      heraldKills: 0,
+      hordeKills: 0,
+      atakhanKills: 0,
+      turretKills: 0,
+      inhibitorKills: 0,
+    });
+    for (const id of [a.gameResultId, t.id]) {
+      await prisma.gameResult.update({ where: { id }, data: { gameLengthMs: 1_500_000 } });
+      const parts = await prisma.gameParticipant.findMany({ where: { gameResultId: id } });
+      for (const p of parts) {
+        const puuid = `puuid-${id}-${p.team}`;
+        await prisma.gameParticipant.update({ where: { id: p.id }, data: { replayPuuid: puuid } });
+        await prisma.replayPlayerStat.create({ data: { gameResultId: id, ...stat(puuid, p.team) } });
+      }
+    }
+    const { rows } = await getGameHistory();
+    const rowA = rows.find((r) => r.id === a.gameResultId)!;
+    const rowT = rows.find((r) => r.id === t.id)!;
+    expect(rowT.detail!.players.map((p) => p.member?.mmrAfter)).toEqual([null, null]);
+    for (const p of rowA.detail!.players) {
+      expect(typeof p.member?.mmrAfter).toBe("number");
+    }
+  });
+
   it("filters by kinds", async () => {
     const { t } = await seed();
     const { rows } = await getGameHistory({ kinds: ["TOURNAMENT", "SCRIM"] });

@@ -191,7 +191,8 @@ export async function getGameHistory(
                   ? {
                       name: playerName(participant.member),
                       mmrBefore: participant.mmrBefore,
-                      mmrAfter: participant.mmrAfter,
+                      // Only internal games move ratings; null hides the delta on the board.
+                      mmrAfter: game.kind === "INTERNAL" ? participant.mmrAfter : null,
                     }
                   : null,
               };

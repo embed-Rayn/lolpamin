@@ -123,7 +123,7 @@ export async function AppShell({ activeNav, pageTitle, pageDesc, desktopOnly, ch
           badgeTone: "accent",
         },
         // Hidden from everyone while the switch is off; admins reach it from /admins.
-        ...(tournamentEnabled ? [{ key: "tournament", href: "/tournament", label: "대회", icon: "trophy" } as const] : []),
+        ...(tournamentEnabled ? [{ key: "tournament", href: "/tournament", label: "대회", icon: "flag" } as const] : []),
       ],
     },
   ];
