@@ -57,12 +57,27 @@ function initialState(slots: ImportSlot[]): Record<string, SlotState> {
   );
 }
 
-export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
+type TournamentKind = "TOURNAMENT" | "SCRIM";
+
+export function ReplayImportForm({
+  isAdmin,
+  tournament,
+}: {
+  isAdmin: boolean;
+  // Set on /tournament: the game is a 대회/스크림 between two of the four teams. The mode
+  // is always RIFT and no MMR moves, so the preview shows plain ratings without a delta.
+  tournament?: { teams: Record<number, string> };
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [prepared, setPrepared] = useState<PreparedReplayImport | null>(null);
   const [state, setState] = useState<Record<string, SlotState>>({});
   const [playedAt, setPlayedAt] = useState<string>(toSeoulDateTimeInput(new Date()));
-  const [mode, setMode] = useState<GameMode>("RIFT");
+  const [selectedMode, setMode] = useState<GameMode>("RIFT");
+  const mode: GameMode = tournament ? "RIFT" : selectedMode;
+  const [tournamentKind, setTournamentKind] = useState<TournamentKind>("TOURNAMENT");
+  const [blueTeamSlot, setBlueTeamSlot] = useState<number | null>(null);
+  const [redTeamSlot, setRedTeamSlot] = useState<number | null>(null);
+  const teamsReady = !tournament || (blueTeamSlot !== null && redTeamSlot !== null && blueTeamSlot !== redTeamSlot);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState<number | null>(null);
@@ -88,6 +103,22 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
       const m = prepared.members.find((option) => option.id === memberId);
       return m ? (mode === "ARAM" ? m.aramMmr : m.mmr) : 1000;
     };
+    if (tournament) {
+      // No MMR moves in a tournament/scrim game: mmrAfter null makes the board show the
+      // current rating alone, with no delta.
+      return {
+        winner: prepared.winner,
+        mode,
+        gameLengthMs: prepared.gameLengthMs,
+        players: prepared.players.map((p) => {
+          const memberId = state[p.puuid]?.memberId ?? null;
+          return {
+            ...p,
+            member: memberId ? { name: labelOf(memberId), mmrBefore: ratingOf(memberId), mmrAfter: null } : null,
+          };
+        }),
+      };
+    }
     const preview = previewReplayMmr({
       assignments: prepared.slots.map((s) => ({ team: s.team, memberId: state[s.puuid]?.memberId ?? null })),
       ratingOf,
@@ -104,7 +135,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
         return { ...p, member: memberId && mmr ? { name: labelOf(memberId), ...mmr } : null };
       }),
     };
-  }, [prepared, state, mode]);
+  }, [prepared, state, mode, tournament]);
 
   async function accept(picked: File | null | undefined) {
     if (!picked) return;
@@ -144,7 +175,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
   }
 
   async function handleSave() {
-    if (!prepared || unresolved > 0) return;
+    if (!prepared || unresolved > 0 || !teamsReady) return;
     setIsBusy(true);
     setError(null);
     try {
@@ -161,6 +192,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
           memberId: state[s.puuid].memberId,
         })),
         mode,
+        ...(tournament ? { kind: tournamentKind, blueTeamSlot, redTeamSlot } : {}),
       });
       if (!result.ok) {
         setError(result.error);
@@ -283,23 +315,72 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
             롤 클라이언트 &gt; 내 기록에서 내려받은 파일입니다. 같은 경기를 두 번 올리면 거부됩니다.
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-bold text-faint">게임 모드</span>
-          <div className="flex overflow-hidden rounded-lg border border-ink/[.12]">
-            {(["RIFT", "ARAM"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`px-3 py-1.5 text-[12.5px] font-bold ${
-                  mode === m ? "cursor-pointer bg-accent text-white" : "cursor-pointer bg-transparent text-faint"
-                }`}
-              >
-                {m === "RIFT" ? "협곡" : "칼바람"}
-              </button>
+        {tournament ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-bold text-faint">경기 종류</span>
+              <div className="flex overflow-hidden rounded-lg border border-ink/[.12]">
+                {(["TOURNAMENT", "SCRIM"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setTournamentKind(k)}
+                    className={`px-3 py-1.5 text-[12.5px] font-bold ${
+                      tournamentKind === k
+                        ? "cursor-pointer bg-accent text-white"
+                        : "cursor-pointer bg-transparent text-faint"
+                    }`}
+                  >
+                    {k === "TOURNAMENT" ? "대회" : "스크림"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(
+              [
+                ["블루 측 팀", blueTeamSlot, setBlueTeamSlot],
+                ["레드 측 팀", redTeamSlot, setRedTeamSlot],
+              ] as const
+            ).map(([label, value, setValue]) => (
+              <label key={label} className="flex items-center gap-2 text-[12px] font-bold text-faint">
+                {label}
+                <select
+                  value={value ?? ""}
+                  onChange={(e) => setValue(e.target.value === "" ? null : Number(e.target.value))}
+                  className="rounded-md border border-ink/[.12] bg-surface px-2 py-1 text-[12.5px] font-normal text-fg"
+                >
+                  <option value="">팀 선택</option>
+                  {Object.entries(tournament.teams).map(([slot, name]) => (
+                    <option key={slot} value={slot}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ))}
+            {blueTeamSlot !== null && blueTeamSlot === redTeamSlot && (
+              <span className="text-[12px] text-danger-soft">블루와 레드에 같은 팀을 고를 수 없습니다.</span>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-bold text-faint">게임 모드</span>
+            <div className="flex overflow-hidden rounded-lg border border-ink/[.12]">
+              {(["RIFT", "ARAM"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`px-3 py-1.5 text-[12.5px] font-bold ${
+                    mode === m ? "cursor-pointer bg-accent text-white" : "cursor-pointer bg-transparent text-faint"
+                  }`}
+                >
+                  {m === "RIFT" ? "협곡" : "칼바람"}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {isAdmin ? (
           <>
             <input
@@ -354,7 +435,7 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
         )}
         {savedCount !== null && (
           <div className="rounded-lg border border-success/30 bg-success/[.12] p-2.5 text-[12px] text-success-soft">
-            저장했습니다. {savedCount}명의 MMR이 갱신됐습니다.
+            {tournament ? "저장했습니다." : `저장했습니다. ${savedCount}명의 MMR이 갱신됐습니다.`}
           </div>
         )}
       </div>
@@ -419,14 +500,20 @@ export function ReplayImportForm({ isAdmin }: { isAdmin: boolean }) {
 
           <button
             onClick={handleSave}
-            disabled={!isAdmin || isBusy || unresolved > 0}
+            disabled={!isAdmin || isBusy || unresolved > 0 || !teamsReady}
             className={`w-fit rounded-lg px-4 py-2 text-[13.5px] font-extrabold ${
-              isAdmin && !isBusy && unresolved === 0
+              isAdmin && !isBusy && unresolved === 0 && teamsReady
                 ? "cursor-pointer bg-success text-page"
                 : "cursor-not-allowed bg-hover text-ghost"
             }`}
           >
-            {isBusy ? "처리 중..." : unresolved > 0 ? `미해결 ${unresolved}명을 먼저 처리하세요` : "경기 저장"}
+            {isBusy
+              ? "처리 중..."
+              : unresolved > 0
+                ? `미해결 ${unresolved}명을 먼저 처리하세요`
+                : !teamsReady
+                  ? "블루·레드 팀을 먼저 고르세요"
+                  : "경기 저장"}
           </button>
         </div>
       )}

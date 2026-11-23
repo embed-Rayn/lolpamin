@@ -32,7 +32,8 @@ export interface AppShellProps {
     | "admins"
     | "draw-cannon"
     | "draw-plinko"
-    | "events";
+    | "events"
+    | "tournament";
   pageTitle: string;
   pageDesc: string;
   // 이 화면은 폭이 넓어야 쓸 수 있다(경기 입력, 리플레이, 팀짜기, 카톡 불러오기, 계정
