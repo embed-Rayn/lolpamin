@@ -10,27 +10,33 @@ interface DiscordApiGuildMember {
 
 const MAX_MEMBERS_PER_REQUEST = 1000;
 
+/**
+ * Reads every page. importDiscordMembers treats an ID missing from this list as having left
+ * the guild, so a list cut off at one page would unlink everyone past it.
+ */
 export async function fetchGuildMembers(token: string, guildId: string): Promise<DiscordGuildMember[]> {
-  const response = await fetch(
-    `https://discord.com/api/v10/guilds/${guildId}/members?limit=${MAX_MEMBERS_PER_REQUEST}`,
-    { headers: { Authorization: `Bot ${token}` }, cache: "no-store" }
-  );
-
-  if (response.status === 403) {
-    throw new Error(
-      "디스코드가 회원 목록 조회를 거부했습니다. 개발자 포털에서 Server Members Intent를 켜야 합니다."
+  const body: DiscordApiGuildMember[] = [];
+  let after = "0";
+  for (;;) {
+    const response = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/members?limit=${MAX_MEMBERS_PER_REQUEST}&after=${after}`,
+      { headers: { Authorization: `Bot ${token}` }, cache: "no-store" }
     );
-  }
-  if (!response.ok) {
-    throw new Error(`디스코드 API 오류 (${response.status})`);
-  }
 
-  const body = (await response.json()) as DiscordApiGuildMember[];
+    if (response.status === 403) {
+      throw new Error(
+        "디스코드가 회원 목록 조회를 거부했습니다. 개발자 포털에서 Server Members Intent를 켜야 합니다."
+      );
+    }
+    if (!response.ok) {
+      throw new Error(`디스코드 API 오류 (${response.status})`);
+    }
 
-  if (body.length === MAX_MEMBERS_PER_REQUEST) {
-    console.warn(
-      `[discord] 길드 회원이 ${MAX_MEMBERS_PER_REQUEST}명에 도달했습니다. 그 이후 인원은 가져오지 않습니다.`
-    );
+    const page = (await response.json()) as DiscordApiGuildMember[];
+    body.push(...page);
+    const last = page.at(-1)?.user?.id;
+    if (page.length < MAX_MEMBERS_PER_REQUEST || !last) break;
+    after = last;
   }
 
   return body.flatMap((entry) => {

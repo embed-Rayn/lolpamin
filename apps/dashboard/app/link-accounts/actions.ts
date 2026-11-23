@@ -88,6 +88,8 @@ export async function importDiscordMembersAction(): Promise<ImportDiscordMembers
     const result = await importDiscordMembers(prisma, members);
     revalidatePath("/link-accounts");
     revalidatePath("/rift");
+    revalidatePath("/member-admin");
+    revalidatePath("/member-info");
     return { result, error: null };
   } catch (error) {
     return { result: null, error: error instanceof Error ? error.message : "디스코드 회원을 가져오지 못했습니다." };

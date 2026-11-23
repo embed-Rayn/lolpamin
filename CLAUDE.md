@@ -58,6 +58,11 @@ All three env consumers read the single repo-root `.env`: the bots via `--env-fi
 
 `Member` is one human, with a Discord side and a KakaoTalk side that arrive independently. A row holding only one side is a "반쪽(half) 회원". Linking is **reversible**: `absorbMember()` points the Kakao-side row at the survivor via `mergedIntoId` instead of deleting it, leaving a tombstone that keeps its own `kakaoNickname` so future imports still match on the raw string; `releaseMember()` undoes it. Queries therefore filter on `mergedIntoId: null` and treat a survivor whose tombstone holds a nickname as linked. `realName`/`age` are parsed out of the `이름/나이/닉네임태그` nickname format by `parseKakaoNickname`, best-effort only.
 
+디스코드 회원 가져오기(`importDiscordMembers`, `/link-accounts`)는 길드 목록을 끝 페이지까지 읽고, 목록에 없는
+`discordUserId`(강퇴·탈퇴)를 정리한다 — 그 밖에 아무것도 없는 디코 반쪽 행은 지우고, 경기·멘션·라이엇 계정·묘비·손으로
+적은 값이 하나라도 있는 행은 디코 칸만 비운다(회원 삭제는 `/member-admin`의 관리 버튼으로만). 받은 목록에 사람이 0명이면
+깨진 응답으로 보고 아무것도 정리하지 않는다.
+
 MMR is team-average Elo, K=40, applied identically to every player on a team (`packages/core/src/mmr.ts`). Default 1000. On top of the win/loss swing every participant gains a flat bonus — `WIN_POINT` (3) for the winning team, `LOSS_POINT` (1) for the losing one — so a game is worth +23/-19 between even teams and the rating pool inflates. That is deliberate: showing up is always worth something, winning a little more.
 
 The two dashboards (`/rift`, `/aram`) show **0** for a member whose counted game

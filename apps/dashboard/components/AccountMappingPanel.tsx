@@ -50,7 +50,7 @@ export function AccountMappingPanel({
       const { result, error } = await importDiscordMembersAction();
       setImportStatus(
         error ??
-          `가져오기 완료 · 신규 ${result!.created}명 · 갱신 ${result!.updated}명 · 봇 제외 ${result!.skippedBots}개`
+          `가져오기 완료 · 신규 ${result!.created}명 · 갱신 ${result!.updated}명 · 봇 제외 ${result!.skippedBots}개 · 나간 계정 삭제 ${result!.removed}명 · 디코 연결 해제 ${result!.detached}명`
       );
     } finally {
       setIsImporting(false);
