@@ -1,10 +1,10 @@
 import type { PrismaClient } from "@lolpamin/db";
 import { aggregatePlayerStats, getDisplayName, type PlayerGameRow, type PlayerStats, seoulYearRange } from "@lolpamin/core";
 import type { Prisma } from "@lolpamin/db";
-import { getCountedGameFilter } from "./counted-games";
+import { getBaselineGameFilter } from "./counted-games";
 
 // year = games played this Seoul calendar year (by playedAt, across resets); season = since
-// the latest rating reset (same baseline as /rift); all = every live game.
+// the latest rating reset (same baseline as /rift, but tournament games count: stats are not records); all = every live game.
 export type PlayerStatsPeriod = "year" | "season" | "all";
 
 export function parsePlayerStatsPeriod(value: string | undefined): PlayerStatsPeriod {
@@ -24,7 +24,7 @@ export async function playerStatsGameFilter(
   period: PlayerStatsPeriod,
   now: Date,
 ): Promise<Prisma.GameResultWhereInput> {
-  if (period === "season") return getCountedGameFilter(prisma);
+  if (period === "season") return getBaselineGameFilter(prisma);
   if (period === "year") {
     const { start, end } = seoulYearRange(now);
     return { cancelledAt: null, playedAt: { gte: start, lt: end } };

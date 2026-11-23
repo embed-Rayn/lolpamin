@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@lolpamin/db";
 
 /**
- * 회원이 참가한 내전 횟수. 되돌린 판과 마지막 리셋 이전에 입력된 판은 세지 않는다 —
+ * 회원이 참가한 내전 횟수. 내전(kind INTERNAL)만 센다 — 대회·스크림 판은 MMR을 움직이지
+ * 않으므로 전적에 넣지 않는다. 되돌린 판과 마지막 리셋 이전에 입력된 판은 세지 않는다 —
  * 참가 기록은 대시보드의 경기 기록에 남아야 해서 어느 쪽도 지우지 않으므로
  * (cancelGameResult, resetAllRatings 참고) 세는 쪽에서 걸러야 한다.
  *
@@ -19,6 +20,7 @@ export async function getGameCount(prisma: PrismaClient, memberId: string): Prom
       memberId,
       gameResult: {
         cancelledAt: null,
+        kind: "INTERNAL",
         ...(latestReset ? { createdAt: { gt: latestReset.resetAt } } : {}),
       },
     },

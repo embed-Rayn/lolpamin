@@ -63,6 +63,22 @@ describe("getGameCount", () => {
     expect(await getGameCount(prisma, member.id)).toBe(1);
   });
 
+  // Tournament and scrim games never move MMR, so they are not part of the 내전 count.
+  it("counts internal games only", async () => {
+    const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
+    await playedIn(member.id, false);
+    for (const kind of ["TOURNAMENT", "SCRIM"] as const) {
+      const game = await prisma.gameResult.create({
+        data: { playedAt: new Date("2026-09-01T12:00:00Z"), winner: "BLUE", kind, blueTeamSlot: 1, redTeamSlot: 2 },
+      });
+      await prisma.gameParticipant.create({
+        data: { gameResultId: game.id, memberId: member.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1000 },
+      });
+    }
+
+    expect(await getGameCount(prisma, member.id)).toBe(1);
+  });
+
   it("does not count another member's games", async () => {
     const member = await prisma.member.create({ data: { discordUserId: "d-1" } });
     const other = await prisma.member.create({ data: { discordUserId: "d-2" } });

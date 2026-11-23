@@ -121,6 +121,21 @@ describe("getPlayerStats", () => {
     expect(rows.find((r) => r.id === b.id)!.stats.total?.games).toBe(1);
   });
 
+  // Stats are not records: a tournament game still shows up, even under the season baseline.
+  it("counts internal and tournament games alike for season", async () => {
+    const m = await member("가가");
+    await game([{ memberId: m.id }]);
+    const t = await game([{ memberId: m.id }]);
+    await prisma.gameResult.update({
+      where: { id: t.id },
+      data: { kind: "TOURNAMENT", blueTeamSlot: 1, redTeamSlot: 2 },
+    });
+
+    const rows = await getPlayerStats(prisma, "season");
+
+    expect(rows[0].stats.total?.games).toBe(2);
+  });
+
   it("decides the win from the participant's team", async () => {
     const blue = await member("블루");
     const red = await member("레드");

@@ -401,6 +401,23 @@ describe("getMemberListData 전적", () => {
     expect(rowOf(data.rows, "전적가")).toMatchObject({ wins: 1, losses: 0, playedCount: 1 });
   });
 
+  // Tournament games never move MMR, so they add nothing to the record either.
+  it("leaves a tournament game out of the record", async () => {
+    const a = await prisma.member.create({ data: { realName: "전적가", kakaoNickname: "전적가", mmr: 1000 } });
+    const b = await prisma.member.create({ data: { realName: "전적나", kakaoNickname: "전적나", mmr: 1000 } });
+    await playGame(a.id, b.id, "BLUE");
+    const t = await prisma.gameResult.create({
+      data: { playedAt: new Date(2026, 7, 3), winner: "BLUE", kind: "TOURNAMENT", blueTeamSlot: 1, redTeamSlot: 2 },
+    });
+    await prisma.gameParticipant.create({
+      data: { gameResultId: t.id, memberId: a.id, team: "BLUE", mmrBefore: 1000, mmrAfter: 1000 },
+    });
+
+    const data = await getMemberListData("all", "", "mmr", "desc");
+
+    expect(rowOf(data.rows, "전적가")).toMatchObject({ wins: 1, losses: 0, playedCount: 1 });
+  });
+
   // 리셋은 전적을 0/0/0으로 되돌린다. 경기는 지우지 않으므로 세는 쪽이 기준선을 봐야
   // 한다 — mutations/reset-ratings.ts와 queries/counted-games.ts 참고.
   it("leaves a game entered before the last reset out of the record", async () => {
