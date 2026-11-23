@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/current-admin";
 import { createAdmin, deleteAdmin } from "@/lib/mutations/admins";
 import { resetAllRatings } from "@/lib/mutations/reset-ratings";
+import { setTournamentEnabled } from "@/lib/tournament/mutations";
 import { setSiteTheme } from "@/lib/mutations/set-site-theme";
 import { SetBrandingValidationError, setBranding } from "@/lib/mutations/set-branding";
 import { deleteHomeBanner, HomeBannerValidationError, setHomeBanner } from "@/lib/mutations/home-banners";
@@ -120,6 +121,13 @@ export async function updateMmrConfigAction(input: {
 export async function setSiteThemeAction(theme: string): Promise<{ error: string | null }> {
   const acting = await requireAdmin();
   await setSiteTheme(prisma, theme, acting.id);
+  revalidatePath("/", "layout");
+  return { error: null };
+}
+
+export async function setTournamentEnabledAction(enabled: boolean): Promise<{ error: string | null }> {
+  const acting = await requireAdmin();
+  await setTournamentEnabled(prisma, enabled, acting.id);
   revalidatePath("/", "layout");
   return { error: null };
 }

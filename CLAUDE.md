@@ -8,7 +8,7 @@ Management system for a Korean LoL (League of Legends) friend group. Tracks an i
 
 npm-workspaces monorepo, one shared Postgres:
 
-- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public. Logging in returns to the page that sent you (`?next=`, accepted only as an on-site path by `safeNextPath`; operator pages redirect with `loginPathFor`); logging out lands on home.
+- `apps/dashboard` — Next.js 14 App Router admin UI. Read-only member roster (`/member-info`), operator roster editor (`/member-admin`), account linking, captain team draft, inactivity report, 대회 league page (`/tournament`), KakaoTalk export upload, admin login and admin management. Writes are gated on an admin session; reads are public. Logging in returns to the page that sent you (`?next=`, accepted only as an on-site path by `safeNextPath`; operator pages redirect with `loginPathFor`); logging out lands on home.
 - `apps/discord-bot` — discord.js read-only slash commands: `/mmr` (본인 MMR·칼바람 MMR과 각 순위), `/랭킹` (MMR TOP 10), `/ranking-aram` (칼바람 MMR TOP 10), `/전적` (지정한 디스코드 유저의 MMR과 내전 횟수), `/사이트` (사이트 주소 안내, 유일하게 DB를 보지 않는 명령어). A new command must be added in three places — its own file under `src/commands/`, the `commands` collection in `src/index.ts`, and `commandPayloads` in `src/deploy-commands.ts` — and only takes effect after `npm run deploy-commands --workspace=discord-bot`.
 - `apps/draw-offline` — offline build of `/draw/plinko` and `/draw/cannon` (Vite). It renders the dashboard's own `components/draw/*` through an `@` → `../dashboard` alias, so edits there carry over on rebuild. No DB: the roster is names typed on its 회원 명단 tab (localStorage `lolpamin.offline.members.v1`, .txt/.json import/export). `npm run build --workspace=draw-offline` writes `dist/index.html` (JS/CSS inlined, opens from `file://`) plus `dist/bgm/` copied from `dashboard/public/bgm` — the track list is fixed at build time, since a `file://` page cannot list a directory. Ship the whole `dist/` folder.
 - `packages/db` — Prisma schema + a single shared `prisma` client singleton.
@@ -213,6 +213,17 @@ end of that day in Seoul the post is promoted (`eventDaysLeft`/`isEventPromoted`
 the list nearest-first with a D-day badge and an accent ring, and counted in the sidebar badge
 on 공지사항 (`countPromotedEventPosts`, accent tone, also shown on the folded 이벤트 group).
 After it the post drops back into the newest-first list tagged 종료.
+
+`/tournament` (대회, in the 이벤트 group after 공지사항) is a league page for the four-team 대회 and its 스크림. `GameResult.kind`
+is `INTERNAL` (default), `TOURNAMENT` or `SCRIM`, with `blueTeamSlot`/`redTeamSlot` (1..4, no FK; an unnamed slot is
+`N팀`, names live in `TournamentTeam`). Tournament and scrim games are saved through `saveReplayImport` with a **zero MMR
+delta**, RIFT only, and only while the switch is on. `counted-games.ts` has two filters: `getBaselineGameFilter` (reset
+baseline only, for the stats pages) and `getCountedGameFilter` (= baseline + `kind: INTERNAL`, for 판/승/패; the bot
+restates it). Cancel: the internal LIFO chain ignores non-internal games; cancelling a non-internal game never touches
+ratings, has no order or reset rule and works while the switch is off. Standings are win +3 / loss −1 over
+non-cancelled `TOURNAMENT` games (scrims excluded, **no reset baseline**), ordered points → wins → head-to-head → killDiff →
+slot. The switch is `SiteSetting.tournamentEnabled` on `/admins`: off hides the nav entry and 404s the page for
+visitors, while the records stay in history and stats. `TournamentImage` rows are `Bytes`, served `private, no-store`.
 
 `/meeting-notes` (회의록, under 운영 관리 right after 회원 관리) is the one screen where
 **reading** is admin-only too — notes can carry member evaluations, so the pages redirect to
@@ -439,8 +450,8 @@ server → client boundary.
 
 ## Mobile
 
-Eleven read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
-`/match-history`, `/match-calendar`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`) work down to a
+Twelve read screens plus `/login` (`/`, `/member-info`, `/rift`, `/aram`,
+`/match-history`, `/match-calendar`, `/inactive`, `/player-stats`, `/champion-stats`, `/events`, `/events/[id]`, `/tournament`) work down to a
 375px phone; the sixteen operator screens (`matches`, `replay-import`, `team-builder`,
 `kakao-import`, `link-accounts`, `member-admin`, `admins`, `draw/cannon`, `draw/plinko`,
 `events/new`, `events/[id]/edit`, `meeting-notes`, `meeting-notes/tasks`, `meeting-notes/new`, `meeting-notes/[id]`,

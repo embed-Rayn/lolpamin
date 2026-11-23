@@ -5,6 +5,8 @@ import { AdminPanel, type AdminRow } from "@/components/AdminPanel";
 import { MmrConfigPanel } from "@/components/MmrConfigPanel";
 import { RatingResetPanel } from "@/components/RatingResetPanel";
 import { ThemePanel } from "@/components/ThemePanel";
+import { TournamentSwitchPanel } from "@/components/tournament/TournamentSwitchPanel";
+import { isTournamentEnabled } from "@/lib/tournament/queries";
 import { BrandingPanel } from "@/components/BrandingPanel";
 import { prisma } from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth/current-admin";
@@ -21,7 +23,7 @@ export default async function AdminsPage() {
     redirect(loginPathFor("/admins"));
   }
 
-  const [admins, mmrConfig, theme, themeRow, branding, banners] = await Promise.all([
+  const [admins, mmrConfig, theme, themeRow, branding, banners, tournamentEnabled] = await Promise.all([
     prisma.admin.findMany({ orderBy: { createdAt: "asc" } }),
     getStoredMmrConfig(prisma),
     getSiteTheme(prisma),
@@ -31,6 +33,7 @@ export default async function AdminsPage() {
     }),
     getBranding(prisma),
     getHomeBanners(prisma),
+    isTournamentEnabled(prisma),
   ]);
   const byId = new Map(admins.map((a) => [a.id, a.username]));
 
@@ -60,6 +63,7 @@ export default async function AdminsPage() {
     <AppShell activeNav="admins" pageTitle="관리자 · 설정" pageDesc="계정, 스킨, MMR 계산식, 시즌 리셋" desktopOnly>
       <div className="flex flex-col gap-5 px-7 pb-10 pt-6">
         <ThemePanel current={theme} updatedLabel={themeUpdatedLabel} />
+        <TournamentSwitchPanel enabled={tournamentEnabled} />
         <BrandingPanel current={branding} banners={banners} updatedLabel={themeUpdatedLabel} />
         <AdminPanel rows={rows} />
         <MmrConfigPanel config={mmrConfig} updatedLabel={mmrUpdatedLabel} />
