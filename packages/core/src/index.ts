@@ -9,6 +9,7 @@ export * from "./draw";
 export * from "./tier";
 export * from "./lane";
 export * from "./parse-rofl";
+export * from "./replay-puuid";
 export * from "./riot-hint";
 export * from "./score-riot-account-match";
 export * from "./displayed-rating";

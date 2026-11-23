@@ -333,8 +333,10 @@ ID와 `Member.riotId`는 사람이 손으로 적은 값이라 오타·태그 누
 `gameName`/`tagLine`으로 받아 쓴다. 저장된 값이 400(`invalid_id`)을 받을 때도 한 번 다시 받는다
 (다른 앱의 키로 등록한 계정). 이름#태그로 등록한 행의 `puuid`도 API PUUID라, 같은 계정의 리플레이
 행과 절대 일치하지 않는다. 그래서 두 등록 경로는 `puuid` 말고도 서로를 찾는다 — 리플레이
-저장은 같은 회원의 이름#태그 행(`puuid = apiPuuid`)을 Riot ID(대소문자 무시)로 찾아 그 행의
-`puuid`를 리플레이 UUID로 바꾸고, 이름#태그 등록은 같은 `apiPuuid`의 행, 없으면 같은 회원의
+저장은 같은 회원의 이름#태그 행(`puuid`가 36자 리플레이 UUID가 아닌 행, `isReplayPuuid` — `puuid = apiPuuid`로
+가리면 `apiPuuid`를 다른 앱 키로 다시 받은 행을 놓쳐 중복이 생긴다)을 Riot ID(대소문자 무시)로 찾아 그 행의
+`puuid`를 리플레이 UUID로 바꾼다. 미리보기(`prepareReplayImport`)도 같은 행을 보고, Riot ID가 한 회원의 이름#태그
+행과 같으면 그 회원을 자동 배정한다 — 그 계정 말고 힌트가 없는 회원이 후보 0명으로 빠지지 않게. 이름#태그 등록은 같은 `apiPuuid`의 행, 없으면 같은 회원의
 `apiPuuid`가 빈 행을 Riot ID로 찾아 채운다. 회원이 다르면 Riot ID가 같아도 잇지 않는다. 그 전에
 갈라진 행이 남아 있을 수 있어서, 숙련도 배치는 같은 `apiPuuid`의 두 번째 행 숙련도를 비워 합산이
 두 번 되지 않게 한다(`duplicates`).

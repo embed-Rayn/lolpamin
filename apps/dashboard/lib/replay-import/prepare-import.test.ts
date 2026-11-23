@@ -75,6 +75,32 @@ describe("prepareReplayImport", () => {
     expect(slot.memberId).toBe(member.id);
   });
 
+  it("auto-assigns a slot whose riot id matches a member's name#tag registration", async () => {
+    // Registered by name#tag, so puuid is the API PUUID and never equals the replay's UUID.
+    // The member carries no other hint for this account.
+    const member = await prisma.member.create({ data: { discordUserId: "d-reg", realName: "방다훈" } });
+    await prisma.riotAccount.create({
+      data: { memberId: member.id, puuid: "api-puuid", apiPuuid: "api-puuid", gameName: "디 디", tagLine: "3333", lastSeenAt: new Date() },
+    });
+
+    const prepared = await prepareReplayImport(prisma, replayWith({ gameName: "디 디", tagLine: "3333" }));
+
+    const slot = prepared.slots.find((s) => s.puuid === "puuid-0")!;
+    expect(slot.status).toBe("auto");
+    expect(slot.memberId).toBe(member.id);
+  });
+
+  it("does not assign a slot from a name#tag registration owned by no member", async () => {
+    // A registration attached to nobody (outsider) does not claim the slot.
+    await prisma.riotAccount.create({
+      data: { memberId: null, puuid: "api-puuid", apiPuuid: "api-puuid", gameName: "디 디", tagLine: "3333", lastSeenAt: new Date() },
+    });
+
+    const prepared = await prepareReplayImport(prisma, replayWith({ gameName: "디 디", tagLine: "3333" }));
+
+    expect(prepared.slots.find((s) => s.puuid === "puuid-0")!.status).toBe("unresolved");
+  });
+
   it("scores a fully-linked survivor's kakao hint through its tombstone", async () => {
     // 모든 기존 픽스처는 discordUserId와 kakaoNickname을 한 행에 함께 둔다 — 실제 연결
     // 흐름(absorbMember)이 만들어내는 모양이 아니다. absorbMember는 카톡 닉네임을 생존자에게

@@ -453,6 +453,29 @@ describe("saveReplayImport — one row per account across both PUUIDs", () => {
     expect(await prisma.championMastery.count({ where: { riotAccountId: registered.id } })).toBe(1);
   });
 
+  it("adopts a name#tag row whose apiPuuid was re-fetched under another app's key", async () => {
+    const blue = await linkedMember("blue");
+    const red = await linkedMember("red");
+    // withApiPuuid rewrites apiPuuid on an invalid_id answer; puuid keeps the old app's value.
+    const registered = await prisma.riotAccount.create({
+      data: { puuid: "api-old-app", apiPuuid: "api-new-app", gameName: "name-p-blue", tagLine: "KR1", memberId: blue.id, lastSeenAt: new Date("2026-09-01") },
+    });
+
+    const assignments = [assignment("p-blue", "BLUE", blue.id), assignment("p-red", "RED", red.id)];
+    await saveReplayImport(prisma, {
+      ...replayInput(assignments),
+      playedAt: new Date("2026-09-05T12:00:00Z"),
+      winner: "BLUE",
+      assignments,
+    });
+
+    const rows = await prisma.riotAccount.findMany({ where: { memberId: blue.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(registered.id);
+    expect(rows[0].puuid).toBe("p-blue");
+    expect(rows[0].apiPuuid).toBe("api-new-app");
+  });
+
   it("leaves another member's name#tag row alone", async () => {
     const blue = await linkedMember("blue");
     const red = await linkedMember("red");

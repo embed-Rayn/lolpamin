@@ -1,5 +1,5 @@
 import type { GameMode, PrismaClient } from "@lolpamin/db";
-import type { ReplayPlayer } from "@lolpamin/core";
+import { isReplayPuuid, type ReplayPlayer } from "@lolpamin/core";
 import { saveGameResultTx, type SaveGameResultOutput } from "./save-game-result";
 import { computeReplayKey } from "../replay-import/replay-key";
 
@@ -100,7 +100,7 @@ export async function saveReplayImport(
                     tagLine: { equals: a.tagLine, mode: "insensitive" },
                   },
                 })
-              ).find((r) => r.puuid === r.apiPuuid)
+              ).find((r) => !isReplayPuuid(r.puuid))
             : undefined;
           if (registered) {
             await tx.riotAccount.update({

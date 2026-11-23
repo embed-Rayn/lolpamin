@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@lolpamin/db";
-import { getDisplayName, isAutoAssignable, parseRoflMetadata, scoreRiotAccountMatch } from "@lolpamin/core";
+import { getDisplayName, isAutoAssignable, isReplayPuuid, parseRoflMetadata, scoreRiotAccountMatch } from "@lolpamin/core";
 import type { MmrConfig, ReplayPlayer } from "@lolpamin/core";
 import { computeReplayKey } from "./replay-key";
 import { getMmrConfig } from "../queries/mmr-config";
@@ -139,6 +139,29 @@ export async function prepareReplayImport(
     getMmrConfig(prisma),
   ]);
 
+  // A name#tag registration stores the API PUUID, so the replay's UUID never finds it above.
+  // Match it on the Riot ID instead — the same rows saveReplayImport adopts on save. Without
+  // this a member whose only hint is the registered account comes up with no candidate at all.
+  const registered = await prisma.riotAccount.findMany({
+    where: {
+      memberId: { not: null },
+      OR: meta.players.map((p) => ({
+        gameName: { equals: p.gameName, mode: "insensitive" as const },
+        tagLine: { equals: p.tagLine, mode: "insensitive" as const },
+      })),
+    },
+    select: { puuid: true, gameName: true, tagLine: true, member: { select: { id: true, mergedIntoId: true } } },
+  });
+  const riotIdKey = (gameName: string, tagLine: string) => `${gameName}#${tagLine}`.toLowerCase();
+  const registeredOwners = new Map<string, Set<string>>();
+  for (const r of registered) {
+    if (isReplayPuuid(r.puuid) || r.member === null) continue;
+    const key = riotIdKey(r.gameName, r.tagLine);
+    const owners = registeredOwners.get(key) ?? new Set<string>();
+    owners.add(r.member.mergedIntoId ?? r.member.id);
+    registeredOwners.set(key, owners);
+  }
+
   const byPuuid = new Map(accounts.map((a) => [a.puuid, a]));
   // 이미 이 경기의 다른 슬롯에 앉은 회원. 같은 사람이 두 슬롯에 앉으면 저장이
   // @@unique([gameResultId, memberId])에 막힌다.
@@ -158,6 +181,19 @@ export async function prepareReplayImport(
     taken.add(memberId);
     return { ...baseSlot(player), status: "confirmed" as SlotStatus, memberId, candidates: [] };
   });
+
+  // Before scoring, so a member placed here cannot also be scored into another slot. Two
+  // owners for one Riot ID is a stale registration; leave that slot to the admin.
+  for (const slot of slots) {
+    if (slot.status !== "unresolved") continue;
+    const owners = registeredOwners.get(riotIdKey(slot.gameName, slot.tagLine));
+    if (owners?.size !== 1) continue;
+    const [memberId] = owners;
+    if (taken.has(memberId)) continue;
+    slot.status = "auto";
+    slot.memberId = memberId;
+    taken.add(memberId);
+  }
 
   const pending = slots.filter((s) => s.status === "unresolved");
   const ranked = new Map<string, SlotCandidate[]>();
