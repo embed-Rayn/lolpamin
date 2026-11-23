@@ -23,11 +23,10 @@ export async function setTournamentEnabled(
   enabled: boolean,
   adminId: string | null,
 ): Promise<void> {
-  void adminId;
   await prisma.siteSetting.upsert({
     where: { id: SITE_SETTING_ID },
-    create: { id: SITE_SETTING_ID, tournamentEnabled: enabled },
-    update: { tournamentEnabled: enabled },
+    create: { id: SITE_SETTING_ID, tournamentEnabled: enabled, updatedById: adminId },
+    update: { tournamentEnabled: enabled, updatedById: adminId },
   });
 }
 

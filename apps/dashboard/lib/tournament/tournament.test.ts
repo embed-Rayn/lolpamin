@@ -136,8 +136,9 @@ describe("switch", () => {
     expect(await isTournamentEnabled(prisma)).toBe(false);
     await expect(renameTournamentTeam(prisma, 1, "a", null)).rejects.toThrow("대회 페이지가 꺼져 있습니다.");
     await expect(addTournamentImage(prisma, png())).rejects.toThrow("대회 페이지가 꺼져 있습니다.");
-    await setTournamentEnabled(prisma, true, null);
+    await setTournamentEnabled(prisma, true, "admin1");
     expect(await isTournamentEnabled(prisma)).toBe(true);
+    expect((await prisma.siteSetting.findUnique({ where: { id: "default" } }))?.updatedById).toBe("admin1");
     await renameTournamentTeam(prisma, 1, "a", null);
   });
 });
